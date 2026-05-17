@@ -1,0 +1,55 @@
+{
+  "_comment": [
+    "Device Provisioning IAM 정책 — 출시 차단 보안 결함 차단의 운영 부속.",
+    "본 정책은 ICONIA-SERVER 운영 EC2 instance role (iconia-ec2-role) 에 attach 한다.",
+    "권한 범위: device_provisioning 테이블 시드 ciphertext 복호화에 필요한 KMS:Decrypt 만.",
+    "절대 KMS:Encrypt / GenerateDataKey 부여 금지 — 시드 발급은 양산 라인 별도 KEK + 별도 IAM principal 가 담당.",
+    "",
+    "분리된 KEK 두 개:",
+    "  1) iconia-prod-provisioning-kek  : 양산 라인 (시드 암호화). 운영 EC2 는 Decrypt 만 허용.",
+    "  2) iconia-prod-data            : S3/EFS 일반 데이터. 본 정책과 무관.",
+    "",
+    "KEY_ARN placeholder — 실제 적용 시 운영팀이 sed 로 치환:",
+    "  sed -i 's|REPLACE_PROVISIONING_KEK_ARN|arn:aws:kms:ap-northeast-2:<acct>:key/<id>|g' iam_policy_device_provisioning.json"
+  ],
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DecryptProvisioningSeedCiphertext",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": "REPLACE_PROVISIONING_KEK_ARN",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "secretsmanager.ap-northeast-2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ReadProvisioningKekFromSecretsManager",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:ap-northeast-2:*:secret:iconia/prod/device-provisioning-kek-??????",
+        "arn:aws:secretsmanager:ap-northeast-2:*:secret:iconia/prod/device-provisioning-hmac-pepper-??????"
+      ]
+    },
+    {
+      "Sid": "DenyProvisioningKekEncrypt",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Encrypt",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:ReEncryptFrom",
+        "kms:ReEncryptTo"
+      ],
+      "Resource": "REPLACE_PROVISIONING_KEK_ARN"
+    }
+  ]
+}

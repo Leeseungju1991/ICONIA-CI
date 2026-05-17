@@ -1,0 +1,117 @@
+{
+  "_comment": "운영 알람 정의. 'aws cloudwatch put-metric-alarm' 으로 각 항목 적용. SNS_TOPIC_ARN 은 환경별로 치환.",
+  "alarms": [
+    {
+      "AlarmName": "iconia-server-5xx-rate-high",
+      "MetricName": "HTTPCode_Target_5XX_Count",
+      "Namespace": "AWS/ApplicationELB",
+      "Statistic": "Sum",
+      "Period": 60,
+      "EvaluationPeriods": 3,
+      "Threshold": 10,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-server-latency-p99-high",
+      "MetricName": "TargetResponseTime",
+      "Namespace": "AWS/ApplicationELB",
+      "ExtendedStatistic": "p99",
+      "Period": 60,
+      "EvaluationPeriods": 3,
+      "Threshold": 1.5,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-gemini-token-spend-high",
+      "MetricName": "GeminiTokensInput",
+      "Namespace": "ICONIA/Server",
+      "Statistic": "Sum",
+      "Period": 3600,
+      "EvaluationPeriods": 1,
+      "Threshold": 5000000,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-quota-block-spike",
+      "MetricName": "QuotaBlocked",
+      "Namespace": "ICONIA/Server",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 50,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-analysis-failure-rate-high",
+      "MetricName": "AnalysisFailed",
+      "Namespace": "ICONIA/Server",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "Threshold": 20,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-efs-burst-credit-low",
+      "MetricName": "BurstCreditBalance",
+      "Namespace": "AWS/EFS",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 3,
+      "Threshold": 100000000000,
+      "ComparisonOperator": "LessThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-iam-permission-denied-spike",
+      "MetricName": "PermissionDeniedCount",
+      "Namespace": "ICONIA/Audit",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 10,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-gemini-cache-hit-rate-low",
+      "AlarmDescription": "캐시 히트율 < 30% 시 알람 — 비용 최적화 신호.",
+      "Metrics": [
+        {
+          "Id": "hit",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/Server", "MetricName": "GeminiCacheHit" },
+            "Period": 3600,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "miss",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/Server", "MetricName": "GeminiCacheMiss" },
+            "Period": 3600,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "ratio",
+          "Expression": "hit / (hit + miss + 1)",
+          "Label": "cache_hit_ratio",
+          "ReturnData": true
+        }
+      ],
+      "Threshold": 0.3,
+      "ComparisonOperator": "LessThanThreshold",
+      "EvaluationPeriods": 2,
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    }
+  ]
+}

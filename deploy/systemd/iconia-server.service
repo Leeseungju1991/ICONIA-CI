@@ -1,0 +1,51 @@
+[Unit]
+Description=ICONIA Server (Express API on :8080)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iconia
+Group=iconia
+WorkingDirectory=/opt/iconia/server
+
+# 공용 env 는 /etc/iconia.env (user-data 가 작성), 서비스별 secret 는 /etc/iconia.server.env.
+# 운영 사전 점검: chmod 0640 /etc/iconia.server.env && chown root:iconia ...
+EnvironmentFile=/etc/iconia.env
+EnvironmentFile=-/etc/iconia.server.env
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=NODE_OPTIONS=--max-old-space-size=1024
+
+ExecStart=/usr/bin/node /opt/iconia/server/src/server.js
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+# systemd hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/iconia/server /mnt/efs/iconia /var/log/iconia /tmp
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=iconia-server
+
+[Install]
+WantedBy=multi-user.target

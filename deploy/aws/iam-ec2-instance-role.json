@@ -1,0 +1,91 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3ReadWriteIconiaPrefixesOnly",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload"
+      ],
+      "Resource": [
+        "arn:aws:s3:::iconia-prod-events/iconia/events/*",
+        "arn:aws:s3:::iconia-prod-events/iconia/voice/*",
+        "arn:aws:s3:::iconia-prod-events/iconia/exports/*"
+      ]
+    },
+    {
+      "Sid": "S3ListIconiaPrefixOnly",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::iconia-prod-events",
+      "Condition": {
+        "StringLike": { "s3:prefix": ["iconia/*"] }
+      }
+    },
+    {
+      "Sid": "S3FirmwareReadOnlyForOta",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::iconia-prod-firmware/firmware/*",
+      "_comment": "OTA presigned URL 생성용 read-only. PutObject 는 절대 추가 금지 — 운영자/CI 전용."
+    },
+    {
+      "Sid": "KmsForS3OnlyForIconiaCmk",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:ACCOUNT_ID:key/IDLINE-FROM-CREATE-KEY",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": [
+            "s3.ap-northeast-2.amazonaws.com",
+            "secretsmanager.ap-northeast-2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "SecretsManagerReadIconiaScopeOnly",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:ap-northeast-2:ACCOUNT_ID:secret:iconia/prod/*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchMetricsPut",
+      "Effect": "Allow",
+      "Action": ["cloudwatch:PutMetricData"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "cloudwatch:namespace": ["ICONIA/Server"]
+        }
+      }
+    },
+    {
+      "Sid": "CloudWatchLogsAppend",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-northeast-2:ACCOUNT_ID:log-group:/iconia/server:*",
+        "arn:aws:logs:ap-northeast-2:ACCOUNT_ID:log-group:/iconia/audit:*"
+      ]
+    }
+  ]
+}

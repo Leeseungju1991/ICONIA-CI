@@ -1,0 +1,30 @@
+{
+  "Rules": [
+    {
+      "ID": "events-archive-glacier-then-expire",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "iconia/events/" },
+      "Transitions": [
+        { "Days": 90, "StorageClass": "GLACIER_IR" }
+      ],
+      "Expiration": { "Days": 455 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 30 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    },
+    {
+      "ID": "voice-30day-expire",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "iconia/voice/" },
+      "Expiration": { "Days": 30 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 7 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    },
+    {
+      "ID": "exports-7day-expire",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "iconia/exports/" },
+      "Expiration": { "Days": 7 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 1 }
+    }
+  ]
+}

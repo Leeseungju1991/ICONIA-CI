@@ -1,0 +1,57 @@
+{
+  "_comment": "PII 누출 의심 패턴이 application 로그에 등장하면 알람을 띄운다. 실제 로그 자체에는 마스킹된 값만 남도록 application 단(Server/src/server.js morgan 토큰)에서도 차단.",
+  "filters": [
+    {
+      "logGroupName": "/iconia/server",
+      "filterName": "iconia-pii-email-leak",
+      "filterPattern": "%[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}%",
+      "metricTransformations": [
+        {
+          "metricNamespace": "ICONIA/Audit",
+          "metricName": "PIIEmailInLogs",
+          "metricValue": "1",
+          "defaultValue": 0
+        }
+      ]
+    },
+    {
+      "logGroupName": "/iconia/server",
+      "filterName": "iconia-pii-phone-kr",
+      "filterPattern": "%(010|011|016|017|018|019)[0-9]{7,8}%",
+      "metricTransformations": [
+        {
+          "metricNamespace": "ICONIA/Audit",
+          "metricName": "PIIPhoneInLogs",
+          "metricValue": "1",
+          "defaultValue": 0
+        }
+      ]
+    },
+    {
+      "logGroupName": "/iconia/server",
+      "filterName": "iconia-secret-leak-bearer",
+      "filterPattern": "%(Bearer\\s+[A-Za-z0-9_\\-]{40,}|x-api-key:\\s*[A-Za-z0-9_\\-]{20,})%",
+      "metricTransformations": [
+        {
+          "metricNamespace": "ICONIA/Audit",
+          "metricName": "SecretLikeStringInLogs",
+          "metricValue": "1",
+          "defaultValue": 0
+        }
+      ]
+    },
+    {
+      "logGroupName": "/iconia/server",
+      "filterName": "iconia-wifi-psk-leak",
+      "filterPattern": "%(psk|password|passphrase)\\s*[:=]\\s*[^\\s]{6,}%",
+      "metricTransformations": [
+        {
+          "metricNamespace": "ICONIA/Audit",
+          "metricName": "WiFiPskInLogs",
+          "metricValue": "1",
+          "defaultValue": 0
+        }
+      ]
+    }
+  ]
+}

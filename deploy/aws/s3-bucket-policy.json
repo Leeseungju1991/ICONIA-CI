@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Id": "iconia-bucket-policy",
+  "Statement": [
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::iconia-prod-events",
+        "arn:aws:s3:::iconia-prod-events/*"
+      ],
+      "Condition": {
+        "Bool": { "aws:SecureTransport": "false" }
+      }
+    },
+    {
+      "Sid": "DenyUnencryptedObjectUploads",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::iconia-prod-events/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "s3:x-amz-server-side-encryption": ["AES256", "aws:kms"]
+        }
+      }
+    },
+    {
+      "Sid": "DenyOldTLSVersions",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::iconia-prod-events",
+        "arn:aws:s3:::iconia-prod-events/*"
+      ],
+      "Condition": {
+        "NumericLessThan": { "s3:TlsVersion": "1.2" }
+      }
+    }
+  ]
+}

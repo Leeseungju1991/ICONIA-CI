@@ -1,0 +1,52 @@
+[Unit]
+Description=ICONIA AI (Genome engine on :8081)
+After=network-online.target iconia-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iconia
+Group=iconia
+WorkingDirectory=/opt/iconia/ai
+
+EnvironmentFile=/etc/iconia.env
+EnvironmentFile=-/etc/iconia.ai.env
+Environment=NODE_ENV=production
+Environment=PORT=8081
+# Genome 추론 + Gemini 호출 메모리 - prod 는 2GB 까지 확장 권장.
+Environment=NODE_OPTIONS=--max-old-space-size=2048
+
+# AI 엔트리는 src/index.js 또는 src/server.js. 두 후보 중 존재하는 쪽.
+# (3.AI 의 package.json 의 "main" 또는 "start" 스크립트 확인 필요)
+ExecStart=/usr/bin/node /opt/iconia/ai/src/server.js
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+# systemd hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/iconia/ai /mnt/efs/iconia /var/log/iconia /tmp
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=iconia-ai
+
+[Install]
+WantedBy=multi-user.target

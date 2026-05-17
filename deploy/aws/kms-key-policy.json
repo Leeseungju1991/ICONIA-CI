@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Id": "iconia-prod-data-key-policy",
+  "Statement": [
+    {
+      "Sid": "EnableIAMUserPermissions",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::ACCOUNT_ID:root" },
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowEC2InstanceRoleUseOfTheKey",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::ACCOUNT_ID:role/iconia-ec2-role"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": [
+            "s3.ap-northeast-2.amazonaws.com",
+            "secretsmanager.ap-northeast-2.amazonaws.com",
+            "elasticfilesystem.ap-northeast-2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "AllowS3ServiceAttachGrants",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::ACCOUNT_ID:role/iconia-ec2-role"
+      },
+      "Action": ["kms:CreateGrant"],
+      "Resource": "*",
+      "Condition": {
+        "Bool": { "kms:GrantIsForAWSResource": "true" }
+      }
+    }
+  ]
+}

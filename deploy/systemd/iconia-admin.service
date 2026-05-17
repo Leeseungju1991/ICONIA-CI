@@ -1,0 +1,53 @@
+[Unit]
+Description=ICONIA Admin (Next.js on :3000)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iconia
+Group=iconia
+WorkingDirectory=/opt/iconia/admin
+
+EnvironmentFile=/etc/iconia.env
+EnvironmentFile=-/etc/iconia.admin.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=NODE_OPTIONS=--max-old-space-size=1024
+Environment=HOSTNAME=127.0.0.1
+
+# Next.js 13+ standalone (next.config.mjs 의 output:'standalone') 사용 시 server.js,
+# 기본 빌드 사용 시 'npm start' = next start.
+# 본 unit 은 standalone 가정 - 그쪽이 npm 의존성 없어 prod 안정.
+ExecStart=/usr/bin/node /opt/iconia/admin/.next/standalone/server.js
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+# systemd hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/iconia/admin /var/log/iconia /tmp
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=iconia-admin
+
+[Install]
+WantedBy=multi-user.target

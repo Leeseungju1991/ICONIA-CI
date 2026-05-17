@@ -1,0 +1,57 @@
+###############################################################################
+# terraform.tfvars.example — 복사 후 실제 값으로 채워서 terraform.tfvars 로 저장.
+# terraform.tfvars 는 .gitignore 에 포함되어 push 되지 않는다.
+###############################################################################
+
+# ----- Required: 환경 / 도메인 -----
+env         = "prod"
+region      = "ap-northeast-2"
+root_domain = "example.com"        # 실제 보유 도메인. 예: iconia.kr / soomkorea.com 등.
+
+# ----- hosted zone -----
+# 기존 Route53 hosted zone 을 사용하려면 ID 주입 (Route53 콘솔 -> 호스팅 영역 -> Hosted Zone ID).
+# 비우면 route53.tf 가 신규 zone 을 만든다 (도메인 NS 를 발급된 4개로 등록 필요).
+hosted_zone_id = ""
+
+# Route53 A record 생성 여부. EC2 EIP 가 준비된 뒤 true 유지.
+create_route53_records = true
+
+# ----- Network -----
+# 신규 VPC 생성 모드 (기본). false 면 기존 vpc_id / *_subnet_ids 사용.
+create_network        = true
+vpc_cidr              = "10.42.0.0/16"
+azs                   = ["ap-northeast-2a", "ap-northeast-2c"]
+public_subnet_cidrs   = ["10.42.1.0/24",  "10.42.2.0/24"]
+private_subnet_cidrs  = ["10.42.11.0/24", "10.42.12.0/24"]
+
+# 기존 VPC 사용 시 (create_network = false):
+# vpc_id             = "vpc-xxxxxxxx"
+# public_subnet_ids  = ["subnet-aaa", "subnet-bbb"]
+# private_subnet_ids = ["subnet-ccc", "subnet-ddd"]
+
+# ----- EC2 -----
+ec2_instance_type        = "t3.large"      # prod 권장 m6i.large 이상. 비용/성능 결정.
+ec2_root_volume_size_gb  = 30
+ec2_ami_id               = ""              # 비우면 최신 Ubuntu 22.04 자동 조회.
+ec2_key_pair_name        = ""              # 비우면 SSM Session Manager 만 (권장).
+
+# SSH 운영자만 허용할 경우 (key_pair_name 도 동시 설정 필요).
+ssh_allowed_cidrs        = []              # 예: ["203.0.113.5/32"]
+
+# 일반 사용자 HTTP/HTTPS.
+http_allowed_cidrs       = ["0.0.0.0/0"]
+
+# ----- S3 bucket names (비우면 iconia-<env>-<purpose>-<account_id> 자동 명명) -----
+events_bucket_name    = ""
+exports_bucket_name   = ""
+firmware_bucket_name  = ""
+artifacts_bucket_name = ""
+
+# ----- EFS -----
+efs_throughput_mode = "elastic"   # bursting / provisioned / elastic.
+
+# ----- Tags -----
+tags = {
+  project = "iconia"
+  owner   = "iconia-ops"
+}
