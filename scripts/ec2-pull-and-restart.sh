@@ -95,10 +95,66 @@ pull_one() {
   systemctl restart "iconia-${svc}"
 }
 
+###############################################################################
+# DB credential 주입.
+#
+# Secrets Manager 의 iconia/${ICONIA_ENV}/db/master_password
+# (seed-db-password.ps1 가 생성. JSON { username, password }) 에서 password 만
+# 꺼내 /etc/iconia.server.env, /etc/iconia.ai.env 에 DATABASE_URL / RDS_PASSWORD
+# 라인을 멱등하게 작성. 실패 시 fatal (부팅 무한루프 방지).
+#
+# 호출 시점: pull_bootstrap 의 첫 단계. 서비스 코드 풀 전에 secret 이 정합해야
+# server 가 prisma migrate deploy 를 돌릴 수 있다.
+###############################################################################
+inject_database_url() {
+  : "${ICONIA_ENV:?ICONIA_ENV 미설정 (/etc/iconia.env)}"
+  : "${RDS_ENDPOINT:?RDS_ENDPOINT 미설정 (/etc/iconia.env)}"
+  : "${RDS_PORT:?RDS_PORT 미설정 (/etc/iconia.env)}"
+  : "${RDS_DATABASE:?RDS_DATABASE 미설정 (/etc/iconia.env)}"
+  : "${RDS_USERNAME:?RDS_USERNAME 미설정 (/etc/iconia.env)}"
+
+  local secret_id="iconia/${ICONIA_ENV}/db/master_password"
+  log "secrets: fetch ${secret_id}"
+  local secret_json
+  secret_json=$(aws secretsmanager get-secret-value \
+    --secret-id "${secret_id}" --region "${AWS_REGION}" \
+    --query SecretString --output text 2>/dev/null) \
+    || fail "Secrets Manager ${secret_id} 조회 실패 - IAM 정책/시크릿 존재 여부 점검"
+
+  local pwd
+  pwd=$(printf '%s' "$secret_json" | jq -er .password) \
+    || fail "Secret ${secret_id} 의 .password 필드 누락 또는 JSON 파싱 실패"
+
+  # PostgreSQL connection URL — RDS 의 sslmode=require (rds.tf 의 storage_encrypted 와 별개로
+  # 전송 구간 TLS). 비밀번호는 URL 인코딩 필요한 특수문자가 있을 수 있으므로 인코딩.
+  local enc_pwd
+  enc_pwd=$(jq -rn --arg p "$pwd" '$p | @uri')
+  # Endpoint 가 "host:port" 형태로 끝나는 경우(RDS instance) 대비, port 분리.
+  local host="${RDS_ENDPOINT%%:*}"
+  local url="postgresql://${RDS_USERNAME}:${enc_pwd}@${host}:${RDS_PORT}/${RDS_DATABASE}?sslmode=require"
+
+  for envf in /etc/iconia.server.env /etc/iconia.ai.env; do
+    # 기존 파일 보존 + 두 키만 멱등 갱신.
+    touch "$envf"
+    # DATABASE_URL/RDS_PASSWORD 라인 제거 후 재기입.
+    sed -i '/^DATABASE_URL=/d;/^RDS_PASSWORD=/d' "$envf"
+    {
+      printf 'DATABASE_URL=%s\n' "$url"
+      printf 'RDS_PASSWORD=%s\n' "$pwd"
+    } >> "$envf"
+    chown root:iconia "$envf"
+    chmod 0640 "$envf"
+  done
+  log "secrets: DATABASE_URL/RDS_PASSWORD injected -> /etc/iconia.{server,ai}.env"
+}
+
 pull_bootstrap() {
   local key="_bootstrap/deploy.tar.gz"
   local tar="${TMP}/bootstrap.tar.gz"
   local stage="${TMP}/bootstrap.stage"
+
+  # 1) DB credential 주입 - 서비스 코드 pull 전에 먼저 환경파일을 갖춰둔다.
+  inject_database_url
 
   log "_bootstrap <- s3://${ARTIFACTS_BUCKET}/${key}"
   aws s3 cp "s3://${ARTIFACTS_BUCKET}/${key}" "$tar" --region "$AWS_REGION" \
@@ -130,15 +186,62 @@ pull_bootstrap() {
     install -m 0644 "$stage/deploy/nginx/snippets/iconia-proxy.conf" /etc/nginx/snippets/iconia-proxy.conf
   fi
 
-  # nginx 메인 conf - ${ROOT_DOMAIN} 치환.
+  # nginx 메인 conf - ${ROOT_DOMAIN} 치환 + 인증서 존재 시에만 TLS server 블록 활성.
   if [ -f "$stage/deploy/nginx/iconia.conf" ]; then
     : "${ROOT_DOMAIN:?ROOT_DOMAIN 미설정 (/etc/iconia.env 에 ROOT_DOMAIN 추가 필요)}"
-    sed "s/\${ROOT_DOMAIN}/${ROOT_DOMAIN}/g" "$stage/deploy/nginx/iconia.conf" > /etc/nginx/conf.d/iconia.conf
-    chmod 0644 /etc/nginx/conf.d/iconia.conf
+
+    local rendered="/etc/nginx/conf.d/iconia.conf"
+    sed "s/\${ROOT_DOMAIN}/${ROOT_DOMAIN}/g" "$stage/deploy/nginx/iconia.conf" > "$rendered"
+    chmod 0644 "$rendered"
+
+    # certbot 이 아직 인증서를 발급하지 못한 상태에서 reload 하면
+    # `cannot load certificate /etc/letsencrypt/...` 로 nginx 가 침묵 실패한다.
+    # 그러면 80 도 같이 죽어서 certbot http-01 challenge 도 못 통과하는
+    # 데드락 발생. 인증서 부재 시 TLS server 블록 전체를 주석으로 마킹해 둔다.
+    # certbot --nginx 가 발급 성공 시 자기 자신이 인증서 경로를 쓰는 conf 를
+    # 재작성하므로, 다음 _bootstrap pull 때 sed 가 다시 정리한다.
+    if [ ! -f "/etc/letsencrypt/live/api.${ROOT_DOMAIN}/fullchain.pem" ]; then
+      log "WARN: api.${ROOT_DOMAIN} TLS cert 부재 - iconia.conf 의 443 server 블록을 임시 비활성"
+      # `listen 443 ssl` 로 시작하는 server 블록을 모두 주석 처리.
+      # 단순 접근: ssl_certificate 줄을 #로 prefix → nginx -t 가 cert 못 찾으면 죽으므로
+      # 차라리 listen 443 서버 블록 전체를 비활성화. awk 로 블록 구분.
+      awk '
+        BEGIN { depth=0; tls_block=0; buf="" }
+        /^server[[:space:]]*\{/ { in_server=1; depth=1; buf=$0 "\n"; tls_block=0; next }
+        in_server {
+          buf = buf $0 "\n"
+          n = gsub(/\{/, "{")
+          m = gsub(/\}/, "}")
+          depth += n - m
+          if ($0 ~ /listen[[:space:]]+(\[::\]:)?443[[:space:]]+ssl/) tls_block=1
+          if (depth == 0) {
+            if (tls_block) {
+              # 블록 전체에 # prefix.
+              n_lines = split(buf, lines, "\n")
+              for (i=1; i<=n_lines; i++) {
+                if (lines[i] == "" && i == n_lines) continue
+                print "# (tls-disabled) " lines[i]
+              }
+            } else {
+              printf "%s", buf
+            }
+            in_server=0; buf=""
+          }
+          next
+        }
+        { print }
+      ' "$rendered" > "${rendered}.tmp" && mv "${rendered}.tmp" "$rendered"
+      chmod 0644 "$rendered"
+    fi
+
     if nginx -t; then
       systemctl reload nginx
     else
-      log "WARN: nginx -t 실패 - 설정 점검 필요. 이전 conf 유지를 위해 rollback 권장."
+      log "ERR: nginx -t 실패 - 설정 점검 필요. 이전 conf 로의 rollback 권장."
+      # nginx 가 죽지 않도록 깨진 conf 를 비활성화.
+      mv "$rendered" "${rendered}.broken.${TS}"
+      systemctl reload nginx || true
+      fail "nginx -t 실패 - ${rendered}.broken.${TS} 보존"
     fi
   fi
 

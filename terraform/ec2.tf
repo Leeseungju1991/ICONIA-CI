@@ -50,6 +50,7 @@ locals {
     )
     rds_database_name = var.db_name
     rds_username      = var.db_username
+    root_domain       = var.root_domain
   })
 }
 
