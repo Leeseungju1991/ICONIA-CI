@@ -118,6 +118,27 @@ function New-ServiceTarball {
         Write-Host "[admin] npm run build (Next.js)"
         & npm run build
         if ($LASTEXITCODE -ne 0) { throw "next build 실패" }
+
+        # Next.js standalone 산출물에는 .next/static 과 public/ 가 포함되지 않으므로
+        # systemd unit 의 WorkingDirectory(.next/standalone) 안으로 수동 복사한다.
+        # 안 하면 운영에서 정적 자산(/_next/static/*)이 모두 404.
+        $standalone = Join-Path $stage '.next/standalone'
+        if (-not (Test-Path $standalone)) {
+          throw "[admin] .next/standalone 산출물이 없습니다. next.config.mjs 의 output:'standalone' 확인 필요"
+        }
+        $staticSrc  = Join-Path $stage '.next/static'
+        $publicSrc  = Join-Path $stage 'public'
+        $staticDst  = Join-Path $standalone '.next/static'
+        $publicDst  = Join-Path $standalone 'public'
+        if (Test-Path $staticSrc) {
+          Write-Host "[admin] copy .next/static -> standalone/.next/static"
+          New-Item -ItemType Directory -Force -Path (Split-Path $staticDst) | Out-Null
+          Copy-Item -Recurse -Force $staticSrc $staticDst
+        }
+        if (Test-Path $publicSrc) {
+          Write-Host "[admin] copy public -> standalone/public"
+          Copy-Item -Recurse -Force $publicSrc $publicDst
+        }
       }
 
       # 운영용으로 다시 prune (devDependencies 제거).

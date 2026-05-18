@@ -36,10 +36,27 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 │   │   └── snippets-iconia-proxy.conf
 │   └── aws/                       # CloudWatch alarms.tf + IAM/KMS/S3 policy JSON (reference)
 └── scripts/
+    ├── bootstrap-aws.ps1          # 1회: S3 tfstate 버킷 + DynamoDB lock 테이블 생성
+    ├── seed-db-password.ps1       # 1회: RDS password 랜덤 생성 + Secrets Manager 등록
     ├── build-and-upload.ps1       # 로컬(Windows) 빌드 -> S3 artifacts 업로드
     ├── trigger-deploy.ps1         # SSM RunCommand 로 EC2 pull-and-restart 호출
     └── ec2-pull-and-restart.sh    # EC2 호스트에서 실행 (user-data + SSM)
 ```
+
+## 파이프라인 5단계 매핑 (사용자 명세)
+
+```
+HW/FW -> Event Server -> Context/RAG Orchestrator -> Persona AI Engine -> Response Router -> APP/HW/Admin
+```
+
+| # | 단계 | 위치 |
+|---|---|---|
+| 1 | HW/FW | `1. HW/ICONIA Firmware*` (ESP32 펌웨어) |
+| 2 | Event Server | `2. SERVER/src/routes/deviceRoutes.js`, `/api/event`, `/api/v1/event` |
+| 3 | Context/RAG Orchestrator | `3. AI/src/rag/*` (ragRouter / factory / hybridSource / graphRag / correctiveRag / hyde / queryRewriter / queryCache / agentic/pipeline / eval) |
+| 4 | Persona AI Engine | `3. AI/src/personaCore.js`, `personaService.js`, `geminiService.js`, `generation/*` |
+| 5 | Response Router | `2. SERVER/src/services/responseRouter.js` - dispatchProactive (App push) / dispatchHw (슬롯) / dispatchAdmin (audit) |
+| → | APP / HW / Admin 송출 | `chatRoutes`, `appRoutes`, `proactiveInboxRoutes`, `otaStatusRoutes`, `adminRoutes` |
 
 ## 배포 모델
 
@@ -70,36 +87,36 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 # 0) AWS CLI 설정 (운영자 IAM 계정).
 aws configure   # Access Key / Secret / region=ap-northeast-2
 
-# 1) Terraform state 버킷 + DynamoDB lock 테이블 1회 수동 생성.
-aws s3api create-bucket --bucket iconia-tfstate-<ACCOUNT_ID> --region ap-northeast-2 `
-  --create-bucket-configuration LocationConstraint=ap-northeast-2
-aws s3api put-bucket-versioning --bucket iconia-tfstate-<ACCOUNT_ID> --versioning-configuration Status=Enabled
-aws s3api put-public-access-block --bucket iconia-tfstate-<ACCOUNT_ID> `
-  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-aws dynamodb create-table --table-name iconia-tfstate-lock `
-  --attribute-definitions AttributeName=LockID,AttributeType=S `
-  --key-schema AttributeName=LockID,KeyType=HASH `
-  --billing-mode PAY_PER_REQUEST `
-  --region ap-northeast-2
+# 1) tfstate 버킷 + DynamoDB lock 테이블 자동 생성 (idempotent).
+pwsh -File "6. CI\scripts\bootstrap-aws.ps1"
 
-# 2) tfvars 작성.
-cd "6. CI/terraform"
-copy terraform.tfvars.example terraform.tfvars
+# 2) RDS master password 자동 생성 + Secrets Manager 등록.
+pwsh -File "6. CI\scripts\seed-db-password.ps1" -Env prod
+
+# 3) tfvars 작성.
+cd "6. CI\terraform"
+Copy-Item terraform.tfvars.example terraform.tfvars
 # terraform.tfvars 의 root_domain / hosted_zone_id 등 채우기.
 
-# 3) terraform init/plan/apply.
+# 4) terraform init (bootstrap-aws.ps1 출력의 -backend-config 그대로 복붙).
 terraform init `
   -backend-config="bucket=iconia-tfstate-<ACCOUNT_ID>" `
   -backend-config="key=iconia/terraform.tfstate" `
   -backend-config="region=ap-northeast-2" `
   -backend-config="dynamodb_table=iconia-tfstate-lock"
-terraform plan -out=tfplan
+
+# 5) DB password fetch + plan/apply.
+$pwd = aws secretsmanager get-secret-value `
+  --secret-id iconia/prod/db/master_password --region ap-northeast-2 `
+  --query SecretString --output text | ConvertFrom-Json | % password
+terraform plan -out=tfplan -var "db_password=$pwd"
 terraform apply tfplan
 
-# 4) outputs 확인.
+# 6) outputs 확인.
 terraform output -raw artifacts_bucket_name
 terraform output -raw ec2_instance_id
 terraform output -raw ec2_public_ip
+terraform output -raw rds_endpoint
 ```
 
 ## 첫 배포 (apply 직후)

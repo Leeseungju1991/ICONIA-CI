@@ -7,7 +7,9 @@ Wants=network-online.target
 Type=simple
 User=iconia
 Group=iconia
-WorkingDirectory=/opt/iconia/admin
+# standalone 빌드는 자기 위치를 cwd 기준으로 .next/static / public 찾는다.
+# build-and-upload.ps1 가 빌드 후 .next/standalone 으로 static/public 을 복사한다.
+WorkingDirectory=/opt/iconia/admin/.next/standalone
 
 EnvironmentFile=/etc/iconia.env
 EnvironmentFile=-/etc/iconia.admin.env
@@ -16,10 +18,8 @@ Environment=PORT=3000
 Environment=NODE_OPTIONS=--max-old-space-size=1024
 Environment=HOSTNAME=127.0.0.1
 
-# Next.js 13+ standalone (next.config.mjs 의 output:'standalone') 사용 시 server.js,
-# 기본 빌드 사용 시 'npm start' = next start.
-# 본 unit 은 standalone 가정 - 그쪽이 npm 의존성 없어 prod 안정.
-ExecStart=/usr/bin/node /opt/iconia/admin/.next/standalone/server.js
+# next.config.mjs 의 output:'standalone' 산출물.
+ExecStart=/usr/bin/node server.js
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5

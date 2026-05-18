@@ -16,9 +16,8 @@ Environment=PORT=8081
 # Genome 추론 + Gemini 호출 메모리 - prod 는 2GB 까지 확장 권장.
 Environment=NODE_OPTIONS=--max-old-space-size=2048
 
-# AI 엔트리는 src/index.js 또는 src/server.js. 두 후보 중 존재하는 쪽.
-# (3.AI 의 package.json 의 "main" 또는 "start" 스크립트 확인 필요)
-ExecStart=/usr/bin/node /opt/iconia/ai/src/server.js
+# 3.AI/package.json scripts.start = "node src/service.js" 와 정합.
+ExecStart=/usr/bin/node /opt/iconia/ai/src/service.js
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
