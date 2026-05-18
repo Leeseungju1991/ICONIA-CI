@@ -72,6 +72,25 @@ pull_one() {
   # 오래된 백업 cleanup (최근 3개만 유지).
   ls -1dt "${dst}.old."* 2>/dev/null | tail -n +4 | xargs -r rm -rf
 
+  # Prisma migrate deploy - server svc 한정. ai/admin 은 prisma 호출 불필요.
+  # /etc/iconia.server.env 에 DATABASE_URL 이 채워져 있어야 함 (_bootstrap 단계에서 주입).
+  if [ "$svc" = "server" ] && [ -f "${dst}/prisma/schema.prisma" ]; then
+    if [ -f /etc/iconia.server.env ]; then
+      log "server prisma migrate deploy"
+      # set -a 로 export, 실행 후 set +a 로 해제. DATABASE_URL 누락이면 prisma 가 즉시 실패.
+      (
+        set -a
+        # shellcheck disable=SC1091
+        . /etc/iconia.server.env
+        set +a
+        cd "$dst"
+        sudo -u iconia -E npx --yes prisma migrate deploy
+      ) || fail "server prisma migrate deploy 실패 (DATABASE_URL 또는 마이그레이션 점검)"
+    else
+      log "WARN: /etc/iconia.server.env 없음 → prisma migrate deploy 건너뜀"
+    fi
+  fi
+
   log "${svc} restart"
   systemctl restart "iconia-${svc}"
 }

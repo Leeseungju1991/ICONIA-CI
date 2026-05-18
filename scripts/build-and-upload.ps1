@@ -141,6 +141,15 @@ function New-ServiceTarball {
         }
       }
 
+      # Prisma client 사전 생성 (server 한정 - ai/admin 은 prisma 호출 불필요).
+      # generated client(@prisma/client 안의 .prisma/) 를 tarball 에 포함해야
+      # 운영 EC2 가 prisma CLI 없이 부팅 가능 (devDependencies prune 후에도 동작).
+      if ($Svc -eq 'server' -and (Test-Path (Join-Path $stage 'prisma/schema.prisma'))) {
+        Write-Host "[server] npx prisma generate"
+        & npx --yes prisma generate
+        if ($LASTEXITCODE -ne 0) { throw "prisma generate 실패 (server)" }
+      }
+
       # 운영용으로 다시 prune (devDependencies 제거).
       Write-Host "[$Svc] npm prune --omit=dev"
       & npm prune --omit=dev
