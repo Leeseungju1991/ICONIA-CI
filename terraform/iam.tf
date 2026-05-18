@@ -140,6 +140,15 @@ data "aws_iam_policy_document" "ec2_inline" {
       values   = [aws_efs_access_point.server_root.arn]
     }
   }
+
+  # RDS IAM database authentication - master password 와 별개로 짧은 만료 토큰으로 접속.
+  statement {
+    sid     = "RDSConnect"
+    actions = ["rds-db:connect"]
+    resources = [
+      "arn:aws:rds-db:${local.region}:${local.account_id}:dbuser:*/${var.db_username}",
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "ec2_inline" {

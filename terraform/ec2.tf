@@ -43,6 +43,13 @@ locals {
     exports_bucket    = aws_s3_bucket.exports.bucket
     firmware_bucket   = aws_s3_bucket.firmware.bucket
     name_prefix       = local.name_prefix
+    rds_endpoint = (
+      length(aws_db_instance.postgres) > 0
+      ? aws_db_instance.postgres[0].endpoint
+      : (length(aws_rds_cluster.aurora) > 0 ? aws_rds_cluster.aurora[0].endpoint : "")
+    )
+    rds_database_name = var.db_name
+    rds_username      = var.db_username
   })
 }
 
@@ -88,6 +95,8 @@ resource "aws_instance" "main" {
   depends_on = [
     aws_efs_mount_target.persona,
     aws_iam_role_policy.ec2_inline,
+    aws_db_instance.postgres,
+    aws_rds_cluster_instance.aurora_writer,
   ]
 }
 

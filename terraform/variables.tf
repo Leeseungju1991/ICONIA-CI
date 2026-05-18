@@ -112,6 +112,50 @@ variable "http_allowed_cidrs" {
 }
 
 # -----------------------------------------------------------------------------
+# RDS (PostgreSQL).
+# -----------------------------------------------------------------------------
+variable "db_engine_mode" {
+  description = "RDS 엔진 모드: 'instance' (db.t4g.medium 단일) 또는 'aurora-serverless-v2'."
+  type        = string
+  default     = "instance"
+  validation {
+    condition     = contains(["instance", "aurora-serverless-v2"], var.db_engine_mode)
+    error_message = "db_engine_mode must be 'instance' or 'aurora-serverless-v2'."
+  }
+}
+
+variable "db_password" {
+  description = "RDS master password. Secrets Manager 참조 권장. -var 또는 terraform.tfvars(gitignore) 로 주입."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "db_name" {
+  description = "RDS 초기 DB name."
+  type        = string
+  default     = "iconia"
+}
+
+variable "db_username" {
+  description = "RDS master username."
+  type        = string
+  default     = "iconia_admin"
+}
+
+variable "db_instance_class" {
+  description = "instance 모드일 때 사용할 인스턴스 클래스."
+  type        = string
+  default     = "db.t4g.medium"
+}
+
+variable "db_allocated_storage_gb" {
+  description = "instance 모드 storage GB. gp3."
+  type        = number
+  default     = 50
+}
+
+# -----------------------------------------------------------------------------
 # S3.
 # -----------------------------------------------------------------------------
 variable "events_bucket_name" {

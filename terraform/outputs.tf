@@ -67,6 +67,34 @@ output "efs_access_point_id" {
 }
 
 # -----------------------------------------------------------------------------
+# RDS.
+# -----------------------------------------------------------------------------
+output "rds_endpoint" {
+  description = "RDS endpoint. instance 모드 또는 aurora cluster 중 활성된 쪽."
+  value = (
+    length(aws_db_instance.postgres) > 0
+    ? aws_db_instance.postgres[0].endpoint
+    : (length(aws_rds_cluster.aurora) > 0 ? aws_rds_cluster.aurora[0].endpoint : "")
+  )
+}
+
+output "rds_port" {
+  value = 5432
+}
+
+output "rds_database_name" {
+  value = var.db_name
+}
+
+output "rds_username" {
+  value = var.db_username
+}
+
+output "rds_security_group_id" {
+  value = aws_security_group.rds.id
+}
+
+# -----------------------------------------------------------------------------
 # IAM.
 # -----------------------------------------------------------------------------
 output "ec2_iam_role_arn" {

@@ -47,6 +47,7 @@ chown -R iconia:iconia /mnt/efs/iconia
 chmod 0700 /mnt/efs/iconia
 
 # Env file - 운영 비밀은 Secrets Manager 에서 부팅 후 fetch. 여기는 비밀-없는 토대만.
+# RDS password 는 절대 본 파일에 평문으로 두지 않는다 - Secrets Manager 에서 service start 시 fetch.
 cat >/etc/iconia.env <<EOF
 NODE_ENV=production
 AWS_REGION=${region}
@@ -57,6 +58,11 @@ EXPORT_BUCKET=${exports_bucket}
 OTA_FIRMWARE_BUCKET=${firmware_bucket}
 ARTIFACTS_BUCKET=${artifacts_bucket}
 EFS_MOUNT_PATH=/mnt/efs/iconia
+RDS_ENDPOINT=${rds_endpoint}
+RDS_PORT=5432
+RDS_DATABASE=${rds_database_name}
+RDS_USERNAME=${rds_username}
+# RDS_PASSWORD 는 /etc/iconia.server.env 또는 /etc/iconia.ai.env 에 secretsLoader 가 채움.
 # ROOT_DOMAIN 은 terraform output (api_fqdn 등) 의 도메인만 - 운영자가 첫 배포 후 수동 입력.
 # 예: ROOT_DOMAIN=iconia.example.com
 ROOT_DOMAIN=
