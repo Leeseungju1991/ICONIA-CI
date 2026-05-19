@@ -1,0 +1,50 @@
+# .preflightignore — preflight-placeholders 검사에서 제외할 글로브 패턴
+#
+# 형식: gitignore 와 동일 (line-by-line glob, '#' comment, blank line 무시).
+# 절대경로가 아닌 패턴은 검사 ROOT 하위 어디든 매칭됨 (e.g. "**/node_modules/**").
+#
+# 본 파일은 ROOT/6. CI/.preflightignore 로 위치. preflight 스크립트가 자동 로드.
+# repo 별 override 가 필요하면 각 repo 루트에 .preflightignore 를 두면 됨
+# (e.g. 4. APP/.preflightignore — 향후 확장 시 스크립트가 합산).
+#
+# !! 새 패턴 추가 시 단위 테스트(scripts/preflight-placeholders.test.sh) 도 갱신.
+
+# 빌드/벤더/캐시 - placeholder 가 들어있어도 release 산출물 아님.
+**/node_modules/**
+**/.git/**
+**/.terraform/**
+**/.next/**
+**/.expo/**
+**/.eas-build-local-nodejs/**
+**/build/**
+**/dist/**
+**/out/**
+**/coverage/**
+
+# 문서/릴리스 노트 — placeholder 가 의도된 예제로 등장 가능.
+**/docs/**
+**/CHANGELOG.md
+**/README.md
+
+# 테스트 fixture — 의도적으로 placeholder 를 주입해 검증함.
+**/*.test.sh
+**/*.test.js
+**/*.test.ts
+**/*.test.tsx
+**/*.test.mjs
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/**
+**/__fixtures__/**
+**/mockData.ts
+**/mockData.js
+**/mock-data.ts
+
+# dev 빌드 프로필 — dev 환경의 placeholder 는 release 차단 대상 아님.
+**/build_profiles/dev.h
+
+# preflight 자체 — 패턴 정의 자체가 검사 대상 텍스트와 동일.
+**/scripts/preflight-placeholders.sh
+**/scripts/preflight-placeholders.ps1
+**/scripts/preflight-placeholders.test.sh
+**/.preflightignore

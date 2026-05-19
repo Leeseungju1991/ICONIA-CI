@@ -175,14 +175,27 @@ function Send-ToS3 {
   param([string] $Svc, [string] $Tarball)
   $versionKey = "$Svc/$Version.tar.gz"
   $latestKey  = "$Svc/latest.tar.gz"
+  $sha256Key  = "$Svc/latest.tar.gz.sha256"
 
-  Write-Host "[$Svc] upload -> s3://$ArtifactsBucket/$versionKey"
+  # 체크섬 사이드카: EC2 의 ec2-pull-and-restart.sh 가 tar 풀기 전에 검증.
+  # 부분 업로드 / 네트워크 손상이 EC2 의 깨진 배포로 이어지지 않게 한다.
+  $sha = (Get-FileHash -Algorithm SHA256 $Tarball).Hash.ToLower()
+  $shaFile = "$Tarball.sha256"
+  Set-Content -Path $shaFile -Value $sha -Encoding ASCII -NoNewline
+
+  Write-Host "[$Svc] upload -> s3://$ArtifactsBucket/$versionKey (sha256=$sha)"
   & aws s3 cp $Tarball "s3://$ArtifactsBucket/$versionKey" --region $Region
   if ($LASTEXITCODE -ne 0) { throw "S3 업로드 실패 ($versionKey)" }
 
+  # latest 는 atomic 한 update 가 아니므로 sha256 을 먼저 올리지 말고 tarball 다음에 올린다.
+  # ec2-pull-and-restart.sh 는 latest.tar.gz 받은 후 .sha256 받아 검증.
   Write-Host "[$Svc] copy -> $latestKey"
   & aws s3 cp "s3://$ArtifactsBucket/$versionKey" "s3://$ArtifactsBucket/$latestKey" --region $Region
   if ($LASTEXITCODE -ne 0) { throw "S3 latest 복사 실패 ($Svc)" }
+
+  Write-Host "[$Svc] upload -> $sha256Key"
+  & aws s3 cp $shaFile "s3://$ArtifactsBucket/$sha256Key" --region $Region
+  if ($LASTEXITCODE -ne 0) { throw "S3 sha256 업로드 실패 ($Svc)" }
 }
 
 function Publish-Bootstrap {

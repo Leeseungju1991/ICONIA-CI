@@ -12,6 +12,21 @@ crash.*.log
 *.tfvars.json
 !*.tfvars.example
 
+# 비밀키 / 인증서 / 자격증명 (보안 위생 - 절대 commit 금지)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.cer
+*.crt
+secrets/
+.aws/credentials
+.aws/config
+
 # Build artifacts (스크립트가 만드는 임시 tarball - 로컬 TEMP 에 떨어지지만 안전 차원)
 *.tar.gz
 

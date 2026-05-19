@@ -40,15 +40,81 @@ trap 'rm -rf "$TMP"' EXIT
 log()  { printf '[iconia-deploy %s] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 fail() { log "ERR: $*"; exit 1; }
 
+# 서비스별 health probe port. health endpoint 는 GET / 또는 /health 기대.
+# server / ai 는 backend - /health, admin (Next.js standalone) 은 / (root).
+svc_port() {
+  case "$1" in
+    server) echo 8080 ;;
+    ai)     echo 8081 ;;
+    admin)  echo 3000 ;;
+    *)      echo "" ;;
+  esac
+}
+
+# is-active --wait + (port 가 있으면) HTTP probe. 둘 다 통과해야 healthy.
+# 인자: $1 = systemd unit (예: iconia-server), $2 = svc name (server/ai/admin).
+# 반환: 0=healthy, 1=unhealthy.
+service_healthcheck() {
+  local unit="$1" svc="$2" port deadline url
+  port=$(svc_port "$svc")
+  deadline=$(( $(date +%s) + 30 ))
+
+  # 1) systemd is-active 30s timeout (--wait 는 transitioning 도 대기).
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    if systemctl is-active --quiet "$unit"; then
+      break
+    fi
+    sleep 1
+  done
+  if ! systemctl is-active --quiet "$unit"; then
+    log "healthcheck: ${unit} systemctl is-active FAIL"
+    return 1
+  fi
+
+  # 2) HTTP probe - port 가 정의된 경우만. server/ai 는 /health, admin 은 / .
+  if [ -n "$port" ]; then
+    if [ "$svc" = "admin" ]; then url="http://127.0.0.1:${port}/"
+    else                          url="http://127.0.0.1:${port}/health"
+    fi
+    local attempts=0
+    while [ "$attempts" -lt 10 ]; do
+      if curl -fsS --max-time 3 -o /dev/null "$url"; then
+        log "healthcheck: ${unit} HTTP ${url} OK"
+        return 0
+      fi
+      attempts=$((attempts + 1))
+      sleep 2
+    done
+    log "healthcheck: ${unit} HTTP ${url} FAIL after 10 attempts"
+    return 1
+  fi
+  return 0
+}
+
 pull_one() {
   local svc="$1"
   local key="${svc}/latest.tar.gz"
+  local sha_key="${svc}/latest.tar.gz.sha256"
   local dst="/opt/iconia/${svc}"
   local tar="${TMP}/${svc}.tar.gz"
+  local sha_file="${TMP}/${svc}.tar.gz.sha256"
 
   log "${svc} <- s3://${ARTIFACTS_BUCKET}/${key}"
   aws s3 cp "s3://${ARTIFACTS_BUCKET}/${key}" "$tar" --region "$AWS_REGION" \
     || fail "${svc} tarball 다운로드 실패"
+
+  # 체크섬 검증: build-and-upload.ps1 가 sha256 사이드카를 올린다 (없으면 skip - 하위 호환).
+  if aws s3 cp "s3://${ARTIFACTS_BUCKET}/${sha_key}" "$sha_file" --region "$AWS_REGION" 2>/dev/null; then
+    local expected actual
+    expected=$(tr -d '[:space:]' < "$sha_file")
+    actual=$(sha256sum "$tar" | awk '{print $1}')
+    if [ "$expected" != "$actual" ]; then
+      fail "${svc} 체크섬 불일치 - expected=${expected} actual=${actual} (부분 업로드 의심, 배포 중단)"
+    fi
+    log "${svc} sha256 OK (${actual:0:12}...)"
+  else
+    log "WARN: ${svc} sha256 사이드카 없음 - 체크섬 검증 건너뜀 (build-and-upload.ps1 업그레이드 후 자동 활성)"
+  fi
 
   # 원자 교체. 풀어둔 폴더를 한 번에 swap.
   local stage="${TMP}/${svc}.stage"
@@ -77,22 +143,56 @@ pull_one() {
   if [ "$svc" = "server" ] && [ -f "${dst}/prisma/schema.prisma" ]; then
     if [ -f /etc/iconia.server.env ]; then
       log "server prisma migrate deploy"
-      # set -a 로 export, 실행 후 set +a 로 해제. DATABASE_URL 누락이면 prisma 가 즉시 실패.
+      # `set -a; . /etc/iconia.server.env` 식으로 sourcing 하면 비밀번호 안의 $ ` \ 등이
+      # 셸 확장으로 변형돼 DATABASE_URL 이 깨진다. grep 으로 안전 추출 후 명시 export.
+      DATABASE_URL_VAL=$(awk -F= '/^DATABASE_URL=/{sub(/^DATABASE_URL=/,""); print; exit}' /etc/iconia.server.env)
+      if [ -z "$DATABASE_URL_VAL" ]; then
+        fail "DATABASE_URL 이 /etc/iconia.server.env 에 없음 (_bootstrap inject_database_url 실패?)"
+      fi
       (
-        set -a
-        # shellcheck disable=SC1091
-        . /etc/iconia.server.env
-        set +a
         cd "$dst"
-        sudo -u iconia -E npx --yes prisma migrate deploy
+        DATABASE_URL="$DATABASE_URL_VAL" sudo -u iconia -E DATABASE_URL="$DATABASE_URL_VAL" \
+          npx --yes prisma migrate deploy
       ) || fail "server prisma migrate deploy 실패 (DATABASE_URL 또는 마이그레이션 점검)"
     else
       log "WARN: /etc/iconia.server.env 없음 → prisma migrate deploy 건너뜀"
     fi
   fi
 
+  local unit="iconia-${svc}"
   log "${svc} restart"
-  systemctl restart "iconia-${svc}"
+  systemctl restart "$unit"
+
+  # 자동 롤백: restart 후 30s 안에 is-active + HTTP health 통과해야 success.
+  # 실패 시 직전 백업(${dst}.old.${TS}) 으로 swap-back 후 재기동.
+  if service_healthcheck "$unit" "$svc"; then
+    log "${svc} healthy after deploy"
+  else
+    log "ERR: ${svc} unhealthy - 자동 롤백 시도"
+    if [ -d "${dst}.old.${TS}" ]; then
+      mv "${dst}" "${dst}.failed.${TS}"
+      mv "${dst}.old.${TS}" "${dst}"
+      log "${svc} 롤백: ${dst} <- ${dst}.old.${TS} (실패본은 ${dst}.failed.${TS} 보존)"
+      systemctl restart "$unit"
+      if service_healthcheck "$unit" "$svc"; then
+        log "WARN: ${svc} 롤백 후 정상화. 실패본 점검 필요 (${dst}.failed.${TS})"
+        fail "${svc} 배포 실패 - 롤백 완료. 실패본 점검: ${dst}.failed.${TS}"
+      else
+        log "CRITICAL: ${svc} 롤백 후에도 unhealthy. 운영자 즉시 개입 필요."
+        # CloudWatch alarm 발사를 위해 metric 기록 (실패해도 무시).
+        aws cloudwatch put-metric-data \
+          --namespace ICONIA/Deploy --metric-name RollbackFailed --value 1 \
+          --dimensions "Service=${svc}" --region "$AWS_REGION" 2>/dev/null || true
+        fail "${svc} 배포 + 롤백 동시 실패 - 호스트 자체 점검 필요"
+      fi
+    else
+      log "CRITICAL: ${svc} unhealthy + 백업본 없음 (최초 배포 또는 백업 swap 실패)"
+      aws cloudwatch put-metric-data \
+        --namespace ICONIA/Deploy --metric-name DeployFailedNoBackup --value 1 \
+        --dimensions "Service=${svc}" --region "$AWS_REGION" 2>/dev/null || true
+      fail "${svc} 배포 실패 - 롤백 불가 (백업본 없음)"
+    fi
+  fi
 }
 
 ###############################################################################
@@ -191,6 +291,12 @@ pull_bootstrap() {
     : "${ROOT_DOMAIN:?ROOT_DOMAIN 미설정 (/etc/iconia.env 에 ROOT_DOMAIN 추가 필요)}"
 
     local rendered="/etc/nginx/conf.d/iconia.conf"
+    # 기존 conf 가 정상 동작 중이면 직전 백업 보존 - nginx -t 실패 시 복원에 사용.
+    local prev_backup=""
+    if [ -f "$rendered" ]; then
+      prev_backup="${rendered}.prev.${TS}"
+      cp -p "$rendered" "$prev_backup"
+    fi
     sed "s/\${ROOT_DOMAIN}/${ROOT_DOMAIN}/g" "$stage/deploy/nginx/iconia.conf" > "$rendered"
     chmod 0644 "$rendered"
 
@@ -236,12 +342,32 @@ pull_bootstrap() {
 
     if nginx -t; then
       systemctl reload nginx
+      # 신규 conf 가 정상 - prev backup 은 cleanup. 최근 3개만 보존.
+      ls -1t "${rendered}.prev."* 2>/dev/null | tail -n +4 | xargs -r rm -f
     else
-      log "ERR: nginx -t 실패 - 설정 점검 필요. 이전 conf 로의 rollback 권장."
-      # nginx 가 죽지 않도록 깨진 conf 를 비활성화.
+      log "ERR: nginx -t 실패 - 자동 복원 시도"
       mv "$rendered" "${rendered}.broken.${TS}"
-      systemctl reload nginx || true
-      fail "nginx -t 실패 - ${rendered}.broken.${TS} 보존"
+      if [ -n "$prev_backup" ] && [ -f "$prev_backup" ]; then
+        cp -p "$prev_backup" "$rendered"
+        if nginx -t; then
+          systemctl reload nginx
+          log "nginx conf 복원 성공 (${prev_backup} -> ${rendered}). 깨진 신규본 보존: ${rendered}.broken.${TS}"
+        else
+          # 복원본도 깨져있으면 마지막 conf 도 제거 + reload (404 보다 nginx 자체가 죽는 게 더 위험).
+          rm -f "$rendered"
+          systemctl reload nginx || true
+          aws cloudwatch put-metric-data \
+            --namespace ICONIA/Deploy --metric-name NginxRestoreFailed --value 1 \
+            --region "$AWS_REGION" 2>/dev/null || true
+          fail "nginx -t 신규/복원본 모두 실패 - ${rendered}.broken.${TS} + ${prev_backup} 보존, 운영자 즉시 개입"
+        fi
+      else
+        systemctl reload nginx || true
+        aws cloudwatch put-metric-data \
+          --namespace ICONIA/Deploy --metric-name NginxRestoreFailed --value 1 \
+          --region "$AWS_REGION" 2>/dev/null || true
+        fail "nginx -t 실패 + 직전 백업 없음 - ${rendered}.broken.${TS} 보존, 수동 conf 복원 필요"
+      fi
     fi
   fi
 

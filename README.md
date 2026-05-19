@@ -151,9 +151,22 @@ pwsh -File "6. CI\scripts\build-and-upload.ps1" -Service server -TriggerDeploy
   들어가 `certbot --nginx -d api.<root> -d ai.<root> -d admin.<root>` 발급 필요.
   발급 후 nginx 가 자동 reload.
 - **시크릿**: `/etc/iconia.{server,ai,admin}.env` 는 Secrets Manager 에서 부팅 시 fetch.
-  본 폴더에 평문으로 절대 커밋하지 말 것 (`.gitignore` 가 `.env*` 차단).
-- **CloudWatch**: alarms.tf (`deploy/aws/alarms.tf`) 는 별도 stack 으로 분리되어 있다.
-  terraform/ 디렉터리와 별개로 apply 가 필요하면 그 디렉터리에서 init 한다 (참고용 reference 자산).
+  본 폴더에 평문으로 절대 커밋하지 말 것 (`.gitignore` 가 `.env*` + `*.pem`/`*.key`/`id_rsa*`/`*.p12` 차단).
+- **CloudWatch alarms**: 2026-05-19 부터 main `terraform/` stack 이 알람도 함께 만든다.
+  (`terraform/alarms.tf` 가 `deploy/aws/alarms.tf` 를 module 로 호출.) 별도 init/apply
+  불필요. 운영자는 `-var alarm_email=...` `-var alarm_pagerduty_endpoint=...` 만 추가 지정.
+- **EFS 사용자별 격리**: 회원가입 시 Server 가 SNS topic `iconia-${env}-user-events` 에
+  `{"event":"user.created","user_id":"<uuid>"}` publish → Lambda
+  `iconia-${env}-efs-userspace-provisioner` 가 EFS access point 자동 생성 (POSIX uid/gid
+  격리). 보정용 reconcile 은 EventBridge rule 이 매시간 (초기 disabled). AI 컨테이너는
+  user_id 의 AP id 로 mount.
+- **RDS 비밀번호 회전**: Secrets Manager 의 `iconia/${env}/db/master_password` 회전 hook
+  으로 `iconia-${env}-rds-password-rotator` Lambda 가 등록되어 있다. 활성 시 자동 회전
+  (`-var enable_rds_password_rotation=true -var rds_password_rotation_days=30`). 회전 직후
+  운영자는 `trigger-deploy.ps1 -Service all` 한 번 발사로 EC2 측 sync 보장.
+- **Release preflight**: tag 푸시 (`v*`) 시 `.github/workflows/release-preflight.yml` 가
+  6 폴더 횡단 placeholder 검사. `scripts/preflight-placeholders.{sh,ps1}` 로 로컬에서도
+  동일 검사 가능. 미채워진 placeholder 발견 시 release 차단.
 - **HW 펌웨어 OTA**: firmware S3 버킷에 운영자가 별도 PowerShell 로 업로드.
   EC2 의 Server 가 presign URL 만 발급 (read-only). 본 폴더는 OTA 절차를 직접 자동화하지 않음.
 - **APP (Expo)**: EAS Build 가 빌드. App Store / Play 배포 별도. 본 폴더는 무관.

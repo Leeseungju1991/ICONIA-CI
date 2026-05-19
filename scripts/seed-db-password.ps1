@@ -48,8 +48,11 @@ if (-not $SecretName) { $SecretName = "iconia/$Env/db/master_password" }
 
 # ----- 강력 랜덤 비밀번호 생성 -----
 # RDS Postgres 허용 문자: 인쇄 가능 ASCII 중 / @ " 공백 제외.
-# 안전 문자만 사용 (정책 단순화): A-Z a-z 0-9 + 보조 기호 #$%&*-_=+?
-$alphabet = [char[]]('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*-_=+?')
+# 추가로 셸 sourcing 사고를 피하려고 $ ` \ ' " 도 제외 — ec2-pull-and-restart.sh 의
+# inject_database_url 가 `set -a; . /etc/iconia.server.env` 로 env 를 sourcing 하므로
+# 비밀번호에 $ 가 들어가면 변수 확장으로 잘려나간다.
+# 안전 문자만 사용: A-Z a-z 0-9 + 보조 기호 #%&*-_=+?
+$alphabet = [char[]]('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#%&*-_=+?')
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 $buf = New-Object byte[] ($Length * 2)
 $rng.GetBytes($buf)

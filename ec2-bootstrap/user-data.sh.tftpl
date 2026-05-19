@@ -16,12 +16,35 @@ exec > >(tee -a $LOG | logger -t user-data -s 2>/dev/console) 2>&1
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
+# awscli (v1) 는 의도적으로 제외 - AWS 공식 zip 으로 v2 설치 (아래).
+# Ubuntu apt awscli v1 은 deprecation 단계 + 일부 보안 정책(SSO/IAM Identity
+# Center, V4A signing) 미지원.
 apt-get install -y \
-  curl unzip jq awscli rsync git \
+  curl unzip jq rsync git \
   nginx \
   amazon-efs-utils \
   build-essential \
   certbot python3-certbot-nginx
+
+# AWS CLI v2 - 공식 zip 설치. 멱등 (이미 설치된 경우 update).
+if ! command -v aws >/dev/null 2>&1 || ! aws --version 2>&1 | grep -q "aws-cli/2"; then
+  AWSCLI_TMP=$(mktemp -d)
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)  AWSCLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" ;;
+    aarch64) AWSCLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" ;;
+    *)       echo "ERR: unsupported arch $ARCH for awscli v2"; exit 1 ;;
+  esac
+  curl -fsSL "$AWSCLI_URL" -o "$AWSCLI_TMP/awscliv2.zip"
+  unzip -q "$AWSCLI_TMP/awscliv2.zip" -d "$AWSCLI_TMP"
+  if command -v aws >/dev/null 2>&1; then
+    "$AWSCLI_TMP/aws/install" --update
+  else
+    "$AWSCLI_TMP/aws/install"
+  fi
+  rm -rf "$AWSCLI_TMP"
+  aws --version
+fi
 
 # Node.js 20 LTS.
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -

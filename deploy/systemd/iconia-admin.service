@@ -1,6 +1,6 @@
 [Unit]
 Description=ICONIA Admin (Next.js on :3000)
-After=network-online.target
+After=network-online.target iconia-server.service
 Wants=network-online.target
 
 [Service]

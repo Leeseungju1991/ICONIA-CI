@@ -56,17 +56,29 @@ if (-not $InstanceId) {
   Write-Host "Resolved InstanceId=$InstanceId"
 }
 
+# SSM 화이트리스트: Service 는 [ValidateSet] 으로 server|ai|admin|all 만 허용되므로 셸 인젝션 안전.
 $cmd = "/usr/local/bin/iconia-pull-and-restart.sh $Service"
 
+# --parameters 의 JSON 을 PowerShell 따옴표/이스케이프 지옥 없이 전달하려고 임시 파일 경유.
+# (이전 구현은 System.Web.HttpUtility 의존 + '^|$' regex 가 잘못된 인용 생성으로 SSM 호출 실패.)
+$paramsObj  = @{ commands = @($cmd) }
+$paramsJson = $paramsObj | ConvertTo-Json -Compress
+$paramsFile = Join-Path $env:TEMP "iconia-ssm-params-$(Get-Random).json"
+Set-Content -Path $paramsFile -Value $paramsJson -Encoding ASCII -NoNewline
+
 Write-Host "SSM SendCommand -> $InstanceId : $cmd"
-$send = & aws ssm send-command `
-  --region $Region `
-  --document-name 'AWS-RunShellScript' `
-  --instance-ids $InstanceId `
-  --comment "ICONIA deploy: $Service" `
-  --parameters "commands=[$([System.Web.HttpUtility]::JavaScriptStringEncode($cmd) -replace '^|$','''')]" `
-  --cloud-watch-output-config 'CloudWatchOutputEnabled=true' `
-  --output json
+try {
+  $send = & aws ssm send-command `
+    --region $Region `
+    --document-name 'AWS-RunShellScript' `
+    --instance-ids $InstanceId `
+    --comment "ICONIA deploy: $Service" `
+    --parameters "file://$paramsFile" `
+    --cloud-watch-output-config 'CloudWatchOutputEnabled=true' `
+    --output json
+} finally {
+  Remove-Item -Force -ErrorAction SilentlyContinue $paramsFile
+}
 
 if ($LASTEXITCODE -ne 0) { throw "SSM SendCommand 실패" }
 

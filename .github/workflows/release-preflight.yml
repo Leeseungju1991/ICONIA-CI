@@ -1,0 +1,107 @@
+###############################################################################
+# release-preflight.yml
+#
+# release tag (v*) 발사 시 6개 폴더 횡단 placeholder 검사 후 통과해야 후속
+# release job 진행. 미채워진 placeholder 가 prod 로 새는 사고 차단.
+#
+# trigger: tag 푸시 (v*).
+#
+# 본 workflow 는 ICONIA-CI 리포가 다른 5 폴더(1.HW/2.SERVER/3.AI/4.APP/5.ADMIN)
+# 를 sibling repo 로 checkout 한 뒤 합쳐서 검사하는 모델. 단일 리포라면
+# checkout 1번 후 ROOT 만 그쪽으로 지정.
+###############################################################################
+name: release-preflight
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      repo_root:
+        description: 'ICONIA repo root (sibling checkout 시). 비우면 단일 리포 가정.'
+        required: false
+        default: ''
+
+jobs:
+  preflight-placeholders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout CI repo (this)
+        uses: actions/checkout@v4
+        with:
+          path: 6-CI
+
+      # 5개 sibling 리포 checkout - 본 워크플로우는 CI 리포에서 돈다.
+      # 다른 리포는 별도 repo 이므로 GHCR 또는 GitHub App token 으로 checkout 필요.
+      # 단순화를 위해 본 단계는 optional - 리포가 없으면 skip 하여 6.CI 만 검사.
+      - name: Checkout sibling repos (best-effort)
+        continue-on-error: true
+        run: |
+          mkdir -p ICONIA-tree
+          mv 6-CI "ICONIA-tree/6. CI"
+          # 다른 5 리포 checkout 은 organization 별 token 정책에 따라 운영자가 추가.
+          # 본 placeholder 단계는 검사 대상 폴더가 존재할 때만 동작 - 없는 폴더는 skip.
+
+      - name: Run preflight-placeholders.sh
+        run: |
+          chmod +x "ICONIA-tree/6. CI/scripts/preflight-placeholders.sh"
+          "ICONIA-tree/6. CI/scripts/preflight-placeholders.sh" "$GITHUB_WORKSPACE/ICONIA-tree"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "preflight-placeholders 결과: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  preflight-placeholders-unit-tests:
+    # 본 잡은 매 push 마다 - preflight 스크립트 자체의 회귀 차단.
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit test
+        run: |
+          chmod +x scripts/preflight-placeholders.sh scripts/preflight-placeholders.test.sh
+          scripts/preflight-placeholders.test.sh
+
+  soul-catalog-sync:
+    # server `SOUL_CATALOG_V1_IDS` ↔ AI `CATALOG_V1_IDS` lockstep 검증.
+    # release tag 시 + 매 push 시 모두 실행 (mismatch 가 한 쪽에만 들어가는 PR 차단).
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout CI repo (this)
+        uses: actions/checkout@v4
+        with:
+          path: 6-CI
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checkout sibling repos (best-effort)
+        continue-on-error: true
+        run: |
+          mkdir -p ICONIA-tree
+          mv 6-CI "ICONIA-tree/6. CI"
+          # 다른 5 리포 checkout 은 organization 별 token 정책에 따라 운영자가 추가.
+          # 본 잡은 server + ai 가 존재할 때만 실 검증, 둘 다 없으면 unit test 로 fallback.
+
+      - name: Run soul-catalog sync check (live, if siblings present)
+        run: |
+          if [ -f "ICONIA-tree/2. SERVER/src/utils/soulCatalog.js" ] && [ -f "ICONIA-tree/3. AI/src/catalog.js" ]; then
+            node "ICONIA-tree/6. CI/scripts/check-soul-catalog-sync.js" --root "$GITHUB_WORKSPACE/ICONIA-tree"
+          else
+            echo "siblings 미존재 — 라이브 검증 skip, unit test 만 수행."
+          fi
+
+      - name: Run soul-catalog sync unit tests
+        run: |
+          chmod +x "ICONIA-tree/6. CI/scripts/check-soul-catalog-sync.test.sh"
+          "ICONIA-tree/6. CI/scripts/check-soul-catalog-sync.test.sh"
