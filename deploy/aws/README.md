@@ -11,8 +11,11 @@
 | `iam-ec2-instance-role.json` | EC2 instance profile 권한 | 운영 EC2 |
 | `iam-ec2-trust-policy.json` | EC2 trust policy | 동일 |
 | `cloudwatch-alarms.json` | 운영 알람 정의 | CloudWatch |
-| `cloudwatch-log-metric-filters.json` | PII 누출 감시 metric filter | CloudWatch Logs |
+| `cloudwatch-log-metric-filters.json` | PII 누출 감시 metric filter (패턴 reference — `terraform/observability.tf` 가 IaC 흡수) | CloudWatch Logs |
+| `cloudwatch-agent-config.json` | CloudWatch Agent fetch-config 정본 (`terraform/observability.tf` 가 SSM Parameter Store 로 push) | CloudWatch Agent |
 | `kms-key-policy.json` | CMK key policy (회전 활성) | KMS |
+
+> **IaC 흡수 현황**: `cloudwatch-log-metric-filters.json` 의 metric filter 와 `cloudwatch-agent-config.json` 은 `terraform/observability.tf` 가 단일 정본으로 흡수했다. metric filter 는 Terraform 리소스가 정본이고 본 JSON 은 패턴 reference, agent config 는 JSON 이 단일 source 이고 Terraform 이 그것을 SSM Parameter 로 싣는다 (이중 정본 방지). 신규 환경은 `terraform apply` 만으로 두 리소스가 적용되므로 아래 §4 의 수동 단계는 불필요.
 
 ## 적용 순서 (운영 신규 셋업)
 

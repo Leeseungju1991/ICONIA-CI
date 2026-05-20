@@ -5,7 +5,7 @@
 # 변수는 ec2.tf 의 templatefile() 로 주입됨:
 #   ${region}, ${env}, ${efs_id}, ${efs_ap_id},
 #   ${artifacts_bucket}, ${events_bucket}, ${exports_bucket}, ${firmware_bucket},
-#   ${name_prefix}
+#   ${name_prefix}, ${cw_agent_ssm_param}
 #
 # 후속 갱신은 SSM Run Command 로 scripts/ec2-pull-and-restart.sh 호출.
 ###############################################################################
@@ -54,6 +54,16 @@ apt-get install -y nodejs
 curl -fsSL -o /tmp/amazon-cloudwatch-agent.deb \
   https://s3.${region}.amazonaws.com/amazoncloudwatch-agent-${region}/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
 dpkg -i -E /tmp/amazon-cloudwatch-agent.deb || true
+
+# CloudWatch Agent fetch-config — terraform 의 observability.tf 가 SSM Parameter
+# Store 에 올려둔 정본(${cw_agent_ssm_param})을 받아 적용. 실패해도 user-data 는
+# 계속 (||true) — 운영자가 진단 후 수동 재실행 가능.
+if [ -n "${cw_agent_ssm_param}" ]; then
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config -m ec2 -s \
+    -c "ssm:${cw_agent_ssm_param}" \
+    || echo "WARN: CloudWatch Agent fetch-config 실패 - SSM Parameter ${cw_agent_ssm_param} / IAM 권한 확인."
+fi
 
 # Service user.
 id -u iconia >/dev/null 2>&1 || useradd -m -s /bin/bash -u 1000 iconia

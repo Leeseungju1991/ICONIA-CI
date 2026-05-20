@@ -48,9 +48,10 @@ locals {
       ? aws_db_instance.postgres[0].endpoint
       : (length(aws_rds_cluster.aurora) > 0 ? aws_rds_cluster.aurora[0].endpoint : "")
     )
-    rds_database_name = var.db_name
-    rds_username      = var.db_username
-    root_domain       = var.root_domain
+    rds_database_name  = var.db_name
+    rds_username       = var.db_username
+    root_domain        = var.root_domain
+    cw_agent_ssm_param = aws_ssm_parameter.cloudwatch_agent_config.name
   })
 }
 

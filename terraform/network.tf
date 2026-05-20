@@ -163,7 +163,7 @@ resource "aws_security_group_rule" "ec2_ssh" {
   protocol          = "tcp"
   cidr_blocks       = var.ssh_allowed_cidrs
   security_group_id = aws_security_group.ec2.id
-  description       = "SSH (운영자 한정 - 비권장, SSM 사용 권장)."
+  description       = "SSH (operators only - discouraged, prefer SSM Session Manager)."
 }
 
 # -----------------------------------------------------------------------------

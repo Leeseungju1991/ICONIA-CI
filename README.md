@@ -102,6 +102,8 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 | `efs.tf` | persona EFS (encrypted + IA 30d 전환 + backup ON) + AP `server_root` (posix 1000:1000) + AZ 별 mount target |
 | `iam.tf` | EC2 instance role. Artifacts Get/List, Events PutGet `iconia/{events,voice}/*`, Exports PutGet `iconia/exports/*`, Firmware Get `firmware/*`, Secrets `iconia/${env}/*`, CW metric `ICONIA/{Server,AI,Admin,Audit}`, CW logs `/iconia/${env}/*`, EFS AP 한정 mount, RDS `rds-db:connect` |
 | `route53.tf` | hosted zone (옵션 신규) + api/ai/admin A → EIP + `api_deep` health check (`/health?deep=1`, interval 10s, threshold 3) |
+| `observability.tf` | **NEW**. `/iconia/${env}/*` 로그그룹 7종 (retention IaC 소유) + PII metric filter 4종 (`cloudwatch-log-metric-filters.json` 흡수) + CloudWatch Agent config 의 SSM Parameter push (`cloudwatch-agent-config.json` 흡수) + CloudWatch 운영 Dashboard + Logs Insights saved query 4종. |
+| `ssm-runbook.tf` | **NEW**. `multi-az-failover-runbook.md` §1~§4 의 manual 절차를 SSM Automation Document 2종 (`rds-multi-az-failover` / `failover-diagnostics`) 으로 packaging. apply 는 Document 만 만들고 실행은 운영자가 사고 시 명시 호출. |
 | `outputs.tf` | artifacts_bucket / ec2_instance_id / EIP / rds_endpoint / efs_id / api_fqdn 등 |
 | `terraform.tfvars.example` | 운영자가 복사 후 `root_domain` / `hosted_zone_id` 채움 |
 
@@ -134,8 +136,8 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 |---|---|
 | `alarms.tf` | **CloudWatch alarm IaC**. 5xx rate / AI p95 latency 8s / refresh-token reuse / lifecycle finalizer 24h stall / data export pending 10 backlog / RDS CPU 80% / RDS FreeableMemory / Redis connection error / Redis no-connections. SNS topic `iconia-server-alarms` + email / PagerDuty subscription. `terraform/` 최상위 stack 이 module 로 흡수. |
 | `cloudwatch-alarms.json` | 위 IaC 의 CLI 변종 (직접 적용용). + AI timeout rate / push delivery rate / push token invalidated spike / push latency p95 / Gemini cache hit rate |
-| `cloudwatch-log-metric-filters.json` | PII 누출 감지 metric filter. email / KR phone / Bearer / WiFi PSK 패턴 → `ICONIA/Audit` namespace 송출. |
-| `cloudwatch-agent-config.json` | **NEW**. CloudWatch Agent SSM fetch-config 정본. `/var/log/iconia/{server,ai,admin,audit}.log` + nginx access/error + user-data 로그 → `/iconia/${env}/*` log group, 14-365d retention. CPU/mem/disk/net/swap 지표 `ICONIA/Host` namespace. |
+| `cloudwatch-log-metric-filters.json` | PII 누출 감지 metric filter 정본. email / KR phone / Bearer / WiFi PSK 패턴 → `ICONIA/Audit` namespace 송출. **`terraform/observability.tf` 가 IaC 로 흡수** — 본 JSON 은 패턴 reference 로 유지. |
+| `cloudwatch-agent-config.json` | CloudWatch Agent fetch-config 정본. `/var/log/iconia/{server,ai,admin,audit}.log` + nginx access/error + user-data 로그 → `/iconia/${env}/*` log group. CPU/mem/disk/net/swap 지표 `ICONIA/Host` namespace. **`terraform/observability.tf` 가 본 JSON 을 그대로 읽어 SSM Parameter Store 에 push** (이중 정본 방지 — JSON 이 단일 source). |
 | `sentry-dsn-mapping.md` | **NEW**. iconia-server / -ai / -admin / -app 4개 프로젝트, DSN 저장은 Secrets Manager (`iconia/${env}/sentry/<svc>_dsn`) + Expo EAS Secret. environment 태그, release 식별자, PII 마스킹 (`beforeSend`), 90d retention + PIPA 국외 이전 동의 연결. |
 | `push-delivery-policy.md` | **NEW**. Expo push token 라이프사이클, receipts 15분 cron, `ICONIA/Push` namespace 메트릭 정본, FCM 서비스계정 JSON 6개월 / APNs .p8 12개월 회전 정책, EAS managed credentials 흐름. |
 | `canary-routing.md` | **NEW**. 현 단계: application-layer canary (`X-Iconia-Canary` 헤더 + user_id modulo). 옵션: Route53 weighted A record (stable 95 / canary 5 → 25 → 50 → 100). 자동 회수 trigger (5xx >= 1% → Weight=0). ALB 도입 시 deprecated. |
@@ -199,9 +201,13 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 ### 3.3 모니터링 / 로그
 - CloudWatch alarms.tf — 5xx rate / AI p95 latency / refresh-token reuse / finalizer 24h stall / export pending backlog / RDS CPU / RDS memory / Redis connection error / Redis no-connections (9개)
 - CloudWatch alarms.json — 위 + AI timeout rate / push delivery rate / push token invalidated / push p95 latency / Gemini cache hit rate (총 14개)
-- PII 누출 metric filter (email / KR phone / Bearer / WiFi PSK)
+- **PII 누출 metric filter IaC 흡수** (`observability.tf`) — email / KR phone / Bearer / WiFi PSK 4종을 `aws_cloudwatch_log_metric_filter` 로. `cloudwatch-log-metric-filters.json` 은 패턴 reference.
 - SNS topic `iconia-server-alarms` + email + PagerDuty subscription
-- **CloudWatch Agent fetch-config 정본** (cloudwatch-agent-config.json) — Host 메트릭 + 8개 log group + retention 14/30/60/90/365일 분기
+- CloudWatch Agent fetch-config 정본 (cloudwatch-agent-config.json) — Host 메트릭 + 7개 log group + retention 14/30/60/90/365일 분기
+- **CloudWatch Agent config → SSM Parameter Store push IaC** (`observability.tf` `aws_ssm_parameter`) — user-data 가 `fetch-config -c ssm:<param>` 로 자동 적용. 운영자 수동 SSM 등록 단계 제거.
+- **로그그룹 7종 IaC 소유** (`observability.tf` `aws_cloudwatch_log_group`) — `/iconia/${env}/*` retention drift 방지.
+- **CloudWatch 운영 Dashboard** (`observability.tf` `aws_cloudwatch_dashboard`) — Server 5xx / AI p95 / Push / RDS CPU·메모리 / Host CPU·메모리 / 배포·롤백 단일 보드.
+- **CloudWatch Logs Insights saved query 4종** (`observability.tf` `aws_cloudwatch_query_definition`) — PII 누출 / RAG 실패 / refresh token reuse / 배포 실패 timeline.
 
 ### 3.4 보안 / 비밀
 - Secrets Manager: DB master password 자동 생성 + 회전 Lambda hook (`iconia-${env}-rds-password-rotator`, 활성화 옵션 `-var enable_rds_password_rotation=true`)
@@ -214,6 +220,7 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 - Canary 라우팅 정본 (application-layer + Route53 weighted 옵션 + 자동 회수)
 - Push delivery 정본 (Expo 토큰 라이프사이클 + FCM JSON 6m / APNs .p8 12m 회전)
 - Sentry DSN 매핑 (4 프로젝트 + environment / release / PII 마스킹 + 90d retention + PIPA 국외 이전)
+- **DR runbook 자동화** (`ssm-runbook.tf`) — `multi-az-failover-runbook.md` §1~§4 의 manual 절차를 SSM Automation Document 2종으로 packaging. `rds-multi-az-failover` (진단 → 옵션 force-failover → available 대기 → SNS 통지), `failover-diagnostics` (EFS/RDS 1차 분류). apply 는 Document 만 생성 — 실행은 운영자가 사고 시 명시 호출.
 
 ### 3.6 CI/CD — 완전 자동 배포 (v1.0)
 - **테스트 게이트** (`test-gate.yml`): SERVER/AI/ADMIN 단위·lint·typecheck 테스트 + CI 리포 자체 검증(shell 문법 / shellcheck / terraform fmt+validate / preflight unit test). 실패 시 배포 차단.
@@ -230,37 +237,43 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 
 ## 4. 향후 작업 필요한 범위
 
-### 4.1 진정한 IaC 흡수 (M+1)
-- [ ] `deploy/aws/*.json` 의 CLI 정본을 모두 `terraform/` 로 흡수 (현재는 두 정본이 공존 — alarms.tf 가 일부 흡수했으나 metric filter / KMS / 일부 IAM 은 여전히 CLI 정본).
-- [ ] `terraform/` 의 root module 이 `deploy/aws/alarms.tf` 를 module 로 호출하는 패턴을 standard module path 로 정리.
-- [ ] CloudWatch Agent config 를 SSM Parameter Store 에 push 하는 Terraform 리소스 추가 (`aws_ssm_parameter "cloudwatch_agent_config"`).
+### 4.1 진정한 IaC 흡수 (M+1) — ✅ 대부분 완료
+- [x] CloudWatch Logs metric filter (PII 누출 4종) 를 `terraform/observability.tf` 의 `aws_cloudwatch_log_metric_filter` 로 흡수. `cloudwatch-log-metric-filters.json` 은 패턴 reference 로 유지.
+- [x] CloudWatch Agent config 를 SSM Parameter Store 에 push 하는 `aws_ssm_parameter "cloudwatch_agent_config"` 추가. user-data 가 `fetch-config -c ssm:<param>` 로 자동 적용 — 운영자 수동 SSM 등록 단계 제거.
+- [x] `/iconia/${env}/*` 로그그룹 7종을 `aws_cloudwatch_log_group` 으로 IaC 소유 (retention drift 방지).
+- 남은 과제(🔴): `kms-key-policy.json` / `s3-*.json` / `iam-ec2-*.json` 의 잔여 CLI 정본은 **실제 운영 KMS CMK·기존 버킷이 이미 존재하는 상태에서의 `terraform import` 가 필요** — apply/import 권한 부재로 본 환경에서 불가. 신규 환경은 이미 `s3.tf`/`iam.tf` 가 IaC 정본이므로 reference 상태로 유지.
+- 남은 과제(🔴): `alarms.tf` 를 standard module path(레지스트리/별도 repo)로 분리하는 것은 module 게시 인프라 결정 사항 — 현재 `../deploy/aws` relative path module 로 동작 정상, 구조 변경은 운영 결정 후.
 
-### 4.2 ALB / ASG 도입
+### 4.2 ALB / ASG 도입 — 🔴 README 유지
 - [ ] 단일 EC2 → ALB + ASG 2+ (Multi-AZ) 전환. 현재는 EIP 하나 가리키기라 EC2 죽으면 다운.
 - [ ] Target Group 두 개 (stable / canary) + listener rule weighted forwarding → 진정한 L7 canary.
 - [ ] `canary-routing.md` 의 Route53 weighted 모드 deprecated 처리.
-- [ ] **ALB sticky session** — `iconia-app` 의 BLE 페어링 세션이 ALB 거치면서 instance 간 잘 흩어지지 않도록. 다만 server 가 stateless 설계이므로 sticky 가 필요한 케이스 (websocket / SSE) 만 식별 후 enable.
+- [ ] **ALB sticky session** — websocket / SSE 케이스만 식별 후 enable.
+- 사유: ALB/ASG 전환은 단순 terraform 코드 추가가 아니라 **부트스트랩 모델(user-data 1회 → launch template + instance refresh) / 배포 경로(SSM 단일 instance → ASG fleet) / EIP→ALB DNS / certbot→ACM** 의 동시 재설계를 요구한다. 코드만 추가하고 검증 없이 두면 `ec2.tf`/`ec2-pull-and-restart.sh`/`deploy.yml` 과 정합이 깨진 죽은 코드가 된다. 실 ALB/ASG 프로비저닝(apply)과 무중단 cutover 리허설이 동반돼야 하므로 별도 라운드로 유지.
 
-### 4.3 다중 리전 / DR
+### 4.3 다중 리전 / DR — 🔴 README 유지
 - [ ] S3 Cross-Region Replication 활성 (events / exports / firmware 의 secondary region).
 - [ ] RDS read replica 를 secondary region 에 (Aurora Global Database 검토).
-- [ ] Route53 latency-based / failover routing 정책 추가 (`api.${root}` 가 primary region 다운 시 secondary 로 회수).
-- [ ] CloudFront 진입 (App-측 정적 자산 + Admin Next.js static + 글로벌 사용자 latency).
+- [ ] Route53 latency-based / failover routing 정책 추가.
+- [ ] CloudFront 진입 (정적 자산 + 글로벌 latency).
+- 사유: secondary region provider alias / 대상 region 의 실 버킷·KMS·VPC 가 필요하고, CRR 의 IAM replication role 과 RDS cross-region replica 는 실 apply 없이는 정합 검증 불가. 다중 리전 비용/RPO 정책 결정이 선행돼야 함.
 
-### 4.4 Secrets / key 회전 운영화
+### 4.4 Secrets / key 회전 운영화 — 🔴 README 유지
 - [ ] Secrets Manager 의 RDS password 회전 Lambda 활성 (`enable_rds_password_rotation=true` 디폴트화 — 현재는 안전상 off).
-- [ ] Sentry DSN 4개의 자동 회전 — DSN 자체는 회전 안 하지만, 4 프로젝트가 단일 organization quota 공유라 quota 알람 자동화 필요.
-- [ ] FCM service account JSON 의 6개월 만료 알림 (Sentry organization + Expo EAS credentials page 의 expiry 를 CloudWatch 의 외부 metric 으로 sync — Lambda + EAS GraphQL).
+- [ ] Sentry DSN 4개 organization quota 알람 자동화.
+- [ ] FCM service account JSON 6개월 만료 알림 (Expo EAS GraphQL sync).
 - [ ] APNs .p8 key 회전 D-30 알림.
+- 사유: 회전 디폴트화는 **운영 정책 결정 사항** (회전 중 짧은 단절 허용 여부) — 코드는 이미 `rds-password-rotation.tf` 에 존재, 변수 1개만 운영팀이 토글하면 됨. Sentry/EAS quota·만료 sync 는 외부 SaaS GraphQL token 과 실 Lambda 배포가 필요.
 
-### 4.5 카나리 자동화
+### 4.5 카나리 자동화 — 🔴 README 유지
 - [ ] `canary-routing.md` §2.3 의 자동 weight 증가 / 회수 Lambda 구현. 현재는 manual.
-- [ ] application-layer canary 의 진입 percent 를 SSM Parameter `iconia/${env}/canary/percent` 로 외부화 → admin 콘솔에서 조절.
+- [ ] application-layer canary 진입 percent 를 SSM Parameter 로 외부화 → admin 콘솔 조절.
+- 사유: 자동 weight Lambda 는 §4.2 ALB target group 도입을 전제로 한다 (Route53 weighted 모드는 ALB 도입 시 deprecated 예정 — canary-routing.md §4). ALB 라운드와 묶어 진행해야 중복 작업 방지.
 
-### 4.6 운영 가시성
-- [ ] CloudWatch Dashboard JSON (terraform `aws_cloudwatch_dashboard`) — Server 5xx / AI p95 / Push delivery rate / RDS CPU 의 단일 보드.
-- [ ] CloudWatch Logs Insights saved query (PII 누출 패턴 / RAG 실패 / refresh token reuse 의 ad-hoc 조회) → `aws_cloudwatch_query_definition` 으로 IaC.
-- [ ] SSM Document 자동화 — multi-az-failover-runbook 의 §1~§4 명령을 1-click runbook 으로 packaging.
+### 4.6 운영 가시성 — ✅ 완료
+- [x] CloudWatch Dashboard (`terraform/observability.tf` `aws_cloudwatch_dashboard`) — Server 5xx / AI p95 / Push / RDS CPU·메모리 / Host / 배포·롤백 단일 보드.
+- [x] CloudWatch Logs Insights saved query 4종 (`aws_cloudwatch_query_definition`) — PII 누출 / RAG 실패 / refresh token reuse / 배포 실패 timeline.
+- [x] SSM Document 자동화 (`terraform/ssm-runbook.tf`) — `multi-az-failover-runbook.md` §1~§4 명령을 SSM Automation Document 2종(`rds-multi-az-failover`, `failover-diagnostics`)으로 packaging. apply 는 Document 생성만, 실행은 운영자 명시 호출.
 
 ### 4.7 HW / APP 트랙 (별도 폴더)
 - HW 펌웨어 OTA: firmware S3 버킷에 운영자 PowerShell 업로드 + Server presign read-only — 본 폴더는 자동화 안 함, OTA scheduler 별도 라운드.
@@ -270,8 +283,18 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 - [x] `test-gate.yml` — SERVER/AI/ADMIN 의 단위·lint·typecheck 테스트를 sibling repo checkout 후 실행 (배포 게이트).
 - [x] `build-and-upload.sh` (Linux runner 변종) + `deploy.yml` — 빌드 → S3 업로드 → SSM 배포 → 스모크 테스트 자동화.
 - [x] OIDC 로 AWS 권한 위임 (access key 정적 저장 회피).
-- 남은 운영 과제: GitHub Environment `production` 에 reviewer 승인 게이트 연결 (조직 정책 결정 후), sibling repo 들에 자체 CI 워크플로우 분산 설치.
+- 남은 운영 과제(🔴 환경 한계로 본 라운드 불가):
+  - GitHub Environment `production` reviewer 승인 게이트 — **레포 Settings > Environments 의 설정 항목**이라 코드(워크플로우 YAML)로 표현 불가. `deploy.yml` 의 `build`/`deploy` 잡은 이미 `environment: production` 을 선언하므로, 운영자가 레포 설정에서 reviewer 만 추가하면 즉시 승인 게이트가 활성된다. 조직 정책 결정 후 1회 설정.
+  - sibling repo (SERVER/AI/ADMIN) 자체 CI 워크플로우 분산 설치 — **본 리포(ICONIA-CI) 작업 범위 밖의 다른 레포 파일 생성**. 본 리포는 통합 CI 정본이며, sibling 레포 워크플로우는 각 레포 라운드에서 추가. (현재 `test-gate.yml` 이 sibling 3개를 checkout 해 배포 게이트로 검증 중이므로 배포 안전성은 이미 확보됨.)
 
 ---
 
-**작업 폴더 외부 절대 건드리지 않음**. 본 README + `deploy/aws/{cloudwatch-agent-config.json, sentry-dsn-mapping.md, push-delivery-policy.md, canary-routing.md}` + `deploy/aws/cloudwatch-alarms.json` 의 4개 알람 추가만이 본 라운드 변경.
+**작업 폴더 외부 절대 건드리지 않음**. 본 라운드(향후 항목 IaC 흡수) 변경:
+- 신규 `terraform/observability.tf` — 로그그룹 7종 / PII metric filter 4종 / CloudWatch Agent SSM Parameter / 운영 Dashboard / Logs Insights query 4종 (README §4.1·§4.6 흡수).
+- 신규 `terraform/ssm-runbook.tf` — Multi-AZ failover SSM Automation Document 2종 (README §4.6 / `multi-az-failover-runbook.md` §7 흡수).
+- `ec2-bootstrap/user-data.sh.tftpl` — CloudWatch Agent `fetch-config -c ssm:<param>` 호출 추가.
+- `terraform/ec2.tf` — user-data 에 `cw_agent_ssm_param` 주입.
+- `terraform/network.tf` — SG rule description 을 ASCII 로 교정 (AWS API 제약 — `terraform validate` 가 검출한 기존 결함).
+- 본 README §2.1·§2.5·§3.3·§3.5·§4 갱신.
+
+검증: `terraform fmt -check -recursive` 통과, `terraform validate` 통과 (로컬 provider mirror), `bash -n` shell 문법 / YAML 워크플로우 무변경. 실 `terraform apply` 는 본 환경 권한 부재로 미수행 — CI 의 `test-gate.yml` connected runner 가 매 push 마다 fmt+validate 재검증.
