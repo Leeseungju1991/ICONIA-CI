@@ -3,6 +3,22 @@
 "로컬에서 한번 확인 → 배포 → 출시" 의 전 과정. SERVER / AI / ADMIN 3개 서비스를
 단일 EC2 호스트로 무중단 배포한다. HW(OTA) / APP(EAS) 은 별도 트랙.
 
+localhost ↔ AWS 전환은 `.env` 의 `ICONIA_TARGET` 한 줄(`local` / `aws`)로 한다.
+
+---
+
+## 0-A. localhost 전체 기동 (배포 전 동작 확인)
+
+```powershell
+Copy-Item .env.example .env          # 최초 1회 — ICONIA_TARGET=local 기본
+pwsh -File scripts/local-up.ps1      # PG16 + SERVER + AI + ADMIN 일괄 기동
+pwsh -File scripts/local-up.ps1 -IncludeApp   # APP(Expo) 까지
+pwsh -File scripts/local-down.ps1    # 종료
+```
+
+Linux/macOS: `scripts/local-up.sh` / `scripts/local-down.sh`.
+AWS 완전 자동 배포는 `scripts/aws-deploy.ps1` 단일 커맨드. 상세는 `README.md` §3·§4.
+
 ---
 
 ## 0. 1회성 사전 부트스트랩 (최초 1번)
