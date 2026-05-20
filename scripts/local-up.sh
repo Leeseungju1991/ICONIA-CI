@@ -6,8 +6,10 @@
 # PostgreSQL 16 + SERVER + AI + ADMIN 을 로컬에서 띄운다. 각 서비스는
 # nohup 백그라운드 프로세스로 떠서 PID 가 /tmp/iconia-local/*.pid 에 기록된다.
 #
-# 단일 토글: 본 스크립트는 ICONIA_TARGET=local 을 강제하고 각 서비스에
+# 단일 토글: 본 스크립트는 DEPLOY_TARGET=local 을 강제하고 각 서비스에
 # 로컬 DATABASE_URL / AI_BASE_URL 을 주입한다.
+# 각 레포가 읽는 키로 주입: SERVER/AI/ADMIN 은 DEPLOY_TARGET, APP(Expo) 은
+# EXPO_PUBLIC_DEPLOY_TARGET (Expo 는 EXPO_PUBLIC_ prefix 필수).
 #
 # 사용법:
 #   scripts/local-up.sh [--repo-root <ICONIA root>] [--include-app]
@@ -152,7 +154,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   fi
 fi
 start_service server "$SERVER_DIR" "npm run dev" \
-  ICONIA_TARGET=local NODE_ENV=development PORT="$SERVER_PORT" \
+  DEPLOY_TARGET=local NODE_ENV=development PORT="$SERVER_PORT" \
   DATABASE_URL="$DATABASE_URL" AI_BASE_URL="$AI_BASE_URL"
 
 # ----- 3) AI -----
@@ -161,7 +163,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   ( cd "$AI_DIR" && npm install )
 fi
 start_service ai "$AI_DIR" "npm run dev" \
-  ICONIA_TARGET=local NODE_ENV=development PORT="$AI_PORT" \
+  DEPLOY_TARGET=local NODE_ENV=development PORT="$AI_PORT" \
   DATABASE_URL="$DATABASE_URL"
 
 # ----- 4) ADMIN -----
@@ -170,7 +172,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   ( cd "$ADMIN_DIR" && npm install )
 fi
 start_service admin "$ADMIN_DIR" "npm run dev -- --port ${ADMIN_PORT}" \
-  ICONIA_TARGET=local NODE_ENV=development PORT="$ADMIN_PORT" \
+  DEPLOY_TARGET=local NODE_ENV=development PORT="$ADMIN_PORT" \
   NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:${SERVER_PORT}"
 
 # ----- 5) APP (선택) -----
@@ -181,7 +183,7 @@ if [ "$INCLUDE_APP" -eq 1 ]; then
       ( cd "$APP_DIR" && npm install )
     fi
     start_service app "$APP_DIR" "npx expo start" \
-      ICONIA_TARGET=local EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:${SERVER_PORT}"
+      EXPO_PUBLIC_DEPLOY_TARGET=local EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:${SERVER_PORT}"
   else
     log "WARN: APP 폴더 없음 — --include-app 건너뜀"
   fi

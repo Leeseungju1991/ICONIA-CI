@@ -9,7 +9,7 @@
   운영자 로컬(Windows PowerShell)에서 동일 흐름을 수동 실행하는 폴백이다.
 
   단계:
-    1. .env 로드 + ICONIA_TARGET=aws 확인
+    1. .env 로드 + DEPLOY_TARGET=aws 확인
     2. (-ApplyInfra) terraform init/plan/apply — 인프라 정합
     3. terraform output 으로 artifacts bucket / instance id / domain 해석
     4. build-and-upload.ps1 — 3개 서비스 + _bootstrap 빌드 → S3
@@ -33,7 +33,7 @@
   ICONIA 모노레포 루트. 비우면 .env / 6.CI 상위 자동 추정.
 
 .EXAMPLE
-  Copy-Item .env.example .env       # ICONIA_TARGET=aws 로 수정 + 값 채움
+  Copy-Item .env.example .env       # DEPLOY_TARGET=aws 로 수정 + 값 채움
   pwsh -File scripts/aws-deploy.ps1 -Service all
 
 .EXAMPLE
@@ -77,9 +77,9 @@ function Cfg { param([string]$K,[string]$D='')
 }
 
 # ----- 단일 토글 확인 -----
-$target = Cfg 'ICONIA_TARGET' 'aws'
+$target = Cfg 'DEPLOY_TARGET' 'aws'
 if ($target -ne 'aws') {
-  Write-Warning ".env 의 ICONIA_TARGET 이 '$target' 입니다. AWS 배포를 계속하려면 'aws' 권장."
+  Write-Warning ".env 의 DEPLOY_TARGET 이 '$target' 입니다. AWS 배포를 계속하려면 'aws' 권장."
 }
 
 $region = Cfg 'AWS_REGION' 'ap-northeast-2'

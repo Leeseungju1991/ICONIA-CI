@@ -15,8 +15,10 @@
     6. 1. HW           : 펌웨어 — 로컬 기동 대상 아님 (별도 빌드 트랙)
 
   각 서비스는 별도 PowerShell 창에서 떠서 로그가 분리된다.
-  단일 토글: 본 스크립트는 .env 의 ICONIA_TARGET 을 'local' 로 강제하고
+  단일 토글: 본 스크립트는 .env 의 DEPLOY_TARGET 을 'local' 로 강제하고
   각 서비스에 로컬 DATABASE_URL / AI_BASE_URL 을 주입한다.
+  각 레포가 읽는 키로 주입: SERVER/AI/ADMIN 은 DEPLOY_TARGET, APP(Expo) 은
+  EXPO_PUBLIC_DEPLOY_TARGET (Expo 는 EXPO_PUBLIC_ prefix 필수).
 
   종료: scripts/local-down.ps1
 
@@ -89,9 +91,9 @@ if (-not (Test-Path -LiteralPath $RepoRoot -PathType Container)) {
 }
 
 # ----- 단일 토글: 로컬 강제 -----
-$target = Cfg 'ICONIA_TARGET' 'local'
+$target = Cfg 'DEPLOY_TARGET' 'local'
 if ($target -ne 'local') {
-  Write-Warning ".env 의 ICONIA_TARGET 이 '$target' 입니다. 로컬 기동을 위해 'local' 로 간주합니다."
+  Write-Warning ".env 의 DEPLOY_TARGET 이 '$target' 입니다. 로컬 기동을 위해 'local' 로 간주합니다."
 }
 
 $pgHost = Cfg 'LOCAL_PG_HOST'     '127.0.0.1'
@@ -193,7 +195,7 @@ function Start-Service-Window {
 
 # ----- 2) SERVER 준비 + 기동 -----
 $serverEnv = @{
-  ICONIA_TARGET = 'local'
+  DEPLOY_TARGET = 'local'
   NODE_ENV      = 'development'
   PORT          = $serverPort
   DATABASE_URL  = $databaseUrl
@@ -222,7 +224,7 @@ Start-Service-Window -Title 'SERVER' -WorkDir $serverDir `
 
 # ----- 3) AI 준비 + 기동 -----
 $aiEnv = @{
-  ICONIA_TARGET = 'local'
+  DEPLOY_TARGET = 'local'
   NODE_ENV      = 'development'
   PORT          = $aiPort
   DATABASE_URL  = $databaseUrl
@@ -240,7 +242,7 @@ Start-Service-Window -Title 'AI' -WorkDir $aiDir `
 
 # ----- 4) ADMIN 준비 + 기동 -----
 $adminEnv = @{
-  ICONIA_TARGET           = 'local'
+  DEPLOY_TARGET           = 'local'
   NODE_ENV                = 'development'
   PORT                    = $adminPort
   NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:$serverPort"
@@ -262,7 +264,7 @@ if ($IncludeApp) {
     Write-Warning "APP 폴더를 찾을 수 없어 -IncludeApp 을 건너뜁니다."
   } else {
     $appEnv = @{
-      ICONIA_TARGET                  = 'local'
+      EXPO_PUBLIC_DEPLOY_TARGET      = 'local'
       EXPO_PUBLIC_API_BASE_URL       = "http://127.0.0.1:$serverPort"
     }
     if (-not $SkipInstall) {

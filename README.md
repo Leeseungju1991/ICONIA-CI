@@ -18,11 +18,11 @@ ICONIA 는 6개 레포로 구성된다.
 CloudWatch / Sentry / Push 운영 정본을 담는다.
 
 **설계 목표**: `localhost 동작 확인 → 아주 간단한 수정 → AWS 실배포 즉시 출시`.
-localhost ↔ AWS 전환은 `.env` 의 **`ICONIA_TARGET` 한 줄(`local` / `aws`)** 로 한다.
+localhost ↔ AWS 전환은 `.env` 의 **`DEPLOY_TARGET` 한 줄(`local` / `aws`)** 로 한다.
 
 ```
-.env  →  ICONIA_TARGET=local   →  scripts/local-up.ps1   (전체 로컬 기동)
-      →  ICONIA_TARGET=aws     →  scripts/aws-deploy.ps1 (실배포 → 출시)
+.env  →  DEPLOY_TARGET=local   →  scripts/local-up.ps1   (전체 로컬 기동)
+      →  DEPLOY_TARGET=aws     →  scripts/aws-deploy.ps1 (실배포 → 출시)
 ```
 
 원격: `https://github.com/Leeseungju1991/ICONIA-CI` (main 브랜치만).
@@ -209,11 +209,11 @@ Windows PowerShell 기준. ICONIA 모노레포(`1. HW` ~ `6. CI`)를 한 부모 
 # 6. CI 폴더로 이동
 cd "C:\Users\user\Music\ICONIA\6. CI"
 
-# .env 생성 (ICONIA_TARGET=local 이 기본값)
+# .env 생성 (DEPLOY_TARGET=local 이 기본값)
 Copy-Item .env.example .env
 
 # .env 편집 — 로컬 기동에 필요한 키 확인/수정
-#   ICONIA_TARGET=local
+#   DEPLOY_TARGET=local
 #   ICONIA_REPO_ROOT=C:\Users\user\Music\ICONIA   (비우면 자동 추정)
 #   LOCAL_PG_USE_DOCKER=true                       (Docker Desktop 사용 시)
 #   LOCAL_SERVER_PORT=8080 / LOCAL_AI_PORT=3001 / LOCAL_ADMIN_PORT=3000
@@ -246,7 +246,8 @@ pwsh -File scripts\local-up.ps1 -SkipInstall
 5. **APP** (`-IncludeApp`) — `npm install` → `npx expo start`.
 6. **HW** — 로컬 기동 대상 아님(별도 펌웨어 빌드 트랙).
 
-모든 서비스에 `ICONIA_TARGET=local` 이 주입돼 sibling 끼리 127.0.0.1 로 통신한다.
+SERVER/AI/ADMIN 에 `DEPLOY_TARGET=local`, APP(Expo) 에 `EXPO_PUBLIC_DEPLOY_TARGET=local`
+이 각각 주입돼 sibling 끼리 127.0.0.1 로 통신한다.
 
 ### 3.3 동작 확인
 
@@ -277,28 +278,28 @@ $env:DATABASE_URL = "postgresql://iconia:iconia_local_dev@127.0.0.1:5432/iconia?
 Push-Location "$root\2. SERVER"
 npm install
 npx prisma generate; npx prisma migrate deploy
-$env:ICONIA_TARGET="local"; $env:PORT="8080"; $env:AI_BASE_URL="http://127.0.0.1:3001"
+$env:DEPLOY_TARGET="local"; $env:PORT="8080"; $env:AI_BASE_URL="http://127.0.0.1:3001"
 Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev'
 Pop-Location
 
 # 3) AI (:3001) — 새 창
 Push-Location "$root\3. AI"
 npm install
-$env:ICONIA_TARGET="local"; $env:PORT="3001"
+$env:DEPLOY_TARGET="local"; $env:PORT="3001"
 Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev'
 Pop-Location
 
 # 4) ADMIN (:3000) — 새 창
 Push-Location "$root\5. ADMIN"
 npm install
-$env:ICONIA_TARGET="local"; $env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
+$env:DEPLOY_TARGET="local"; $env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
 Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev -- --port 3000'
 Pop-Location
 
 # 5) APP (Expo) — 새 창
 Push-Location "$root\4. APP"
 npm install
-$env:ICONIA_TARGET="local"; $env:EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
+$env:EXPO_PUBLIC_DEPLOY_TARGET="local"; $env:EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
 Start-Process pwsh -ArgumentList '-NoExit','-Command','npx expo start'
 Pop-Location
 ```
@@ -350,7 +351,7 @@ cd ..
 # (6) .env 작성 — 단일 토글을 aws 로
 Copy-Item .env.example .env
 notepad .env
-#   ICONIA_TARGET=aws
+#   DEPLOY_TARGET=aws
 #   ICONIA_ARTIFACTS_BUCKET=<terraform output artifacts_bucket_name>
 #   ICONIA_EC2_INSTANCE_ID =<terraform output ec2_instance_id>
 #   ICONIA_ROOT_DOMAIN     =<운영 도메인>
@@ -385,7 +386,7 @@ pwsh -File scripts\aws-deploy.ps1 -Service all -DryRun
 
 `aws-deploy.ps1` 이 자동 수행하는 일:
 
-1. `.env` 로드 + `ICONIA_TARGET=aws` 확인.
+1. `.env` 로드 + `DEPLOY_TARGET=aws` 확인.
 2. (`-ApplyInfra`) `terraform init / validate / plan / apply` — 인프라 정합.
 3. `terraform output` / `.env` 로 artifacts bucket·instance·domain 해석.
 4. `build-and-upload.ps1` — 3서비스 + `_bootstrap` 빌드 → S3 업로드(SHA256 포함).
@@ -456,7 +457,7 @@ pwsh -File scripts\trigger-deploy.ps1 -Service server
 | `deploy/RUNBOOK.md` | 배포 runbook (부트스트랩 / 자동·수동 배포 / 롤백 / 트러블슈팅) |
 | `scripts/` | 빌드·배포·로컬 오케스트레이션 스크립트 (PowerShell + bash) |
 | `.github/workflows/` | GitHub Actions — test-gate / deploy / release-preflight |
-| `.env.example` | 단일 토글(`ICONIA_TARGET`) 포함 로컬·AWS 공용 설정 템플릿 |
+| `.env.example` | 단일 토글(`DEPLOY_TARGET`) 포함 로컬·AWS 공용 설정 템플릿 |
 
 ## 부록 B — scripts/ 목록
 
@@ -474,10 +475,11 @@ pwsh -File scripts\trigger-deploy.ps1 -Service server
 | `preflight-placeholders.{sh,ps1}` | 6레포 placeholder 검사 (release 차단 게이트) |
 | `check-soul-catalog-sync.js` | SERVER↔AI soul catalog lockstep 검증 |
 
-## 부록 C — 단일 토글 (`ICONIA_TARGET`)
+## 부록 C — 단일 토글 (`DEPLOY_TARGET`)
 
-`.env` 의 `ICONIA_TARGET` 한 줄이 localhost ↔ AWS 를 가른다. 6개 레포가
-동일 키를 읽도록 정합한다.
+`.env` 의 `DEPLOY_TARGET` 한 줄이 localhost ↔ AWS 를 가른다. 레포가 동일 키를
+읽도록 정합한다 — SERVER/AI/ADMIN/CI 는 `DEPLOY_TARGET`, APP(Expo) 만
+`EXPO_PUBLIC_` prefix 가 필수라 `EXPO_PUBLIC_DEPLOY_TARGET` 을 읽는다(의도된 차이).
 
 | 값 | 진입 스크립트 | 서비스 통신 | 데이터 |
 |---|---|---|---|
