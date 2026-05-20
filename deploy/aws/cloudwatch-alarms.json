@@ -80,6 +80,102 @@
       "AlarmActions": ["SNS_TOPIC_ARN"]
     },
     {
+      "AlarmName": "iconia-push-delivery-rate-low",
+      "AlarmDescription": "Expo push delivery rate < 90% (1h sliding). FCM/APNs key 만료 또는 Expo Push Service 장애 의심. namespace ICONIA/Push 의 PushDelivered/PushSent 비율.",
+      "Metrics": [
+        {
+          "Id": "delivered",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/Push", "MetricName": "PushDelivered" },
+            "Period": 3600,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "sent",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/Push", "MetricName": "PushSent" },
+            "Period": 3600,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "ratio",
+          "Expression": "delivered / IF(sent > 0, sent, 1)",
+          "Label": "push_delivery_rate",
+          "ReturnData": true
+        }
+      ],
+      "Threshold": 0.9,
+      "ComparisonOperator": "LessThanThreshold",
+      "EvaluationPeriods": 1,
+      "TreatMissingData": "notBreaching",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-push-token-invalidated-spike",
+      "AlarmDescription": "5분 동안 DeviceNotRegistered 으로 무효화된 토큰 100건 초과. App reinstall 폭증 또는 FCM/APNs key 회전 직후 정상 상황 식별 필요.",
+      "MetricName": "PushTokenInvalidated",
+      "Namespace": "ICONIA/Push",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 100,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-push-latency-p95-high",
+      "AlarmDescription": "Expo push send p95 latency >= 3000ms. Expo Push Service 응답 지연 의심.",
+      "MetricName": "PushLatencyMs",
+      "Namespace": "ICONIA/Push",
+      "ExtendedStatistic": "p95",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "Threshold": 3000,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
+      "AlarmName": "iconia-ai-timeout-rate-high",
+      "AlarmDescription": "AI (Genome) 호출 timeout >= 5% (5분 sliding). AiCallTimeout / AiCallTotal 비율로 산정. Gemini upstream 또는 persona-ai 지연 의심.",
+      "Metrics": [
+        {
+          "Id": "timeouts",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/AI", "MetricName": "AiCallTimeout" },
+            "Period": 300,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "total",
+          "MetricStat": {
+            "Metric": { "Namespace": "ICONIA/AI", "MetricName": "AiCallTotal" },
+            "Period": 300,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "ratio",
+          "Expression": "timeouts / IF(total > 0, total, 1)",
+          "Label": "ai_timeout_rate",
+          "ReturnData": true
+        }
+      ],
+      "Threshold": 0.05,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "EvaluationPeriods": 1,
+      "TreatMissingData": "notBreaching",
+      "AlarmActions": ["SNS_TOPIC_ARN"]
+    },
+    {
       "AlarmName": "iconia-gemini-cache-hit-rate-low",
       "AlarmDescription": "캐시 히트율 < 30% 시 알람 — 비용 최적화 신호.",
       "Metrics": [
