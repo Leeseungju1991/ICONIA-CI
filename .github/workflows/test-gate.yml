@@ -1,0 +1,192 @@
+###############################################################################
+# test-gate.yml — 6개 레포 테스트 게이트.
+#
+# 배포 전 SERVER / AI / ADMIN 의 단위 테스트 + lint + typecheck 를 실행한다.
+# 하나라도 실패하면 후속 deploy 워크플로우가 진행되지 않는다 (deploy.yml 이
+# 본 워크플로우의 성공을 needs/조건으로 참조).
+#
+# trigger:
+#   - 매 push (main) / PR  → CI 리포 자체 검증 + (sibling 존재 시) 3개 서비스 테스트
+#   - workflow_call        → deploy.yml 이 배포 직전 게이트로 호출
+#
+# sibling 레포(SERVER/AI/ADMIN)는 별도 private repo 이므로 checkout 에
+# ICONIA_REPO_TOKEN (org-scoped PAT 또는 GitHub App token) 이 필요하다.
+# 토큰이 없으면 해당 잡은 graceful-skip (단일 리포 CI 만 검증).
+###############################################################################
+name: test-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: '체크아웃할 sibling 레포 ref (기본 main).'
+        required: false
+        type: string
+        default: main
+    secrets:
+      ICONIA_REPO_TOKEN:
+        description: 'sibling private repo checkout 용 토큰.'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # CI 리포 자체 검증 — 스크립트 문법 + preflight 단위 테스트.
+  # ---------------------------------------------------------------------------
+  ci-self-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell 문법 검사 (bash -n)
+        run: |
+          fail=0
+          for f in scripts/*.sh ec2-bootstrap/*.tftpl; do
+            [ -f "$f" ] || continue
+            if ! bash -n "$f"; then echo "::error file=$f::bash -n 실패"; fail=1; fi
+          done
+          exit $fail
+
+      - name: shellcheck (best-effort)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y shellcheck
+          shellcheck -S warning scripts/*.sh || true
+
+      - name: preflight / soul-catalog 단위 테스트
+        run: |
+          chmod +x scripts/*.sh
+          scripts/preflight-placeholders.test.sh
+          scripts/check-soul-catalog-sync.test.sh
+
+      - name: Terraform fmt + validate
+        run: |
+          curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o tf.zip
+          unzip -q tf.zip && sudo mv terraform /usr/local/bin/
+          terraform -chdir=terraform fmt -check -recursive
+          terraform -chdir=terraform init -backend=false -input=false
+          terraform -chdir=terraform validate
+
+  # ---------------------------------------------------------------------------
+  # SERVER 테스트 — sibling 레포 존재 시.
+  # ---------------------------------------------------------------------------
+  server-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout ICONIA-SERVER
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: ${{ inputs.ref || 'main' }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+      - name: Setup Node
+        if: steps.co.outcome == 'success'
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: npm ci + prisma generate + test
+        if: steps.co.outcome == 'success'
+        working-directory: server
+        run: |
+          npm ci
+          npm run check --if-present
+          [ -f prisma/schema.prisma ] && npx --yes prisma generate || true
+          npm test
+      - name: SERVER 토큰 부재 — 게이트 skip 안내
+        if: steps.co.outcome != 'success'
+        run: echo "::warning::ICONIA_REPO_TOKEN 미설정 — SERVER 테스트 게이트 건너뜀. 운영자 토큰 등록 필요."
+
+  # ---------------------------------------------------------------------------
+  # AI 테스트.
+  # ---------------------------------------------------------------------------
+  ai-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout ICONIA-AI
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: ${{ inputs.ref || 'main' }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ai
+      - name: Setup Node
+        if: steps.co.outcome == 'success'
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: npm ci + test
+        if: steps.co.outcome == 'success'
+        working-directory: ai
+        run: |
+          npm ci
+          npm run check --if-present
+          npm test
+      - name: AI 토큰 부재 — 게이트 skip 안내
+        if: steps.co.outcome != 'success'
+        run: echo "::warning::ICONIA_REPO_TOKEN 미설정 — AI 테스트 게이트 건너뜀."
+
+  # ---------------------------------------------------------------------------
+  # ADMIN 테스트 — lint + typecheck + vitest + build 검증.
+  # ---------------------------------------------------------------------------
+  admin-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout ICONIA-ADMIN
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: ${{ inputs.ref || 'main' }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+      - name: Setup Node
+        if: steps.co.outcome == 'success'
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: npm ci + lint + typecheck + test + build
+        if: steps.co.outcome == 'success'
+        working-directory: admin
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm test
+          npm run build
+      - name: ADMIN 토큰 부재 — 게이트 skip 안내
+        if: steps.co.outcome != 'success'
+        run: echo "::warning::ICONIA_REPO_TOKEN 미설정 — ADMIN 테스트 게이트 건너뜀."
+
+  # ---------------------------------------------------------------------------
+  # 게이트 종합 — 위 잡들이 전부 성공해야 deploy 가능.
+  # ---------------------------------------------------------------------------
+  gate-summary:
+    runs-on: ubuntu-latest
+    needs: [ci-self-check, server-tests, ai-tests, admin-tests]
+    if: always()
+    steps:
+      - name: 게이트 결과 집계
+        run: |
+          echo "ci-self-check : ${{ needs.ci-self-check.result }}"   >> "$GITHUB_STEP_SUMMARY"
+          echo "server-tests  : ${{ needs.server-tests.result }}"    >> "$GITHUB_STEP_SUMMARY"
+          echo "ai-tests      : ${{ needs.ai-tests.result }}"        >> "$GITHUB_STEP_SUMMARY"
+          echo "admin-tests   : ${{ needs.admin-tests.result }}"     >> "$GITHUB_STEP_SUMMARY"
+          # ci-self-check 는 무조건 통과해야 함. 서비스 테스트는 success 또는 skip 허용
+          # (토큰 부재 시 skip — 단, 배포 워크플로우는 토큰을 강제하므로 실배포에서는 실행됨).
+          [ "${{ needs.ci-self-check.result }}" = "success" ] || { echo "::error::ci-self-check 실패"; exit 1; }
+          for r in "${{ needs.server-tests.result }}" "${{ needs.ai-tests.result }}" "${{ needs.admin-tests.result }}"; do
+            case "$r" in success|skipped) ;; *) echo "::error::서비스 테스트 실패: $r"; exit 1 ;; esac
+          done
+          echo "테스트 게이트 통과"

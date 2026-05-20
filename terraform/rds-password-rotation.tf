@@ -166,6 +166,6 @@ resource "aws_secretsmanager_secret_rotation" "db_master" {
 }
 
 output "rds_password_rotator_function_name" {
-  description = "수동 회전 트리거: aws secretsmanager rotate-secret --secret-id iconia/${var.env}/db/master_password"
+  description = "RDS master password 회전 Lambda 이름. 수동 회전: aws secretsmanager rotate-secret --secret-id iconia/<env>/db/master_password"
   value       = aws_lambda_function.rds_password_rotator.function_name
 }

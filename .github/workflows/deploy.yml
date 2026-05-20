@@ -1,0 +1,198 @@
+###############################################################################
+# deploy.yml — ICONIA v1.0 자동 배포 파이프라인.
+#
+# "로컬에서 한번 확인 후 배포하면 출시" 를 GitHub Actions 한 번으로 실현한다.
+#
+#   1) preflight  : placeholder 검사 (미채운 PLACEHOLDER 가 prod 로 새는 사고 차단)
+#   2) test-gate  : SERVER/AI/ADMIN 단위 테스트 (test-gate.yml 재사용) — 실패 시 중단
+#   3) build      : 3개 서비스 + _bootstrap tarball 빌드 → S3 artifacts 업로드
+#   4) deploy     : SSM RunShellScript → EC2 ec2-pull-and-restart.sh
+#                   (호스트에서 atomic swap + prisma migrate deploy + 자동 롤백)
+#   5) smoke      : Route53 FQDN 외부 스모크 테스트 — 실패 시 워크플로우 실패
+#
+# trigger:
+#   - tag v* 푸시            → 정식 출시 배포 (production)
+#   - workflow_dispatch      → 운영자 수동 (service / dry_run 선택)
+#
+# 인증: OIDC 로 AWS 역할을 가정 — 정적 access key 를 리포에 저장하지 않는다 (PIPA).
+#   필요 GitHub secrets:
+#     AWS_DEPLOY_ROLE_ARN      : OIDC 로 가정할 IAM 역할 ARN
+#     ICONIA_ARTIFACTS_BUCKET  : terraform output artifacts_bucket_name
+#     ICONIA_EC2_INSTANCE_ID   : terraform output ec2_instance_id (또는 비우면 태그 조회)
+#     ICONIA_ROOT_DOMAIN       : 스모크 테스트 대상 도메인
+#     ICONIA_REPO_TOKEN        : sibling private repo checkout 토큰
+###############################################################################
+name: deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      service:
+        description: '배포 대상 서비스'
+        required: true
+        default: all
+        type: choice
+        options: [all, server, ai, admin]
+      dry_run:
+        description: 'true 면 빌드/업로드까지만 (deploy/smoke 생략)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  # 동시에 두 배포가 latest.tar.gz 를 덮어쓰는 race 차단.
+  group: iconia-deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write   # OIDC.
+
+env:
+  AWS_REGION: ap-northeast-2
+  SERVICE: ${{ github.event.inputs.service || 'all' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) preflight — placeholder 검사. release 차단 게이트.
+  # ---------------------------------------------------------------------------
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: '6. CI' }
+      - name: placeholder 검사
+        run: |
+          chmod +x "6. CI/scripts/preflight-placeholders.sh"
+          # ROOT=$GITHUB_WORKSPACE 이면 "6. CI/.preflightignore" 가 자동 로드된다.
+          # sibling 레포는 build 단계에서 다시 함께 검사 — 여기서는 CI 리포만.
+          "6. CI/scripts/preflight-placeholders.sh" "$GITHUB_WORKSPACE"
+
+  # ---------------------------------------------------------------------------
+  # 2) 테스트 게이트 — test-gate.yml 재사용. 실패 시 후속 잡 전부 중단.
+  # ---------------------------------------------------------------------------
+  test-gate:
+    needs: preflight
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      ref: main
+    secrets:
+      ICONIA_REPO_TOKEN: ${{ secrets.ICONIA_REPO_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # 3) build — 3개 서비스 + _bootstrap 빌드 후 S3 업로드.
+  # ---------------------------------------------------------------------------
+  build:
+    needs: test-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - name: Checkout CI 리포
+        uses: actions/checkout@v4
+        with: { path: ICONIA-CI }
+
+      - name: Checkout SERVER
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-SERVER
+      - name: Checkout AI
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-AI
+      - name: Checkout ADMIN
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-ADMIN
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: AWS 자격 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 버전 라벨
+        id: ver
+        run: echo "version=$(date -u +%Y%m%d-%H%M%SZ)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: 빌드 + S3 업로드
+        run: |
+          chmod +x ICONIA-CI/scripts/*.sh
+          ICONIA-CI/scripts/build-and-upload.sh \
+            --service "$SERVICE" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --bucket "${{ secrets.ICONIA_ARTIFACTS_BUCKET }}" \
+            --region "$AWS_REGION" \
+            --version "${{ steps.ver.outputs.version }}"
+
+  # ---------------------------------------------------------------------------
+  # 4) deploy — SSM 트리거. 호스트에서 atomic swap + migrate + 자동 롤백.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    if: github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: AWS 자격 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: SSM 배포 트리거
+        run: |
+          chmod +x scripts/trigger-deploy.sh
+          ARGS=(--service "$SERVICE" --region "$AWS_REGION")
+          [ -n "${{ secrets.ICONIA_EC2_INSTANCE_ID }}" ] && \
+            ARGS+=(--instance-id "${{ secrets.ICONIA_EC2_INSTANCE_ID }}")
+          scripts/trigger-deploy.sh "${ARGS[@]}"
+
+  # ---------------------------------------------------------------------------
+  # 5) smoke — Route53 FQDN 외부 end-to-end 검증.
+  # ---------------------------------------------------------------------------
+  smoke:
+    needs: deploy
+    if: github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: 외부 스모크 테스트
+        run: |
+          chmod +x scripts/post-deploy-smoke.sh
+          scripts/post-deploy-smoke.sh \
+            --root-domain "${{ secrets.ICONIA_ROOT_DOMAIN }}" \
+            --env prod --service "$SERVICE"
+      - name: 출시 요약
+        if: success()
+        run: |
+          echo "## ICONIA 배포 완료 ✅"            >> "$GITHUB_STEP_SUMMARY"
+          echo "- 버전: ${{ needs.build.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 서비스: $SERVICE"               >> "$GITHUB_STEP_SUMMARY"
+          echo "- 스모크 테스트: 통과"            >> "$GITHUB_STEP_SUMMARY"
+      - name: 배포 실패 안내
+        if: failure()
+        run: |
+          echo "::error::스모크 테스트 실패 — EC2 호스트는 자동 롤백을 수행했을 수 있음."
+          echo "확인: CloudWatch ICONIA/Deploy namespace + /iconia/prod/* 로그그룹"
+          exit 1

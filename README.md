@@ -161,6 +161,19 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 | 파일 | trigger | 책임 |
 |---|---|---|
 | `release-preflight.yml` | tag `v*` 푸시 + 매 push (테스트만) | 6 폴더 placeholder 검사 + soul catalog sync (sibling repo 있을 때) + 두 스크립트 unit test |
+| `test-gate.yml` | 매 push / PR / `workflow_call` | **테스트 게이트**. CI 리포 자체 검증(shell 문법 + shellcheck + terraform fmt/validate + preflight unit test) + SERVER/AI/ADMIN 단위·lint·typecheck 테스트. 하나라도 실패 시 배포 차단. `deploy.yml` 이 재사용 호출. |
+| `deploy.yml` | tag `v*` 푸시 / `workflow_dispatch` | **v1.0 자동 배포 파이프라인**. preflight → test-gate → build(3서비스+_bootstrap → S3) → deploy(SSM) → smoke(Route53 E2E). OIDC 로 AWS 인증 (정적 키 미저장). `concurrency` 로 동시 배포 race 차단. `dry_run` 옵션. |
+
+### 2.8 배포 스크립트 — Linux/CI 변종 (`scripts/`)
+
+| 파일 | 책임 |
+|---|---|
+| `build-and-upload.sh` | `build-and-upload.ps1` 의 Linux 등가물. rsync stage + npm ci + admin next build standalone + prisma generate + npm prune + tar + SHA256 + S3 업로드. sibling(`ICONIA-SERVER`) / 숫자 폴더(`2. SERVER`) 두 레이아웃 지원. GitHub Actions runner 에서 동작. |
+| `trigger-deploy.sh` | `trigger-deploy.ps1` 의 Linux 등가물. SSM `AWS-RunShellScript` 발사 + polling. |
+| `post-deploy-smoke.sh` | 배포 후 **외부 end-to-end 스모크 테스트**. ec2-pull-and-restart.sh 의 호스트-내부 healthcheck 와 별개로, Route53 FQDN + TLS + nginx 라우팅까지 검증. `/health`, `/health?deep=1`, admin root, HTTP→HTTPS 리다이렉트. 실패 시 워크플로우 실패 → 운영자 즉시 인지. |
+
+### 2.9 배포 Runbook (`deploy/RUNBOOK.md`)
+1회성 부트스트랩 / 자동 배포(태그·dispatch) / 로컬 배포 / 호스트 동작 / 출시 전 체크리스트 / GitHub secrets / 수동 롤백 / 트러블슈팅.
 
 ---
 
@@ -202,9 +215,16 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 - Push delivery 정본 (Expo 토큰 라이프사이클 + FCM JSON 6m / APNs .p8 12m 회전)
 - Sentry DSN 매핑 (4 프로젝트 + environment / release / PII 마스킹 + 90d retention + PIPA 국외 이전)
 
-### 3.6 CI gate
+### 3.6 CI/CD — 완전 자동 배포 (v1.0)
+- **테스트 게이트** (`test-gate.yml`): SERVER/AI/ADMIN 단위·lint·typecheck 테스트 + CI 리포 자체 검증(shell 문법 / shellcheck / terraform fmt+validate / preflight unit test). 실패 시 배포 차단.
+- **CD 파이프라인** (`deploy.yml`): tag `v*` 또는 수동 dispatch → preflight → test-gate → build → deploy → smoke 의 5단계. 한 단계라도 실패 시 후속 중단.
+- **OIDC 인증**: 정적 AWS access key 를 리포에 저장하지 않음 (PIPA — `id-token: write` + `AWS_DEPLOY_ROLE_ARN`).
+- **동시 배포 차단**: `concurrency: iconia-deploy-prod`.
+- **외부 스모크 테스트** (`post-deploy-smoke.sh`): 배포 직후 Route53 FQDN E2E 검증 — 호스트 내부 자동 롤백과 별개의 2차 그물.
+- Linux 빌드/배포 스크립트 (`build-and-upload.sh` / `trigger-deploy.sh`) — Windows PowerShell 의존 제거.
 - release-preflight workflow (tag v* 시 placeholder + soul catalog sync 검사, miss 시 release 차단)
 - preflight scripts unit test (매 push)
+- 배포 Runbook (`deploy/RUNBOOK.md`) — 1회성 부트스트랩 / 자동·수동 배포 / 체크리스트 / 롤백.
 
 ---
 
@@ -246,9 +266,11 @@ AWS 구성: **Route53 + EC2 + S3 + RDB(PostgreSQL) + EFS** (5종).
 - HW 펌웨어 OTA: firmware S3 버킷에 운영자 PowerShell 업로드 + Server presign read-only — 본 폴더는 자동화 안 함, OTA scheduler 별도 라운드.
 - APP: Expo EAS Build / Submit 별도 트랙 — 본 폴더는 무관. 단, push delivery 정본 (`deploy/aws/push-delivery-policy.md`) 만 본 폴더가 정본.
 
-### 4.8 GitHub Actions 확장
-- [ ] 현재는 release preflight 만. 본 폴더에 1~5 sibling repo 의 CI 호출 (matrix build / test) 미설치.
-- [ ] tag 푸시 시 `build-and-upload.ps1` 의 GitHub-hosted Linux runner 변종 (`build-and-upload.sh`) 으로 GitHub Actions 가 빌드 → S3 업로드 → trigger-deploy 까지 자동화 가능. OIDC 로 AWS 권한 위임 (PIPA 차원에서 access key 정적 저장 회피).
+### 4.8 GitHub Actions 확장 — ✅ v1.0 완료
+- [x] `test-gate.yml` — SERVER/AI/ADMIN 의 단위·lint·typecheck 테스트를 sibling repo checkout 후 실행 (배포 게이트).
+- [x] `build-and-upload.sh` (Linux runner 변종) + `deploy.yml` — 빌드 → S3 업로드 → SSM 배포 → 스모크 테스트 자동화.
+- [x] OIDC 로 AWS 권한 위임 (access key 정적 저장 회피).
+- 남은 운영 과제: GitHub Environment `production` 에 reviewer 승인 게이트 연결 (조직 정책 결정 후), sibling repo 들에 자체 CI 워크플로우 분산 설치.
 
 ---
 

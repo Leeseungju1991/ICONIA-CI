@@ -12,6 +12,10 @@ crash.*.log
 *.tfvars.json
 !*.tfvars.example
 
+# Terraform backend config (계정 ID 포함 — .example 만 커밋)
+backend.hcl
+!backend.hcl.example
+
 # 비밀키 / 인증서 / 자격증명 (보안 위생 - 절대 commit 금지)
 *.pem
 *.key

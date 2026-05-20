@@ -50,26 +50,26 @@ resource "aws_security_group_rule" "rds_from_ec2" {
 resource "aws_db_instance" "postgres" {
   count = var.db_engine_mode == "instance" && length(aws_db_subnet_group.main) > 0 ? 1 : 0
 
-  identifier              = "${local.name_prefix}-db"
-  engine                  = "postgres"
-  engine_version          = "16.4"
-  instance_class          = var.db_instance_class
-  allocated_storage       = var.db_allocated_storage_gb
-  max_allocated_storage   = var.db_allocated_storage_gb * 4
-  storage_type            = "gp3"
-  storage_encrypted       = true
-  db_name                 = var.db_name
-  username                = var.db_username
-  password                = var.db_password
-  db_subnet_group_name    = aws_db_subnet_group.main[0].name
-  vpc_security_group_ids  = [aws_security_group.rds.id]
-  multi_az                = var.env == "prod"
-  publicly_accessible     = false
-  backup_retention_period = var.env == "prod" ? 30 : 7
-  deletion_protection     = var.env == "prod"
-  skip_final_snapshot     = var.env != "prod"
-  copy_tags_to_snapshot   = true
-  apply_immediately       = false
+  identifier                          = "${local.name_prefix}-db"
+  engine                              = "postgres"
+  engine_version                      = "16.4"
+  instance_class                      = var.db_instance_class
+  allocated_storage                   = var.db_allocated_storage_gb
+  max_allocated_storage               = var.db_allocated_storage_gb * 4
+  storage_type                        = "gp3"
+  storage_encrypted                   = true
+  db_name                             = var.db_name
+  username                            = var.db_username
+  password                            = var.db_password
+  db_subnet_group_name                = aws_db_subnet_group.main[0].name
+  vpc_security_group_ids              = [aws_security_group.rds.id]
+  multi_az                            = var.env == "prod"
+  publicly_accessible                 = false
+  backup_retention_period             = var.env == "prod" ? 30 : 7
+  deletion_protection                 = var.env == "prod"
+  skip_final_snapshot                 = var.env != "prod"
+  copy_tags_to_snapshot               = true
+  apply_immediately                   = false
   iam_database_authentication_enabled = true
   performance_insights_enabled        = var.env == "prod"
   enabled_cloudwatch_logs_exports     = ["postgresql"]
@@ -88,19 +88,19 @@ resource "aws_db_instance" "postgres" {
 resource "aws_rds_cluster" "aurora" {
   count = var.db_engine_mode == "aurora-serverless-v2" && length(aws_db_subnet_group.main) > 0 ? 1 : 0
 
-  cluster_identifier      = "${local.name_prefix}-aurora"
-  engine                  = "aurora-postgresql"
-  engine_mode             = "provisioned"
-  engine_version          = "16.4"
-  database_name           = var.db_name
-  master_username         = var.db_username
-  master_password         = var.db_password
-  db_subnet_group_name    = aws_db_subnet_group.main[0].name
-  vpc_security_group_ids  = [aws_security_group.rds.id]
-  storage_encrypted       = true
-  backup_retention_period = var.env == "prod" ? 30 : 7
-  deletion_protection     = var.env == "prod"
-  skip_final_snapshot     = var.env != "prod"
+  cluster_identifier                  = "${local.name_prefix}-aurora"
+  engine                              = "aurora-postgresql"
+  engine_mode                         = "provisioned"
+  engine_version                      = "16.4"
+  database_name                       = var.db_name
+  master_username                     = var.db_username
+  master_password                     = var.db_password
+  db_subnet_group_name                = aws_db_subnet_group.main[0].name
+  vpc_security_group_ids              = [aws_security_group.rds.id]
+  storage_encrypted                   = true
+  backup_retention_period             = var.env == "prod" ? 30 : 7
+  deletion_protection                 = var.env == "prod"
+  skip_final_snapshot                 = var.env != "prod"
   iam_database_authentication_enabled = true
   enabled_cloudwatch_logs_exports     = ["postgresql"]
 

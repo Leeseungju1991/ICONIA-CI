@@ -28,15 +28,22 @@ terraform {
 
   # ---------------------------------------------------------------------------
   # Remote state - S3 + DynamoDB lock.
-  # 사전 1회 수동 부트스트랩:
+  # 사전 1회 수동 부트스트랩 (scripts/bootstrap-aws.ps1 이 자동 생성):
   #   1) S3 bucket: iconia-tfstate-<account_id>
   #      versioning on, BlockPublicAccess all on, SSE-S3 (또는 KMS).
   #   2) DynamoDB table: iconia-tfstate-lock (PK LockID:String, PAY_PER_REQUEST).
   #
-  # backend.hcl 또는 `terraform init -backend-config=bucket=...` 로 주입.
+  # bucket 은 계정 ID 가 들어가 환경마다 다르므로 여기에 하드코딩하지 않는다
+  # (= placeholder 가 release 산출물로 새지 않도록 partial backend 로 둔다).
+  # init 시 주입:
+  #   terraform init \
+  #     -backend-config="bucket=iconia-tfstate-<account_id>" \
+  #     -backend-config="key=iconia/terraform.tfstate" \
+  #     -backend-config="region=ap-northeast-2" \
+  #     -backend-config="dynamodb_table=iconia-tfstate-lock"
+  # 또는 backend.hcl 파일 (gitignore) 사용.
   # ---------------------------------------------------------------------------
   backend "s3" {
-    bucket         = "iconia-tfstate-PLACEHOLDER"
     key            = "iconia/terraform.tfstate"
     region         = "ap-northeast-2"
     dynamodb_table = "iconia-tfstate-lock"
@@ -79,6 +86,6 @@ locals {
 
   # Subnet IDs (신규 생성 또는 기존 주입).
   private_subnet_ids = var.create_network ? aws_subnet.private[*].id : var.private_subnet_ids
-  public_subnet_ids  = var.create_network ? aws_subnet.public[*].id  : var.public_subnet_ids
-  vpc_id             = var.create_network ? aws_vpc.main[0].id       : var.vpc_id
+  public_subnet_ids  = var.create_network ? aws_subnet.public[*].id : var.public_subnet_ids
+  vpc_id             = var.create_network ? aws_vpc.main[0].id : var.vpc_id
 }

@@ -1,0 +1,12 @@
+# backend.hcl.example — terraform init -backend-config=backend.hcl 용.
+#
+# 복사 후 실제 계정 ID 로 채워 backend.hcl 로 저장 (backend.hcl 은 .gitignore 대상).
+# 사용:  terraform init -backend-config=backend.hcl
+#
+# bucket / dynamodb_table 은 scripts/bootstrap-aws.ps1 이 생성한다.
+
+bucket         = "iconia-tfstate-123456789012"   # iconia-tfstate-<account_id>
+key            = "iconia/terraform.tfstate"
+region         = "ap-northeast-2"
+dynamodb_table = "iconia-tfstate-lock"
+encrypt        = true

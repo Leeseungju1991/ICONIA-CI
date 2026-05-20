@@ -34,15 +34,15 @@ locals {
 
   # user-data 에 주입할 변수.
   user_data = templatefile("${path.module}/../ec2-bootstrap/user-data.sh.tftpl", {
-    region            = var.region
-    env               = var.env
-    efs_id            = aws_efs_file_system.persona.id
-    efs_ap_id         = aws_efs_access_point.server_root.id
-    artifacts_bucket  = aws_s3_bucket.artifacts.bucket
-    events_bucket     = aws_s3_bucket.events.bucket
-    exports_bucket    = aws_s3_bucket.exports.bucket
-    firmware_bucket   = aws_s3_bucket.firmware.bucket
-    name_prefix       = local.name_prefix
+    region           = var.region
+    env              = var.env
+    efs_id           = aws_efs_file_system.persona.id
+    efs_ap_id        = aws_efs_access_point.server_root.id
+    artifacts_bucket = aws_s3_bucket.artifacts.bucket
+    events_bucket    = aws_s3_bucket.events.bucket
+    exports_bucket   = aws_s3_bucket.exports.bucket
+    firmware_bucket  = aws_s3_bucket.firmware.bucket
+    name_prefix      = local.name_prefix
     rds_endpoint = (
       length(aws_db_instance.postgres) > 0
       ? aws_db_instance.postgres[0].endpoint
@@ -68,7 +68,7 @@ resource "aws_instance" "main" {
     volume_type           = "gp3"
     volume_size           = var.ec2_root_volume_size_gb
     encrypted             = true
-    delete_on_termination = false  # 운영 데이터 보호. 인스턴스 교체 시 수동 정리.
+    delete_on_termination = false # 운영 데이터 보호. 인스턴스 교체 시 수동 정리.
   }
 
   metadata_options {
@@ -78,7 +78,7 @@ resource "aws_instance" "main" {
     instance_metadata_tags      = "enabled"
   }
 
-  user_data = local.user_data
+  user_data                   = local.user_data
   user_data_replace_on_change = false # user-data 변경만으로 인스턴스 교체 금지 (운영 데이터 보호).
 
   monitoring = true

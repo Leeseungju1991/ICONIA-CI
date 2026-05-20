@@ -8,9 +8,9 @@
 ###############################################################################
 
 locals {
-  events_bucket    = var.events_bucket_name    != "" ? var.events_bucket_name    : "${local.name_prefix}-events-${local.account_id}"
-  exports_bucket   = var.exports_bucket_name   != "" ? var.exports_bucket_name   : "${local.name_prefix}-exports-${local.account_id}"
-  firmware_bucket  = var.firmware_bucket_name  != "" ? var.firmware_bucket_name  : "${local.name_prefix}-firmware-${local.account_id}"
+  events_bucket    = var.events_bucket_name != "" ? var.events_bucket_name : "${local.name_prefix}-events-${local.account_id}"
+  exports_bucket   = var.exports_bucket_name != "" ? var.exports_bucket_name : "${local.name_prefix}-exports-${local.account_id}"
+  firmware_bucket  = var.firmware_bucket_name != "" ? var.firmware_bucket_name : "${local.name_prefix}-firmware-${local.account_id}"
   artifacts_bucket = var.artifacts_bucket_name != "" ? var.artifacts_bucket_name : "${local.name_prefix}-artifacts-${local.account_id}"
 }
 
@@ -212,7 +212,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "firmware" {
 # -----------------------------------------------------------------------------
 resource "aws_s3_bucket" "artifacts" {
   bucket        = local.artifacts_bucket
-  force_destroy = false  # 운영 아티팩트 보존.
+  force_destroy = false # 운영 아티팩트 보존.
   tags          = merge(var.tags, { purpose = "deploy-artifacts" })
 }
 

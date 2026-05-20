@@ -21,8 +21,8 @@ locals {
     length(aws_route53_zone.main) > 0 ? aws_route53_zone.main[0].zone_id : ""
   )
 
-  api_subdomain   = var.env == "prod" ? "api"   : "${var.env}-api"
-  ai_subdomain    = var.env == "prod" ? "ai"    : "${var.env}-ai"
+  api_subdomain   = var.env == "prod" ? "api" : "${var.env}-api"
+  ai_subdomain    = var.env == "prod" ? "ai" : "${var.env}-ai"
   admin_subdomain = var.env == "prod" ? "admin" : "${var.env}-admin"
 }
 
