@@ -64,10 +64,38 @@ resource "aws_s3_bucket_lifecycle_configuration" "events" {
     abort_incomplete_multipart_upload { days_after_initiation = 1 }
   }
 
+  # Phase 8 #24 — voice 를 in/out 으로 분리. legacy "iconia/voice/" prefix 의 30일 정책은
+  # 호환을 위해 유지하되 신규 흐름은 in (7일) / out (30일) 두 정책이 적용된다.
+  # filter prefix 가 더 길고 구체적인 rule 이 lifecycle 평가에서 우선 — S3 evaluation order
+  # 는 prefix length 가 아니라 모든 매칭 rule 의 합집합 동작이므로 prefix 가 겹치지 않도록
+  # "iconia/voice/in/" / "iconia/voice/out/" 와 "iconia/voice/" (in/out 제외) 가 자연 분리됨.
+  # (S3 lifecycle 은 prefix 가 *exact* match — "iconia/voice/" 는 "iconia/voice/in/..." 도
+  # 포괄하므로, 명시적으로 별도 expiration 을 둔 in/out 의 짧은/긴 정책이 추가 적용된다.
+  # 짧은 expiration 이 항상 이기는 구조 → in=7일 우선.)
   rule {
-    id     = "voice-30day-expire"
+    id     = "voice-legacy-30day-expire"
     status = "Enabled"
     filter { prefix = "iconia/voice/" }
+    expiration { days = 30 }
+    noncurrent_version_expiration { noncurrent_days = 7 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+
+  # voice in (STT 입력 사용자 원본) — 7일 후 즉시 만료. STT 변환 후 보존 가치 낮음.
+  rule {
+    id     = "voice-in-7day-expire"
+    status = "Enabled"
+    filter { prefix = "iconia/voice/in/" }
+    expiration { days = 7 }
+    noncurrent_version_expiration { noncurrent_days = 1 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+
+  # voice out (TTS 응답 산출물) — 30일 유지. presigned URL 만료/재생 보장 윈도우 커버.
+  rule {
+    id     = "voice-out-30day-expire"
+    status = "Enabled"
+    filter { prefix = "iconia/voice/out/" }
     expiration { days = 30 }
     noncurrent_version_expiration { noncurrent_days = 7 }
     abort_incomplete_multipart_upload { days_after_initiation = 1 }
