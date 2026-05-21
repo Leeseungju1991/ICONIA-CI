@@ -189,3 +189,63 @@ output "alarm_names" {
   description = "본 stack 에서 생성된 알람 이름."
   value       = module.alarms.alarm_names
 }
+
+###############################################################################
+# Phase 8 #18 — Gemini cost CloudWatch alarms.
+#
+# Server cloudWatchCostPublisher 가 IconiaServer/AiCostUsdHourly namespace 로
+# 5분 주기 PutMetricData. 다음 2종 알람으로 외부 API 비용 폭주 차단.
+#
+# 1) iconia_ai_cost_hourly_high — 시간당 cost > var.ai_cost_hourly_usd_threshold.
+# 2) iconia_ai_cost_daily_high  — 일일 cost > var.ai_cost_daily_usd_threshold.
+#
+# 알람은 alarms 모듈의 동일 SNS topic 으로 라우팅 (PagerDuty 통합).
+# Budgets 알림(budgets.tf 의 별도 topic) 과 채널 분리 — 운영 alarm 과 billing
+# alert 의 노이즈를 섞지 않는다.
+###############################################################################
+
+variable "ai_cost_hourly_usd_threshold" {
+  description = "시간당 AI(Gemini) 누적 비용 임계 (USD). 초과 시 SNS alert."
+  type        = number
+  default     = 20
+}
+
+variable "ai_cost_daily_usd_threshold" {
+  description = "일일 AI(Gemini) 누적 비용 임계 (USD). 초과 시 SNS alert."
+  type        = number
+  default     = 200
+}
+
+# 시간당 — 12개 5분 datapoint Sum > threshold.
+resource "aws_cloudwatch_metric_alarm" "iconia_ai_cost_hourly_high" {
+  alarm_name          = "iconia-ai-cost-hourly-high"
+  alarm_description   = "[COST] Gemini 시간당 누적 cost > $${var.ai_cost_hourly_usd_threshold}. 비용 폭주 의심."
+  namespace           = "IconiaServer/AiCostUsdHourly"
+  metric_name         = "AiCostUsdTotal"
+  statistic           = "Sum"
+  period              = 3600 # 1시간.
+  evaluation_periods  = 1
+  threshold           = var.ai_cost_hourly_usd_threshold
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { purpose = "ai-cost-guard" })
+}
+
+# 일일 — 24h period Sum > threshold. period 86400 은 CloudWatch 표준 (1일 metric math 없이도).
+resource "aws_cloudwatch_metric_alarm" "iconia_ai_cost_daily_high" {
+  alarm_name          = "iconia-ai-cost-daily-high"
+  alarm_description   = "[COST] Gemini 일일 누적 cost > $${var.ai_cost_daily_usd_threshold}. 월간 budget 초과 임박 신호."
+  namespace           = "IconiaServer/AiCostUsdHourly"
+  metric_name         = "AiCostUsdTotal"
+  statistic           = "Sum"
+  period              = 86400 # 1일.
+  evaluation_periods  = 1
+  threshold           = var.ai_cost_daily_usd_threshold
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { purpose = "ai-cost-guard" })
+}
