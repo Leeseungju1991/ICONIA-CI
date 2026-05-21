@@ -489,3 +489,32 @@ pwsh -File scripts\trigger-deploy.ps1 -Service server
 > **포트 주의** — 로컬은 SERVER:8080 / AI:3001 / ADMIN:3000 (개발 관례).
 > AWS 측 systemd 는 SERVER:8080 / AI:8081 / ADMIN:3000 이며 nginx 가 앞단에서
 > TLS 종단 + 라우팅을 담당한다. AI 포트 차이는 로컬/운영 의도된 분리다.
+
+---
+
+## 5. 최근 라운드 (Phase 5~11) 누적 변경
+
+Terraform / 알람 / S3 lifecycle / systemd 운영 자산을 SLO·비용 가시성 라운드에 맞춰 확장.
+무중단 배포 5계층(체크섬·atomic swap·테스트 게이트·헬스체크·자동 롤백)은 그대로 유지.
+
+### 5.1 신규 Terraform
+- `asg.tf` · `alb.tf` · `launch_template.tf` — ASG·ALB 진입 분리 (단일 EC2 호환 토글 유지)
+- `rds.tf` — **RDS Proxy** 추가 (connection pool, Multi-AZ failover 정합)
+- `elasticache.tf` — Multi-AZ Redis (Server 의 quota/idempotency/rate Redis 외부화와 정합)
+- `cloudwatch_dashboard.tf` — **`iconia_slo` Dashboard 6 widget** (5xx / p95 / fallback / 비용 / 큐 / BLE)
+- `budgets.tf` — 월간 USD budget + **Gemini cost alarms 2종** (hourly / daily)
+
+### 5.2 `alarms.tf` 추가 알람
+- `iconia_device_silent_24h_high` — Server `deviceSilenceMetric` 와 정합
+- `iconia_ai_cost_hourly_high` / `iconia_ai_cost_daily_high` — AI `cost_usd` / `cost_krw` 차원 forward 와 정합
+- SLO 알람 3종 — 5xx / p95 / `ai_fallback` rate (CloudWatch SLO 보드 정합)
+
+### 5.3 S3 lifecycle / systemd
+- voice S3 lifecycle 분리: **in 7일 / out 30일 / legacy 30일** (Server 의 voice prefix in/out 분리와 정합)
+- `iconia-efs-janitor.service` + `iconia-efs-janitor.timer` — daily **03:00 KST** EFS tmp janitor
+
+### 5.4 신규 문서
+| 문서 | 내용 |
+|---|---|
+| `docs/scale-up-runbook.md` | ASG/ALB 도입 시 단일 EC2 → fleet 전환 runbook |
+| `terraform/README.md` | Terraform 모듈 정본 (변수/출력/의존성 정리) |
