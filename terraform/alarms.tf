@@ -249,3 +249,39 @@ resource "aws_cloudwatch_metric_alarm" "iconia_ai_cost_daily_high" {
   ok_actions          = [module.alarms.sns_topic_arn]
   tags                = merge(var.tags, { purpose = "ai-cost-guard" })
 }
+
+###############################################################################
+# Phase 9 #1 — Device silent CloudWatch alarm.
+#
+# Server deviceSilenceMetric 가 IconiaServer/DeviceSilence namespace 로 5분 주기
+# PutMetricData (DeviceSilent3hCount / DeviceSilent24hCount / DeviceSilent7dCount).
+#
+# 24h 이상 silent 인 활성 device 수가 임계 (기본 10대) 를 넘으면 SNS alert.
+# HW multipart 업로드 실패 시 펌웨어가 로컬 저장 없이 포기하므로 (HW 명세 §5.3),
+# 본 알람은 양산 fleet 의 silent 폭주 (Wi-Fi/펌웨어 회귀/서버 장애 모두 포괄적 신호) 를 잡는다.
+#
+# 5분 주기 datapoint Sum 통계는 의미가 없다 — 게이지에 가까운 metric.
+# Average 통계로 1시간 평균이 임계 초과 시 trip.
+###############################################################################
+
+variable "device_silent_24h_threshold" {
+  description = "24h 이상 silent 인 활성 device 수 임계 (대). 초과 시 SNS alert."
+  type        = number
+  default     = 10
+}
+
+resource "aws_cloudwatch_metric_alarm" "iconia_device_silent_24h_high" {
+  alarm_name          = "iconia-device-silent-24h-high"
+  alarm_description   = "[HW] 24h 이상 silent 인 활성 device 수 > ${var.device_silent_24h_threshold}대 (1h 평균). Wi-Fi 회귀 / 펌웨어 OTA 회귀 / 서버 ingest 다운 의심."
+  namespace           = "IconiaServer/DeviceSilence"
+  metric_name         = "DeviceSilent24hCount"
+  statistic           = "Average"
+  period              = 3600 # 1시간 평균 (5분 datapoint 12개 평균).
+  evaluation_periods  = 1
+  threshold           = var.device_silent_24h_threshold
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { purpose = "device-silence-guard" })
+}
