@@ -21,7 +21,9 @@ module "alarms" {
   pagerduty_endpoint   = var.alarm_pagerduty_endpoint
   cloudwatch_namespace = var.alarm_cloudwatch_namespace
   audit_namespace      = var.alarm_audit_namespace
-  alb_arn_suffix       = var.alarm_alb_arn_suffix
+
+  # Phase 6: ALB 도입 → ARN suffix 자동 주입. 변수가 비어 있으면 ALB 값 사용.
+  alb_arn_suffix = var.alarm_alb_arn_suffix != "" ? var.alarm_alb_arn_suffix : aws_lb.iconia.arn_suffix
 
   # RDS identifier 는 main stack 의 rds.tf 출력에서 자동 주입.
   rds_instance_identifier = (
@@ -30,10 +32,105 @@ module "alarms" {
     : ""
   )
 
-  redis_cluster_id                    = var.alarm_redis_cluster_id
+  # Phase 6: Redis 도입 → cluster id 자동 주입.
+  redis_cluster_id = (
+    var.alarm_redis_cluster_id != ""
+    ? var.alarm_redis_cluster_id
+    : aws_elasticache_replication_group.iconia_redis.id
+  )
   rds_freeable_memory_threshold_bytes = var.alarm_rds_freeable_memory_threshold_bytes
 
   tags = merge(var.tags, { service = "iconia-server", managed = "terraform" })
+}
+
+###############################################################################
+# Phase 6 SLO 알람 — ALB/ASG 도입 후 3종 추가.
+# 1) api_5xx_rate > 1% for 5min
+# 2) api_latency_p95 > 3000ms for 10min
+# 3) ai_fallback_rate > 10% for 5min (Server aiHealthTracker 가 publish)
+#
+# 모두 module.alarms 의 SNS topic 으로 라우팅 (이메일 + PagerDuty).
+###############################################################################
+
+# 1) ALB target 5xx 비율 > 1% (5분).
+resource "aws_cloudwatch_metric_alarm" "slo_api_5xx_rate" {
+  alarm_name          = "iconia-server-slo-5xx-rate-1pct"
+  alarm_description   = "[SLO] ALB target 5xx 비율 > 1% (5분). 양산 운영 SLO 1차 게이트."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  threshold           = 1.0
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true" })
+
+  metric_query {
+    id          = "ratio"
+    expression  = "100 * (errors / IF(total > 0, total, 1))"
+    label       = "5xx_rate_percent"
+    return_data = true
+  }
+
+  metric_query {
+    id          = "errors"
+    return_data = false
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "HTTPCode_Target_5XX_Count"
+      stat        = "Sum"
+      period      = 300
+      dimensions  = { LoadBalancer = aws_lb.iconia.arn_suffix }
+    }
+  }
+
+  metric_query {
+    id          = "total"
+    return_data = false
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      stat        = "Sum"
+      period      = 300
+      dimensions  = { LoadBalancer = aws_lb.iconia.arn_suffix }
+    }
+  }
+}
+
+# 2) API p95 latency > 3000ms (10분).
+resource "aws_cloudwatch_metric_alarm" "slo_api_latency_p95" {
+  alarm_name          = "iconia-server-slo-latency-p95-3s"
+  alarm_description   = "[SLO] ALB target p95 latency > 3000ms (10분 연속). 사용자 체감 응답속도 SLO."
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "TargetResponseTime"
+  extended_statistic  = "p95"
+  period              = 300
+  evaluation_periods  = 2 # 5분 × 2 = 10분.
+  threshold           = 3.0 # 초 단위 (TargetResponseTime).
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true" })
+
+  dimensions = { LoadBalancer = aws_lb.iconia.arn_suffix }
+}
+
+# 3) AI fallback rate > 10% (5분). Server aiHealthTracker 가
+#    IconiaAdmin/AiFallbackRate 로 publish (gauge, 0~100).
+resource "aws_cloudwatch_metric_alarm" "slo_ai_fallback_rate" {
+  alarm_name          = "iconia-server-slo-ai-fallback-rate-10pct"
+  alarm_description   = "[SLO] AI fallback 비율 > 10% (5분). Gemini upstream 장애 또는 persona-ai 지연 의심."
+  namespace           = "IconiaAdmin"
+  metric_name         = "AiFallbackRate"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 10
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true" })
 }
 
 # -----------------------------------------------------------------------------

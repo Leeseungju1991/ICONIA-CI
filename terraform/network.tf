@@ -135,25 +135,10 @@ resource "aws_security_group" "ec2" {
   tags = merge(var.tags, { Name = "${local.name_prefix}-ec2-sg" })
 }
 
-resource "aws_security_group_rule" "ec2_http" {
-  type              = "ingress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = var.http_allowed_cidrs
-  security_group_id = aws_security_group.ec2.id
-  description       = "HTTP (redirect to HTTPS via nginx)."
-}
-
-resource "aws_security_group_rule" "ec2_https" {
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = var.http_allowed_cidrs
-  security_group_id = aws_security_group.ec2.id
-  description       = "HTTPS - nginx reverse proxy."
-}
+# Phase 6: ALB 도입과 함께 EC2 SG 의 public 80/443 인바운드 규칙은 제거되었다.
+# 기존 ec2_http / ec2_https 규칙이 state 에 남아 있다면 `terraform state rm`
+# 으로 분리 후 콘솔에서 수동 정리 또는 본 apply 가 자동 제거. 트래픽은 모두
+# ALB → ec2_from_alb_* (alb.tf) 규칙을 거친다.
 
 resource "aws_security_group_rule" "ec2_ssh" {
   count             = var.ec2_key_pair_name != "" && length(var.ssh_allowed_cidrs) > 0 ? 1 : 0

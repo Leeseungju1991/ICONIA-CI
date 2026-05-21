@@ -127,3 +127,149 @@ resource "aws_rds_cluster_instance" "aurora_writer" {
   publicly_accessible          = false
   performance_insights_enabled = var.env == "prod"
 }
+
+# -----------------------------------------------------------------------------
+# RDS Proxy (Phase 6 신설).
+#
+# ASG 인스턴스 수가 늘면 Server / AI 가 각자 PG connection pool 을 들고 있어
+# RDS 최대 connection 한계 (db.t4g.medium ≈ 87) 를 초과한다. Proxy 가 backend
+# pool 을 공유 + multiplex 해 위험 차단.
+#
+# 인증: Secrets Manager 의 master password (seed-db-password.ps1 이 생성).
+# RDS Proxy 가 secret 을 GetSecretValue 로 읽어 backend DB 에 로그인.
+# 클라이언트(EC2)는 IAM auth 또는 동일 secret 으로 Proxy 에 접속.
+# require_tls=true — Proxy → DB 와 클라이언트 → Proxy 모두 TLS 강제.
+#
+# instance 모드일 때만 활성 (Aurora 는 read replica + writer endpoint 로 충분).
+# -----------------------------------------------------------------------------
+
+# Proxy 가 사용할 secret. seed-db-password.ps1 이 생성한 이름과 정합.
+# Secrets Manager ARN 의 6자리 random suffix 는 data source 로 정확 lookup.
+data "aws_secretsmanager_secret" "rds_master" {
+  count = var.db_engine_mode == "instance" ? 1 : 0
+  name  = "iconia/${var.env}/db/master_password"
+}
+
+locals {
+  # IAM 권한용 wildcard ARN (suffix 미정 시).
+  rds_master_secret_arn_pattern = "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:iconia/${var.env}/db/master_password*"
+}
+
+# Proxy 가 Secrets Manager 에서 master password 를 읽을 수 있도록 별도 role.
+data "aws_iam_policy_document" "rds_proxy_assume" {
+  count = var.db_engine_mode == "instance" ? 1 : 0
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["rds.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "rds_proxy" {
+  count              = var.db_engine_mode == "instance" ? 1 : 0
+  name               = "${local.name_prefix}-rds-proxy-role"
+  assume_role_policy = data.aws_iam_policy_document.rds_proxy_assume[0].json
+  tags               = var.tags
+}
+
+data "aws_iam_policy_document" "rds_proxy_secret" {
+  count = var.db_engine_mode == "instance" ? 1 : 0
+
+  statement {
+    sid       = "GetMasterSecret"
+    actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+    resources = [local.rds_master_secret_arn_pattern]
+  }
+}
+
+resource "aws_iam_role_policy" "rds_proxy_secret" {
+  count  = var.db_engine_mode == "instance" ? 1 : 0
+  name   = "${local.name_prefix}-rds-proxy-secret"
+  role   = aws_iam_role.rds_proxy[0].id
+  policy = data.aws_iam_policy_document.rds_proxy_secret[0].json
+}
+
+# Proxy 전용 Security Group — EC2 SG 로부터 5432 만.
+resource "aws_security_group" "rds_proxy" {
+  count       = var.db_engine_mode == "instance" ? 1 : 0
+  name        = "${local.name_prefix}-rds-proxy-sg"
+  description = "ICONIA RDS Proxy - 5432 from EC2 SG only."
+  vpc_id      = local.vpc_id
+
+  egress {
+    description = "RDS Proxy → backend DB."
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # SG 간 egress 제한은 별도 rule 로 (선택).
+  }
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-rds-proxy-sg" })
+}
+
+resource "aws_security_group_rule" "rds_proxy_from_ec2" {
+  count                    = var.db_engine_mode == "instance" ? 1 : 0
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ec2.id
+  security_group_id        = aws_security_group.rds_proxy[0].id
+  description              = "Postgres from EC2 (ASG) SG only."
+}
+
+# RDS SG 에 Proxy SG 추가 허용 (Proxy → backend DB).
+resource "aws_security_group_rule" "rds_from_proxy" {
+  count                    = var.db_engine_mode == "instance" ? 1 : 0
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.rds_proxy[0].id
+  security_group_id        = aws_security_group.rds.id
+  description              = "Postgres from RDS Proxy SG."
+}
+
+resource "aws_db_proxy" "iconia_pg" {
+  count = var.db_engine_mode == "instance" && length(aws_db_instance.postgres) > 0 ? 1 : 0
+
+  name                   = "${local.name_prefix}-pg-proxy"
+  engine_family          = "POSTGRESQL"
+  idle_client_timeout    = 1800
+  require_tls            = true
+  role_arn               = aws_iam_role.rds_proxy[0].arn
+  vpc_subnet_ids         = local.private_subnet_ids
+  vpc_security_group_ids = [aws_security_group.rds_proxy[0].id]
+  debug_logging          = false
+
+  auth {
+    auth_scheme = "SECRETS"
+    iam_auth    = "DISABLED"
+    secret_arn  = data.aws_secretsmanager_secret.rds_master[0].arn
+    description = "Master credentials from Secrets Manager."
+  }
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-pg-proxy" })
+}
+
+resource "aws_db_proxy_default_target_group" "iconia_pg" {
+  count         = var.db_engine_mode == "instance" && length(aws_db_proxy.iconia_pg) > 0 ? 1 : 0
+  db_proxy_name = aws_db_proxy.iconia_pg[0].name
+
+  connection_pool_config {
+    max_connections_percent      = 80
+    max_idle_connections_percent = 20
+    connection_borrow_timeout    = 120
+    # PG 명령어 중 pinning 강제 trigger (예: SET, prepared statement) — 모두 안전 동작.
+    init_query = "SET application_name = 'iconia-via-rdsproxy'"
+  }
+}
+
+resource "aws_db_proxy_target" "iconia_pg" {
+  count                  = var.db_engine_mode == "instance" && length(aws_db_proxy.iconia_pg) > 0 ? 1 : 0
+  db_instance_identifier = aws_db_instance.postgres[0].id
+  db_proxy_name          = aws_db_proxy.iconia_pg[0].name
+  target_group_name      = aws_db_proxy_default_target_group.iconia_pg[0].name
+}

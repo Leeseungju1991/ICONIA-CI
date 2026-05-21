@@ -73,12 +73,61 @@ variable "public_subnet_ids" {
 }
 
 # -----------------------------------------------------------------------------
-# EC2 — 단일 인스턴스에 Server/AI/Admin 3개 systemd 서비스 + nginx 리버스 프록시.
+# EC2 / ASG — Phase 6 부터는 launch template + ASG + ALB. nginx 는 제거되고
+# ALB 가 TLS 종단·라우팅을 담당한다 (admin/ai/api 모두 단일 ALB hostname 라우팅).
 # -----------------------------------------------------------------------------
 variable "ec2_instance_type" {
-  description = "운영 EC2 인스턴스 타입. AI(Genome) 추론 부하 고려. prod 는 m6i.large 이상 권장."
+  description = "ASG launch template 의 인스턴스 타입. Phase 6: t3.medium 권장 (×2 minimum)."
   type        = string
-  default     = "t3.large"
+  default     = "t3.medium"
+}
+
+variable "asg_min_size" {
+  description = "ASG 최소 인스턴스 수. 가용성 위해 2 (Multi-AZ) 권장."
+  type        = number
+  default     = 2
+}
+
+variable "asg_max_size" {
+  description = "ASG 최대 인스턴스 수. 양산 트래픽 대비."
+  type        = number
+  default     = 6
+}
+
+variable "asg_desired_capacity" {
+  description = "ASG 평시 desired. min 과 동일 권장 (target tracking 이 위로 끌어올림)."
+  type        = number
+  default     = 2
+}
+
+variable "asg_target_cpu_percent" {
+  description = "Target tracking CPU utilization 임계 (%)."
+  type        = number
+  default     = 50
+}
+
+variable "asg_scale_in_cooldown_seconds" {
+  description = "Scale-in 보호 cooldown (초). 스케일-인 직후 5분간은 추가 감축 금지 (warm 인스턴스 stale 방지)."
+  type        = number
+  default     = 300
+}
+
+variable "acm_certificate_arn" {
+  description = "ALB HTTPS listener 가 사용할 ACM 인증서 ARN (ap-northeast-2 리전). 비우면 ACM lookup 또는 listener 비활성."
+  type        = string
+  default     = ""
+}
+
+variable "alb_idle_timeout_seconds" {
+  description = "ALB idle timeout. 인형/앱의 streaming 응답 최대 길이 고려."
+  type        = number
+  default     = 60
+}
+
+variable "alb_internal" {
+  description = "ALB 내부/외부. 기본은 외부(false)."
+  type        = bool
+  default     = false
 }
 
 variable "ec2_root_volume_size_gb" {
