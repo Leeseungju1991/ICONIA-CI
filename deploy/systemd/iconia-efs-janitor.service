@@ -1,0 +1,46 @@
+[Unit]
+# Phase 8 #16 — EFS tmp 파일 자동 정리.
+# UPLOAD_TMP_DIR + imageDir 에 누적된 24h 이상 stale 임시 파일 unlink.
+# 정상 종료 후 .timer 가 daily 03:00 KST 재호출.
+Description=ICONIA EFS tmp janitor (24h stale upload cleanup)
+After=network-online.target iconia-server.service
+
+[Service]
+Type=oneshot
+User=iconia
+Group=iconia
+WorkingDirectory=/opt/iconia/server
+
+EnvironmentFile=/etc/iconia.env
+EnvironmentFile=-/etc/iconia.server.env
+
+# UPLOAD_TMP_DIR / IMAGE_DIR 는 iconia-server 와 동일 ENV 를 공유한다.
+# --max-age-hours=24 (기본). 운영자가 늘리려면 --max-age-hours=48 override.
+ExecStart=/usr/bin/node /opt/iconia/server/scripts/efs-tmp-janitor.js --max-age-hours=24
+
+# 비파괴적 명령 — exit 1 (errors[]>0) 이면 fail 알람 트리거.
+SuccessExitStatus=0
+
+# systemd hardening — 임시 디렉토리만 write 가능.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/mnt/efs/iconia /tmp
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=iconia-efs-janitor

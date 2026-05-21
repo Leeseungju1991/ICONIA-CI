@@ -1,0 +1,17 @@
+[Unit]
+# Phase 8 #16 — EFS tmp janitor 매일 03:00 KST 실행.
+# 03:00 KST = 18:00 UTC (전일). systemd timer 는 OS timezone 기준이므로 EC2 서버 timezone
+# (보통 UTC 또는 Asia/Seoul) 에 맞춰 OnCalendar 표현을 조정.
+# 본 파일은 KST 기준 03:00 — EC2 의 timezone 이 Asia/Seoul 이라고 가정 (user-data 에서 설정).
+# 만약 UTC 라면 OnCalendar=*-*-* 18:00:00 으로 변경.
+Description=ICONIA EFS tmp janitor — daily 03:00 KST
+Requires=iconia-efs-janitor.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=iconia-efs-janitor.service
+
+[Install]
+WantedBy=timers.target
