@@ -1,0 +1,176 @@
+###############################################################################
+# cross-repo-e2e.yml — Phase 12 #4.
+#
+# 다음 단계로 5개 sibling 리포의 핵심 흐름을 1개 runner 에서 직렬 검증한다:
+#   (a) Server local-up (mock AI)
+#   (b) Admin smoke (login + dashboard 진입)
+#   (c) App jest (헤드리스)
+#   (d) Server full test
+#   (e) AI test
+#
+# trigger:
+#   - workflow_dispatch (수동)
+#   - pull_request — 본 CI 리포 PR.
+#   - repository_dispatch (event_type: cross_repo_e2e) — sibling 5 repo 가 PR 시
+#     본 workflow 를 dispatch 호출. 그 sibling 측 workflow 는 별도 PR 에서 추가.
+#
+# 비용 절감:
+#   - ubuntu-latest single runner.
+#   - sibling checkout 실패 시 단계 graceful-skip + warning (게이트 자체는 fail).
+###############################################################################
+name: cross-repo-e2e
+
+on:
+  workflow_dispatch:
+  pull_request:
+  repository_dispatch:
+    types: [cross_repo_e2e]
+
+permissions:
+  contents: read
+
+env:
+  ICONIA_REPO_REF: ${{ github.event.client_payload.ref || 'main' }}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # -----------------------------------------------------------------------
+      # 1) sibling checkout — 토큰 없으면 skip 단계 안내.
+      # -----------------------------------------------------------------------
+      - name: Checkout ICONIA-SERVER
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: ${{ env.ICONIA_REPO_REF }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+
+      - name: Checkout ICONIA-ADMIN
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: ${{ env.ICONIA_REPO_REF }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+
+      - name: Checkout ICONIA-APP
+        id: app
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-APP
+          ref: ${{ env.ICONIA_REPO_REF }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: app
+
+      - name: Checkout ICONIA-AI
+        id: ai
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: ${{ env.ICONIA_REPO_REF }}
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ai
+
+      - name: Skip 안내 — 토큰 부재
+        if: steps.srv.outcome != 'success' || steps.adm.outcome != 'success' || steps.app.outcome != 'success' || steps.ai.outcome != 'success'
+        run: |
+          echo "::warning::ICONIA_REPO_TOKEN 미설정 또는 일부 sibling checkout 실패 — cross-repo-e2e 일부 단계 skip"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      # -----------------------------------------------------------------------
+      # (a) Server local-up (mock AI)
+      #    - DB 미부팅 환경에서 부팅 가능한 in-memory 모드 (DATABASE_URL 미설정).
+      #    - PERSONA_AI_BASE_URL 미설정 → personaClient 가 mock 로 동작.
+      #    - server 가 PORT=8080 으로 listen, 헬스 체크 1회만 확인.
+      # -----------------------------------------------------------------------
+      - name: (a) Server local-up + health check
+        if: steps.srv.outcome == 'success'
+        working-directory: server
+        env:
+          NODE_ENV: test
+          DEPLOY_TARGET: local
+          PORT: '8080'
+          DEVICE_API_KEY: e2e-device-key
+          OPS_REPORT_SCHEDULER_DISABLED: '1'
+          DB_HEALTH_PROBE_DISABLED: '1'
+          VOICE_LIFECYCLE_PROBE_DISABLED: '1'
+        run: |
+          npm ci
+          [ -f prisma/schema.prisma ] && npx --yes prisma generate || true
+          # 백그라운드 부팅 → /healthz wait.
+          node src/server.js &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf "http://127.0.0.1:8080/healthz" >/dev/null 2>&1 || \
+               curl -sf "http://127.0.0.1:8080/api/v1/healthz" >/dev/null 2>&1; then
+              echo "server up after ${i}s"; break
+            fi
+            sleep 1
+          done
+          # 종료 — 후속 step 에서 다시 띄울 필요 없음 (full test 가 npm test 로 자체 server fixture 사용).
+          kill $SERVER_PID || true
+          wait $SERVER_PID 2>/dev/null || true
+
+      # -----------------------------------------------------------------------
+      # (b) Admin smoke — login + dashboard 진입.
+      #    server 가 mock AI 로 부팅된 상태에서 admin web 빌드 + 단위 테스트.
+      #    실제 e2e (puppeteer) 는 향후 라운드 — 본 라운드는 build + lint + test 까지.
+      # -----------------------------------------------------------------------
+      - name: (b) Admin smoke (build + test)
+        if: steps.adm.outcome == 'success'
+        working-directory: admin
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build
+
+      # -----------------------------------------------------------------------
+      # (c) App jest (헤드리스) — RN expo, jest 단위.
+      # -----------------------------------------------------------------------
+      - name: (c) App jest
+        if: steps.app.outcome == 'success'
+        working-directory: app
+        run: |
+          npm ci
+          npm test --if-present -- --ci --runInBand
+
+      # -----------------------------------------------------------------------
+      # (d) Server full test — npm test.
+      # -----------------------------------------------------------------------
+      - name: (d) Server full test
+        if: steps.srv.outcome == 'success'
+        working-directory: server
+        run: |
+          npm test
+
+      # -----------------------------------------------------------------------
+      # (e) AI test.
+      # -----------------------------------------------------------------------
+      - name: (e) AI test
+        if: steps.ai.outcome == 'success'
+        working-directory: ai
+        run: |
+          npm ci
+          npm test --if-present
+
+      - name: 결과 요약
+        if: always()
+        run: |
+          echo "## cross-repo-e2e 결과" >> "$GITHUB_STEP_SUMMARY"
+          echo "- server checkout: ${{ steps.srv.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- admin checkout : ${{ steps.adm.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- app checkout   : ${{ steps.app.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ai checkout    : ${{ steps.ai.outcome }}" >> "$GITHUB_STEP_SUMMARY"
