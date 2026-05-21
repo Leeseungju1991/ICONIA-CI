@@ -1,0 +1,73 @@
+###############################################################################
+# api-contract-lint.yml — Phase 12 #11.
+#
+# 5. ADMIN/docs/api_contract.md 의 `❌ 미구현` / `<!-- TODO verify -->` 카운트가
+# baseline (현 14) 을 초과하면 fail. neue 미구현 항목 도입을 차단하는 ratchet.
+#
+# trigger:
+#   - workflow_call (다른 워크플로우가 게이트로 호출)
+#   - workflow_dispatch (수동 실행)
+#   - push (main) — baseline 회귀 즉시 감지.
+#
+# sibling 레포 (ICONIA-SERVER, ICONIA-ADMIN) 두 개 checkout 필요:
+#   - SERVER: scripts/check-api-contract.js 보유.
+#   - ADMIN:  docs/api_contract.md 보유.
+###############################################################################
+name: api-contract-lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    secrets:
+      ICONIA_REPO_TOKEN:
+        description: "sibling private repo checkout 토큰"
+        required: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout ICONIA-SERVER
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+
+      - name: Checkout ICONIA-ADMIN
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+
+      - name: Skip 안내 — 토큰 부재
+        if: steps.srv.outcome != 'success' || steps.adm.outcome != 'success'
+        run: |
+          echo "::warning::ICONIA_REPO_TOKEN 미설정 — api-contract-lint skip"
+
+      - name: Setup Node
+        if: steps.srv.outcome == 'success' && steps.adm.outcome == 'success'
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Run lint script
+        if: steps.srv.outcome == 'success' && steps.adm.outcome == 'success'
+        env:
+          API_CONTRACT_BASELINE: '14'
+        run: |
+          node server/scripts/check-api-contract.js \
+            --path "$GITHUB_WORKSPACE/admin/docs/api_contract.md"
