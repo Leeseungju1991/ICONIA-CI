@@ -66,6 +66,10 @@ SERVER_PORT="$(cfg LOCAL_SERVER_PORT 8080)"
 AI_PORT="$(cfg LOCAL_AI_PORT 3001)"
 ADMIN_PORT="$(cfg LOCAL_ADMIN_PORT 3000)"
 AI_BASE_URL="$(cfg LOCAL_AI_BASE_URL "http://127.0.0.1:${AI_PORT}")"
+# 폰(EAS APK) / ESP32 펌웨어가 PC SERVER 호출할 LAN IP. .env 의 LOCAL_LAN_IP 로 갱신.
+LAN_IP="$(cfg LOCAL_LAN_IP 192.168.0.30)"
+LAN_SERVER_URL="http://${LAN_IP}:${SERVER_PORT}"
+LAN_AI_URL="http://${LAN_IP}:${AI_PORT}"
 
 DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
 
@@ -93,10 +97,11 @@ APP_DIR="$(resolve_dir 'ICONIA-APP' '4. APP')"
 echo "================ ICONIA localhost 기동 ================"
 echo "  target     : local"
 echo "  repo root  : $REPO_ROOT"
-echo "  SERVER     : $SERVER_DIR -> http://127.0.0.1:${SERVER_PORT}"
-echo "  AI         : $AI_DIR -> http://127.0.0.1:${AI_PORT}"
+echo "  SERVER     : $SERVER_DIR -> http://127.0.0.1:${SERVER_PORT}  (LAN: $LAN_SERVER_URL)"
+echo "  AI         : $AI_DIR -> http://127.0.0.1:${AI_PORT}  (LAN: $LAN_AI_URL)"
 echo "  ADMIN      : $ADMIN_DIR -> http://127.0.0.1:${ADMIN_PORT}"
 echo "  PostgreSQL : ${PG_HOST}:${PG_PORT}/${PG_DB} (docker=${PG_DOCKER})"
+echo "  LAN IP     : ${LAN_IP}  (phone/ESP32 → PC). 변경 시 6.CI/.env 의 LOCAL_LAN_IP."
 echo "======================================================="
 
 # ----- 1) PostgreSQL 16 -----
@@ -153,9 +158,20 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
       || log "WARN: prisma migrate deploy 실패 — 최초 스키마면 'prisma migrate dev' 수동 1회"
   fi
 fi
+# 로컬 dev 전용 고정 토큰 (SERVER ↔ AI 양쪽에 동일 값 주입해야 인증 통과).
+LOCAL_INTERNAL_TOKEN='iconia_local_dev_internal_token_do_not_use_in_prod_aaaaaaaa'
+LOCAL_HMAC_SECRET='078b5b1564caeb2f1979a760f524250745cda1822210ead6790fcc71e6f0a5a1'
+CORS_LIST="http://localhost:${ADMIN_PORT},http://127.0.0.1:${ADMIN_PORT},http://${LAN_IP}:${ADMIN_PORT},http://${LAN_IP}:${SERVER_PORT}"
+
 start_service server "$SERVER_DIR" "npm run dev" \
   DEPLOY_TARGET=local NODE_ENV=development PORT="$SERVER_PORT" \
-  DATABASE_URL="$DATABASE_URL" AI_BASE_URL="$AI_BASE_URL"
+  DATABASE_URL="$DATABASE_URL" AI_BASE_URL="$AI_BASE_URL" \
+  PERSONA_AI_BASE_URL="$AI_BASE_URL" \
+  PERSONA_AI_INTERNAL_TOKEN="$LOCAL_INTERNAL_TOKEN" \
+  PERSONA_AI_HMAC_SECRET="$LOCAL_HMAC_SECRET" \
+  SERVER_BASE_URL="$LAN_SERVER_URL" \
+  CORS_ORIGINS="$CORS_LIST" \
+  CLOUDWATCH_ENABLED=false AWS_REGION=ap-northeast-2
 
 # ----- 3) AI -----
 if [ "$SKIP_INSTALL" -eq 0 ]; then
@@ -164,7 +180,10 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 fi
 start_service ai "$AI_DIR" "npm run dev" \
   DEPLOY_TARGET=local NODE_ENV=development PORT="$AI_PORT" \
-  DATABASE_URL="$DATABASE_URL"
+  DATABASE_URL="$DATABASE_URL" \
+  PERSONA_AI_INTERNAL_TOKEN="$LOCAL_INTERNAL_TOKEN" \
+  PERSONA_AI_HMAC_SECRET="$LOCAL_HMAC_SECRET" \
+  AI_METRICS_TOKEN='iconia_local_dev_metrics_token_32chars_min_aaaaaaaaaa'
 
 # ----- 4) ADMIN -----
 if [ "$SKIP_INSTALL" -eq 0 ]; then
@@ -183,7 +202,10 @@ if [ "$INCLUDE_APP" -eq 1 ]; then
       ( cd "$APP_DIR" && npm install )
     fi
     start_service app "$APP_DIR" "npx expo start" \
-      EXPO_PUBLIC_DEPLOY_TARGET=local EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:${SERVER_PORT}"
+      EXPO_PUBLIC_DEPLOY_TARGET=local \
+      EXPO_PUBLIC_API_BASE_URL="$LAN_SERVER_URL" \
+      EXPO_PUBLIC_PERSONA_AI_BASE_URL="$LAN_AI_URL" \
+      EXPO_PUBLIC_LAN_IP="$LAN_IP"
   else
     log "WARN: APP 폴더 없음 — --include-app 건너뜀"
   fi
@@ -191,8 +213,8 @@ fi
 
 echo ""
 echo "================ 기동 완료 ================"
-echo "  SERVER  http://127.0.0.1:${SERVER_PORT}/health"
-echo "  AI      http://127.0.0.1:${AI_PORT}/health"
+echo "  SERVER  http://127.0.0.1:${SERVER_PORT}/health   (LAN: ${LAN_SERVER_URL}/health)"
+echo "  AI      http://127.0.0.1:${AI_PORT}/health     (LAN: ${LAN_AI_URL}/health)"
 echo "  ADMIN   http://127.0.0.1:${ADMIN_PORT}/"
 echo "  로그    tail -f ${RUN_DIR}/<service>.log"
 echo "  종료    scripts/local-down.sh"

@@ -107,6 +107,11 @@ $serverPort = Cfg 'LOCAL_SERVER_PORT' '8080'
 $aiPort     = Cfg 'LOCAL_AI_PORT'     '3001'
 $adminPort  = Cfg 'LOCAL_ADMIN_PORT'  '3000'
 $aiBaseUrl  = Cfg 'LOCAL_AI_BASE_URL' "http://127.0.0.1:$aiPort"
+# 폰(EAS APK) / ESP32 펌웨어가 PC 의 SERVER 를 호출할 때 쓰는 LAN IP. .env 의 한 줄로 갱신.
+# 127.0.0.1 은 폰 입장에서 자기 자신 — 같은 Wi-Fi 의 PC IP 가 필요.
+$lanIp        = Cfg 'LOCAL_LAN_IP' '192.168.0.30'
+$lanServerUrl = "http://${lanIp}:${serverPort}"
+$lanAiUrl     = "http://${lanIp}:${aiPort}"
 
 $databaseUrl = "postgresql://${pgUser}:${pgPass}@${pgHost}:${pgPort}/${pgDb}?schema=public"
 
@@ -132,10 +137,11 @@ if (-not $adminDir)  { throw "ADMIN 폴더를 찾을 수 없습니다 (ICONIA-AD
 Write-Host "================ ICONIA localhost 기동 ================" -ForegroundColor Cyan
 Write-Host "  target      : local"
 Write-Host "  repo root   : $RepoRoot"
-Write-Host "  SERVER      : $serverDir  -> http://127.0.0.1:$serverPort"
-Write-Host "  AI          : $aiDir  -> http://127.0.0.1:$aiPort"
+Write-Host "  SERVER      : $serverDir  -> http://127.0.0.1:$serverPort  (LAN: $lanServerUrl)"
+Write-Host "  AI          : $aiDir  -> http://127.0.0.1:$aiPort  (LAN: $lanAiUrl)"
 Write-Host "  ADMIN       : $adminDir  -> http://127.0.0.1:$adminPort"
 Write-Host "  PostgreSQL  : ${pgHost}:${pgPort}/${pgDb}  (docker=$pgDocker)"
+Write-Host "  LAN IP      : $lanIp  (phone/ESP32 → PC). 변경 시 6.CI/.env 의 LOCAL_LAN_IP."
 Write-Host "=======================================================" -ForegroundColor Cyan
 
 # ----- 1) PostgreSQL 16 -----
@@ -194,12 +200,32 @@ function Start-Service-Window {
 }
 
 # ----- 2) SERVER 준비 + 기동 -----
+# 로컬 dev 전용 고정 토큰 (prefix 로 dev 임을 명시 — 실수로 prod 유출 시 즉시 식별 가능).
+# SERVER ↔ AI 양쪽에 동일 값 주입해야 Server→AI 호출이 인증 통과.
+$localInternalToken = 'iconia_local_dev_internal_token_do_not_use_in_prod_aaaaaaaa'
+# Server/AI 양쪽 .env 가 이미 보유한 HMAC 값. local-up 이 명시 주입해서 .env 의 placeholder 함정 차단.
+$localHmacSecret    = '078b5b1564caeb2f1979a760f524250745cda1822210ead6790fcc71e6f0a5a1'
+
 $serverEnv = @{
-  DEPLOY_TARGET = 'local'
-  NODE_ENV      = 'development'
-  PORT          = $serverPort
-  DATABASE_URL  = $databaseUrl
-  AI_BASE_URL   = $aiBaseUrl
+  DEPLOY_TARGET             = 'local'
+  NODE_ENV                  = 'development'
+  PORT                      = $serverPort
+  DATABASE_URL              = $databaseUrl
+  # SERVER → AI 호출은 같은 PC 내 localhost (LAN IP 불필요, 더 빠름).
+  AI_BASE_URL               = $aiBaseUrl
+  PERSONA_AI_BASE_URL       = $aiBaseUrl
+  PERSONA_AI_INTERNAL_TOKEN = $localInternalToken
+  PERSONA_AI_HMAC_SECRET    = $localHmacSecret
+  # SERVER 의 self URL — 펌웨어/폰에 callback URL(presigned upload, OTA manifest) 발급 시 사용.
+  # 폰/ESP32 가 다시 SERVER 로 콜백하려면 LAN IP 여야 함 (127.0.0.1 은 디바이스 자기 자신).
+  SERVER_BASE_URL           = $lanServerUrl
+  # CORS — ADMIN 브라우저(PC localhost:3000) + LAN 접근 모두 허용.
+  # APK 는 native 라 Origin 헤더 미전송, CORS 무관 (브라우저만 해당).
+  CORS_ORIGINS              = "http://localhost:${adminPort},http://127.0.0.1:${adminPort},http://${lanIp}:${adminPort},http://${lanIp}:${serverPort}"
+  # CloudWatch / SNS publisher 들이 AWS credentials 없이 PutMetricData 호출하지 않게 차단.
+  # config.js: CLOUDWATCH_ENABLED=false → metrics.client=null → cost/device_silence publisher dryRun.
+  CLOUDWATCH_ENABLED        = 'false'
+  AWS_REGION                = 'ap-northeast-2'
 }
 if (-not $SkipInstall) {
   Push-Location $serverDir
@@ -224,10 +250,15 @@ Start-Service-Window -Title 'SERVER' -WorkDir $serverDir `
 
 # ----- 3) AI 준비 + 기동 -----
 $aiEnv = @{
-  DEPLOY_TARGET = 'local'
-  NODE_ENV      = 'development'
-  PORT          = $aiPort
-  DATABASE_URL  = $databaseUrl
+  DEPLOY_TARGET             = 'local'
+  NODE_ENV                  = 'development'
+  PORT                      = $aiPort
+  DATABASE_URL              = $databaseUrl
+  # SERVER 와 동일 값 주입 — .env 의 placeholder(CHANGE_ME_INTERNAL_TOKEN) 덮어쓰기.
+  PERSONA_AI_INTERNAL_TOKEN = $localInternalToken
+  PERSONA_AI_HMAC_SECRET    = $localHmacSecret
+  # NODE_ENV=development 라 32자 강제는 안 걸리지만, 안전망으로 32자 이상 dev 토큰 주입.
+  AI_METRICS_TOKEN          = 'iconia_local_dev_metrics_token_32chars_min_aaaaaaaaaa'
 }
 if (-not $SkipInstall) {
   Push-Location $aiDir
@@ -263,9 +294,14 @@ if ($IncludeApp) {
   if (-not $appDir) {
     Write-Warning "APP 폴더를 찾을 수 없어 -IncludeApp 을 건너뜁니다."
   } else {
+    # Expo dev server (`npx expo start` + QR scan) 경로 — 폰이 PC LAN IP 로 SERVER 호출.
+    # EAS Custom Dev Client APK 빌드 경로는 4. APP/eas.json 의 development profile env 가 정본.
+    # 양쪽 동일 키/값 → QR 경로와 APK 경로 동작 일치.
     $appEnv = @{
-      EXPO_PUBLIC_DEPLOY_TARGET      = 'local'
-      EXPO_PUBLIC_API_BASE_URL       = "http://127.0.0.1:$serverPort"
+      EXPO_PUBLIC_DEPLOY_TARGET        = 'local'
+      EXPO_PUBLIC_API_BASE_URL         = $lanServerUrl
+      EXPO_PUBLIC_PERSONA_AI_BASE_URL  = $lanAiUrl
+      EXPO_PUBLIC_LAN_IP               = $lanIp
     }
     if (-not $SkipInstall) {
       Push-Location $appDir
@@ -282,8 +318,8 @@ if ($IncludeApp) {
 
 Write-Host ""
 Write-Host "================ 기동 완료 ================" -ForegroundColor Cyan
-Write-Host "  SERVER  http://127.0.0.1:$serverPort/health"
-Write-Host "  AI      http://127.0.0.1:$aiPort/health"
+Write-Host "  SERVER  http://127.0.0.1:$serverPort/health   (LAN: $lanServerUrl/health)"
+Write-Host "  AI      http://127.0.0.1:$aiPort/health     (LAN: $lanAiUrl/health)"
 Write-Host "  ADMIN   http://127.0.0.1:$adminPort/"
 if ($IncludeApp -and $appDir) { Write-Host "  APP     Expo dev server (QR 코드는 APP 창 참조)" }
 Write-Host ""
