@@ -61,6 +61,16 @@ db_username             = "iconia_admin"
 # ----- EFS -----
 efs_throughput_mode = "elastic"   # bursting / provisioned / elastic.
 
+# ----- Server runtime (claim/lease + event store backend) -----
+# server.js:849~850 의 INSTANCE_ID / ANALYSIS_CLAIM_LEASE_MS / EVENT_STORE_BACKEND
+# 환경변수를 user-data 가 /etc/iconia.env 에 주입한다.
+#
+# event_store_backend: "fs" (단일 EC2 / EFS atomic 파일, 기본)
+#                      "prisma" (ASG N 인스턴스 race-free Postgres event_store)
+#   단계적 cutover 절차: docs/event-store-cutover.md
+event_store_backend     = "fs"
+analysis_claim_lease_ms = 300000     # 5분. 인스턴스 죽으면 다른 인스턴스가 이 시간 이후 재claim.
+
 # ----- Tags -----
 tags = {
   project = "iconia"

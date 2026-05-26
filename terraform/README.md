@@ -91,6 +91,19 @@ Server 의 `.env.aws` (또는 EC2 user-data 의 inject_database_url) 가 본 값
 
 대시보드: CloudWatch > Dashboards > `iconia-<env>-slo`
 
+## Server runtime 변수 (claim/lease + event store)
+
+`variables.tf` 의 두 변수는 user-data → `/etc/iconia.env` 경유로 server 런타임에
+주입된다. `INSTANCE_ID` 자체는 user-data 가 IMDSv2 로 직접 fetch (인스턴스별
+다르므로 terraform 변수 불가).
+
+| 변수 | 기본 | 의미 |
+|---|---|---|
+| `event_store_backend` | `"fs"` | EventStore 백엔드. `fs` (단일 EC2 / EFS atomic) \| `prisma` (ASG N race-free Postgres). |
+| `analysis_claim_lease_ms` | `300000` | analysis claim lease (ms). 인스턴스가 죽으면 다른 인스턴스가 이 시간 이후 event 재claim. |
+
+cutover 절차 (단일 EC2 → ASG): `docs/event-store-cutover.md`.
+
 ## 운영 변경 시 참고
 
 - Launch Template 변경 → ASG `instance_refresh` 가 rolling 으로 신규 인스턴스 교체.

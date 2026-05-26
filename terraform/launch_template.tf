@@ -57,6 +57,10 @@ locals {
     rds_username       = var.db_username
     root_domain        = var.root_domain
     cw_agent_ssm_param = aws_ssm_parameter.cloudwatch_agent_config.name
+    # Server claim/lease + event store backend (server.js:849~850 정합).
+    # INSTANCE_ID 는 user-data 에서 IMDSv2 로 직접 fetch (terraform 으로 주입 불가 — 인스턴스별 다름).
+    event_store_backend     = var.event_store_backend
+    analysis_claim_lease_ms = var.analysis_claim_lease_ms
   })
 }
 

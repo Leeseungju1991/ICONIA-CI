@@ -262,6 +262,32 @@ variable "hosted_zone_id" {
 }
 
 # -----------------------------------------------------------------------------
+# Server application-side runtime — claim/lease, event store backend.
+# server.js:849~850 의 INSTANCE_ID / ANALYSIS_CLAIM_LEASE_MS / EVENT_STORE_BACKEND
+# 환경변수를 user-data 가 /etc/iconia.env 에 주입. INSTANCE_ID 자체는 EC2 instance-id
+# 를 IMDSv2 로 받아 user-data 가 채우므로 여기서는 변수 없음.
+# -----------------------------------------------------------------------------
+variable "event_store_backend" {
+  description = "Server EventStore 백엔드. 'fs' (단일 EC2 / EFS atomic 파일) | 'prisma' (ASG N 인스턴스 race-free Postgres event_store)."
+  type        = string
+  default     = "fs"
+  validation {
+    condition     = contains(["fs", "prisma"], var.event_store_backend)
+    error_message = "event_store_backend must be 'fs' or 'prisma'."
+  }
+}
+
+variable "analysis_claim_lease_ms" {
+  description = "Server analysis claim lease 시간(ms). 인스턴스가 죽으면 다른 인스턴스가 이 시간 이후 event 재claim. 기본 300000(5분)."
+  type        = number
+  default     = 300000
+  validation {
+    condition     = var.analysis_claim_lease_ms >= 30000 && var.analysis_claim_lease_ms <= 3600000
+    error_message = "analysis_claim_lease_ms must be between 30000 (30s) and 3600000 (1h)."
+  }
+}
+
+# -----------------------------------------------------------------------------
 # 공통 태그.
 # -----------------------------------------------------------------------------
 variable "tags" {
