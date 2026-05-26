@@ -1,6 +1,6 @@
-# ICONIA-CI
+# ICONIA CI (인프라 · 배포 · 운영 정본)
 
-ICONIA 시스템의 **6번 레포 = 통합 CI/CD·인프라 정본**.
+ICONIA 시스템의 **6번 레포 = 통합 CI/CD · AWS 인프라 · 운영 정본**.
 
 ICONIA 는 6개 레포로 구성된다.
 
@@ -8,30 +8,17 @@ ICONIA 는 6개 레포로 구성된다.
 |---|---|---|---|
 | 1 | HW | 디바이스 펌웨어 | OTA (firmware S3 버킷, 별도 트랙) |
 | 2 | SERVER | Node.js Express API | **본 레포가 AWS EC2 로 배포** |
-| 3 | AI | Genome 추론 서비스 | **본 레포가 AWS EC2 로 배포** |
+| 3 | AI | Genome / Gemini 추론 서비스 | **본 레포가 AWS EC2 로 배포** |
 | 4 | APP | Expo 모바일 앱 | EAS Build / Submit (별도 트랙) |
 | 5 | ADMIN | Next.js 관리 콘솔 | **본 레포가 AWS EC2 로 배포** |
-| 6 | **CI** | **인프라(Terraform)·배포 파이프라인·운영 정본 — 본 레포** | — |
+| 6 | **CI** | **인프라(Terraform) · 배포 파이프라인 · 운영 정본 — 본 레포** | — |
 
-본 레포(ICONIA-CI)는 **SERVER / AI / ADMIN 3개를 AWS 단일 EC2 호스트로
-무중단 배포**하는 Terraform IaC, 빌드·배포 스크립트, GitHub Actions 파이프라인,
-CloudWatch / Sentry / Push 운영 정본을 담는다.
-
-**설계 목표**: `localhost 동작 확인 → 아주 간단한 수정 → AWS 실배포 즉시 출시`.
-localhost ↔ AWS 전환은 `.env` 의 **`DEPLOY_TARGET` 한 줄(`local` / `aws`)** 로 한다.
-
-```
-.env  →  DEPLOY_TARGET=local   →  scripts/local-up.ps1   (전체 로컬 기동)
-      →  DEPLOY_TARGET=aws     →  scripts/aws-deploy.ps1 (실배포 → 출시)
-```
-
-원격: `https://github.com/Leeseungju1991/ICONIA-CI` (main 브랜치만).
+설계 목표: **`localhost 동작 확인 → 아주 간단한 수정 → AWS 실배포 즉시 출시`**.
+전환은 `.env` 의 **`DEPLOY_TARGET` 한 줄 (`local` / `aws`)** 로 한다.
 
 ---
 
-## 1. 서버 설계 구조
-
-AWS 인프라 전체와 6개 레포의 배포 대상 매핑.
+## 1. 구조도
 
 ```
                           [ 사용자 / 디바이스 / 운영자 ]
@@ -42,36 +29,44 @@ AWS 인프라 전체와 6개 레포의 배포 대상 매핑.
                                 health check: /health?deep=1
                                       │
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ VPC 10.42.0.0/16  (ap-northeast-2)                                            │
-│                                                                               │
-│  ┌── Public Subnet (AZ-a) ───────────┐   ┌── Public Subnet (AZ-c) ─────────┐ │
-│  │  Internet Gateway                  │   │                                 │ │
-│  │  ┌──────────────────────────────┐  │   │   (Multi-AZ 예비 / ALB 도입시)  │ │
-│  │  │ EC2  iconia-<env>-host  + EIP │  │   │                                 │ │
-│  │  │  ┌────────────────────────┐  │  │   └─────────────────────────────────┘ │
+│ VPC 10.42.0.0/16  (ap-northeast-2)                                          │
+│                                                                             │
+│  ┌── Public Subnet (AZ-a) ───────────┐   ┌── Public Subnet (AZ-c) ─────────┐│
+│  │  Internet Gateway                  │   │                                 ││
+│  │  ┌──────────────────────────────┐  │   │   (Multi-AZ 예비 / ALB 도입시)  ││
+│  │  │ EC2  iconia-<env>-host  + EIP │  │   │                                 ││
+│  │  │  ┌────────────────────────┐  │  │   └─────────────────────────────────┘│
 │  │  │  │ nginx :80→:443 (TLS)   │  │  │                                       │
-│  │  │  │  rate-limit / HSTS/CSP │  │  │   ┌── Private Subnet (AZ-a / AZ-c) ──┐ │
-│  │  │  ├────────────────────────┤  │  │   │                                  │ │
-│  │  │  │ systemd:                │  │  │   │  RDS PostgreSQL 16  (Multi-AZ)   │ │
-│  │  │  │  iconia-server :8080 ◄──┼──┼──┼───┼──► (3.AI / 2.SERVER 공용)        │ │
-│  │  │  │  iconia-ai     :8081    │  │  │   │                                  │ │
-│  │  │  │  iconia-admin  :3000    │  │  │   │  EFS  persona  (encrypted)       │ │
-│  │  │  └────────────────────────┘  │  │   │   access point server_root       │ │
-│  │  │  CloudWatch Agent             │  │   │   /mnt/efs/iconia (NFS 2049)     │ │
-│  │  └──────────────────────────────┘  │   └──────────────────────────────────┘ │
+│  │  │  │  rate-limit / HSTS/CSP │  │  │   ┌── Private Subnet (AZ-a / AZ-c) ──┐│
+│  │  │  ├────────────────────────┤  │  │   │                                  ││
+│  │  │  │ systemd:                │  │  │   │  RDS PostgreSQL 16  (Multi-AZ)   ││
+│  │  │  │  iconia-server :8080 ◄──┼──┼──┼───┼──► (3.AI / 2.SERVER 공용)        ││
+│  │  │  │  iconia-ai     :8081    │  │  │   │                                  ││
+│  │  │  │  iconia-admin  :3000    │  │  │   │  EFS  persona  (encrypted)       ││
+│  │  │  └────────────────────────┘  │  │   │   access point per-user-space    ││
+│  │  │  CloudWatch Agent             │  │   │   /mnt/efs/iconia (NFS 2049)     ││
+│  │  └──────────────────────────────┘  │   └──────────────────────────────────┘│
 │  └────────────────────────────────────┘                                       │
-│        │ NAT Gateway → IGW (outbound)                                          │
+│        │ NAT Gateway → IGW (outbound)                                         │
 └─────────────────────────────────────────────────────────────────────────────┘
          │                                  │                         │
          ▼                                  ▼                         ▼
 ┌──────────────────┐         ┌───────────────────────────┐   ┌──────────────────┐
 │ S3 (4 버킷)      │         │ Secrets Manager           │   │ CloudWatch       │
 │  events          │         │  iconia/<env>/db/         │   │  /iconia/<env>/* │
-│  exports         │         │   master_password         │   │   log group 7종  │
-│  firmware  ◄─ 1.HW OTA     │  iconia/<env>/sentry/*    │   │  ICONIA/* metric │
-│  artifacts ◄─ 배포 산출물  │  (회전 Lambda hook)        │   │  alarm + SNS     │
-└──────────────────┘         └───────────────────────────┘   │  Dashboard       │
-                                                              └──────────────────┘
+│  exports         │         │   master_password (Lambda │   │   log group 7종  │
+│  firmware  ◄─ 1.HW OTA     │   rotator: rds_password_  │   │  ICONIA/* metric │
+│  artifacts ◄─ 배포 산출물  │   rotator.py)             │   │  alarm + SNS     │
+└──────────────────┘         │  iconia/<env>/sentry/*    │   │  Dashboard       │
+                              └───────────────────────────┘   └──────────────────┘
+                                            │
+                                            ▼
+                              ┌───────────────────────────┐
+                              │ Quotas Auto-Lift Lambda    │
+                              │ (quotas-auto-lift.tf)      │
+                              │ + EFS Userspace Lambda     │
+                              │ (efs-user-access-points.tf)│
+                              └───────────────────────────┘
 
 배포 대상 매핑
   2. SERVER  ──build──▶  S3 artifacts/server/   ──EC2 pull──▶  systemd iconia-server :8080
@@ -82,480 +77,186 @@ AWS 인프라 전체와 6개 레포의 배포 대상 매핑.
   4. APP     ───────────────────────────────────────────────  Expo EAS Build (별도 트랙)
 ```
 
-**구성 요소**
-
-| 계층 | 리소스 | Terraform |
+| 계층 | 리소스 | Terraform 파일 |
 |---|---|---|
 | 진입 | Route53 hosted zone + api/ai/admin A record + deep health check | `route53.tf` |
 | 네트워크 | VPC / public·private subnet × 2 AZ / IGW / NAT GW / SG | `network.tf` |
 | 컴퓨트 | EC2 단일 호스트(Server+AI+Admin systemd) + EIP + user-data | `ec2.tf` / `ec2-bootstrap/` |
-| 데이터 | RDS PostgreSQL 16 (instance / Aurora Serverless v2 분기, Multi-AZ on prod) | `rds.tf` |
-| 영속성 | EFS persona (encrypted, IA 30d, backup) + access point | `efs.tf` |
+| 컴퓨트 (확장) | ASG / ALB / launch template — 단일 EC2 호환 토글 유지 | `asg.tf` / `alb.tf` / `launch_template.tf` |
+| 데이터 | RDS PostgreSQL 16 (instance / Aurora Serverless v2 분기, Multi-AZ on prod) + RDS Proxy | `rds.tf` |
+| 캐시 | ElastiCache Redis Multi-AZ (Server 의 quota/idempotency/rate 외부화 정합) | `elasticache.tf` |
+| 영속성 | EFS persona (encrypted, IA 30d, backup) + 사용자별 access point | `efs.tf` / `efs-user-access-points.tf` |
 | 저장소 | S3 events / exports / firmware / artifacts (SSE + BlockPublicAccess) | `s3.tf` |
 | 권한 | EC2 instance role (S3 / Secrets / CW / EFS / RDS connect) | `iam.tf` |
-| 가시성 | log group 7종 / PII metric filter / Dashboard / Logs Insights | `observability.tf` / `alarms.tf` |
+| 가시성 | log group 7종 / PII metric filter / Dashboard / Logs Insights / Budgets | `observability.tf` / `alarms.tf` / `cloudwatch_dashboard.tf` / `budgets.tf` |
+| Lambda 운영 자산 | RDS password rotator / EFS userspace provisioner / GCP quotas auto-lift | `lambda/` + `rds-password-rotation.tf` / `quotas-auto-lift.tf` |
 | DR | Multi-AZ failover SSM Automation Document 2종 | `ssm-runbook.tf` |
 
 ---
 
-## 2. 동작 시나리오
+## 2. 동작 설명 (5줄)
 
-### 2.1 정상 배포 시나리오 (코드 push → 출시)
-
-```
-[개발자]                [GitHub Actions / deploy.yml]              [AWS]
-   │
-   │ 1) localhost 동작 확인
-   │    pwsh -File scripts/local-up.ps1
-   │    → SERVER/AI/ADMIN 로컬 기동, 동작 검증
-   │
-   │ 2) 간단한 수정 (True/false 수준) + git push
-   │ 3) git tag v1.2.3 && git push origin v1.2.3
-   ▼
-   ┌──────────────────────────────────────────────────────┐
-   │ deploy.yml 자동 실행 (5단계 게이트)                   │
-   │                                                       │
-   │  ① preflight  : 6레포 placeholder 검사               │
-   │                 (미채운 PLACEHOLDER 가 prod 로 새는   │
-   │                  사고 차단) — 실패 시 전체 중단       │
-   │                                                       │
-   │  ② test-gate  : SERVER/AI/ADMIN 단위·lint·typecheck  │
-   │                 + CI 자체 검증(shell/terraform)       │
-   │                 → 하나라도 실패 시 배포 차단          │
-   │                                                       │
-   │  ③ build      : 3서비스 + _bootstrap tarball 빌드     │
-   │                 robocopy/rsync → npm ci → admin       │
-   │                 next build standalone → prisma        │
-   │                 generate → npm prune → tar + SHA256   │
-   │                 → S3 artifacts/<svc>/latest.tar.gz    │
-   │                                                       │
-   │  ④ deploy     : SSM RunShellScript → EC2             │
-   │                 ec2-pull-and-restart.sh              │
-   │                                                       │
-   │  ⑤ smoke      : Route53 FQDN 외부 E2E 검증           │
-   └──────────────────────────────────────────────────────┘
-                              │
-                              ▼ (④ EC2 호스트 내부 동작)
-   ┌──────────────────────────────────────────────────────┐
-   │ a) inject_database_url                                │
-   │    Secrets Manager → /etc/iconia.{server,ai}.env     │
-   │ b) latest.tar.gz pull + SHA256 검증                   │
-   │    (부분 업로드 / 네트워크 손상 차단)                 │
-   │ c) atomic swap — mv 한 번에 신/구 교체 (다운타임 <1s) │
-   │    + .old.<ts> 백업 (최근 3개 보존)                   │
-   │ d) npm ci --omit=dev                                  │
-   │ e) prisma migrate deploy (server 한정, 순차 마이그레)  │
-   │ f) systemctl restart iconia-<svc>                     │
-   │ g) 헬스 프로브 30s — is-active + HTTP /health         │
-   │    → healthy 면 배포 성공                             │
-   └──────────────────────────────────────────────────────┘
-                              │ healthy
-                              ▼
-   ⑤ Route53 FQDN E2E: /health, /health?deep=1, admin root,
-      HTTP→HTTPS 리다이렉트 → 전부 2xx/3xx → 출시 완료 ✅
-```
-
-**무중단 보장 5계층**
-
-1. **체크섬** — SHA256 사이드카로 부분 업로드 차단.
-2. **원자 swap** — `mv` 한 번에 신/구 교체, 다운타임 < 1s.
-3. **테스트 게이트** — `test-gate.yml` 실패 시 배포 잡 진입 자체 차단.
-4. **헬스체크** — restart 후 30s 내 `is-active` + HTTP `/health` 통과 필수.
-5. **자동 롤백** — 헬스체크 실패 시 `.old.<ts>` 로 swap-back 후 재기동.
-
-### 2.2 롤백 시나리오
-
-```
-배포 ④ 후 헬스체크 실패 (restart 30s 내 is-active/HTTP 미통과)
-   │
-   ▼
-ec2-pull-and-restart.sh 자동 롤백:
-   1. mv /opt/iconia/<svc>        → /opt/iconia/<svc>.failed.<ts>  (실패본 보존)
-   2. mv /opt/iconia/<svc>.old.<ts> → /opt/iconia/<svc>            (직전본 복원)
-   3. systemctl restart iconia-<svc>
-   4. 재헬스체크
-        ├─ healthy  → 롤백 성공. 워크플로우는 실패 종료(운영자 인지) +
-        │             실패본은 .failed.<ts> 로 점검 가능
-        └─ unhealthy→ CRITICAL. CloudWatch ICONIA/Deploy/RollbackFailed
-                      메트릭 송출 → 알람 → 운영자 즉시 개입
-   │
-   ▼
-⑤ smoke 단계도 Route53 FQDN 에서 2차로 실패 감지 → 워크플로우 실패
-```
-
-**수동 롤백** (특정 버전으로 되돌릴 때): S3 의 과거 `<version>.tar.gz` 를
-`latest.tar.gz` 로 복사 후 재배포 트리거.
-
-```bash
-aws s3 cp s3://<bucket>/server/<version>.tar.gz        s3://<bucket>/server/latest.tar.gz
-aws s3 cp s3://<bucket>/server/<version>.tar.gz.sha256 s3://<bucket>/server/latest.tar.gz.sha256
-scripts/trigger-deploy.sh --service server
-```
-
-장애 유형별(RDS/EFS/EC2 AZ) 상세 절차: `deploy/aws/multi-az-failover-runbook.md`
-및 SSM Automation Document(`terraform/ssm-runbook.tf`).
+- 코드 push → tag 만 붙이면 GitHub Actions 가 6개 레포 placeholder 검사 → 테스트 → 빌드 → S3 업로드 → EC2 무중단 swap → Route53 외부 스모크까지 자동 진행한다.
+- EC2 한 호스트 위에 SERVER · AI · ADMIN 세 서비스가 systemd 로 떠 있고 nginx 가 앞단에서 TLS 종단과 라우팅을 담당한다.
+- 데이터는 RDS(PostgreSQL) · ElastiCache(Redis) · EFS(페르소나) · S3(이미지/펌웨어/배포 산출물) 로 분리되고 모두 암호화 + 백업이 적용된다.
+- 배포 실패 시 5단계 가드(체크섬·atomic swap·테스트 게이트·헬스체크 30초·자동 롤백) 가 다운타임 1초 이내로 직전 버전을 복원한다.
+- 로컬에서는 `pwsh scripts/local-up.ps1` 한 번으로 PostgreSQL 16 컨테이너 + SERVER + AI + ADMIN (+APP) 이 한꺼번에 뜬다.
 
 ---
 
-## 3. localhost 기준 프로젝트 전체 동작 PowerShell 커맨드
+## 3. 기능
 
-Windows PowerShell 기준. ICONIA 모노레포(`1. HW` ~ `6. CI`)를 한 부모 폴더에
-둔 상태를 가정한다. 직전 통합테스트에서 검증된 절차
-(PostgreSQL 16 + SERVER :8080 + AI :3001 + ADMIN :3000 + APP)를 그대로 표현.
+### 3.1 인프라 (Terraform)
+- VPC / Subnet / NAT / SG 전체 설계 (`network.tf`)
+- EC2 단일 호스트(현재 운영) + ASG/ALB launch template (확장 토글) (`ec2.tf`, `asg.tf`, `alb.tf`, `launch_template.tf`)
+- RDS PostgreSQL 16 Multi-AZ + RDS Proxy (`rds.tf`)
+- ElastiCache Redis Multi-AZ (`elasticache.tf`)
+- EFS Standard + IA 30일 정책 + 사용자별 Access Point (`efs.tf`, `efs-user-access-points.tf`)
+- S3 4 버킷(events / exports / firmware / artifacts) + SSE + BlockPublicAccess + lifecycle (`s3.tf`)
+- Route53 hosted zone + 3 A record + deep health check (`route53.tf`)
+- IAM EC2 instance role (S3 / Secrets / CW / EFS / RDS connect 최소 권한) (`iam.tf`)
+- CloudWatch log group 7종 + dashboard `iconia_slo` 6 widget + Logs Insights (`observability.tf`, `cloudwatch_dashboard.tf`)
+- 알람 정의 (5xx / p95 / fallback / Gemini cost hourly·daily / device silent / OTA / BLE / 배터리) (`alarms.tf`)
+- AWS Budgets (`budgets.tf`)
+- SSM Automation Document — Multi-AZ failover 2종 (`ssm-runbook.tf`)
 
-### 3.1 최초 1회 — `.env` 작성 (단일 토글)
+### 3.2 Lambda 운영 자산
+- **RDS password rotator** (`lambda/rds_password_rotator.py`, `rds-password-rotation.tf`)
+- **EFS userspace provisioner** (`lambda/efs_userspace_provisioner.py`, `efs-user-access-points.tf`) — 사용자별 SOUL 격리 정합
+- **GCP Quotas auto-lift** (`lambda/gcp_quotas_auto_lift.py`, `quotas-auto-lift.tf`) — Gemini API 한도 사전 상향
+
+### 3.3 systemd / nginx 운영 자산
+- systemd unit 3종 (`deploy/systemd/iconia-server.service` / `iconia-ai.service` / `iconia-admin.service`) — hardening 풀세트 + `EnvironmentFile=/etc/iconia.env`
+- nginx 리버스 프록시 conf + 공통 proxy snippet (`deploy/nginx/`)
+- EFS tmp janitor service + timer (daily 03:00 KST)
+- 운영 정본 (CloudWatch / Sentry / Push / Canary / DR) (`deploy/aws/`)
+- 배포 runbook (`deploy/RUNBOOK.md`, `deploy/aws/multi-az-failover-runbook.md`)
+
+### 3.4 빌드·배포 스크립트 (`scripts/`)
+- 로컬 전체 기동/종료 (`local-up.ps1` / `local-up.sh` / `local-down.ps1` / `local-down.sh`) — PG16 + SERVER + AI + ADMIN (+APP)
+- AWS 완전 자동 배포 (`aws-deploy.ps1`) — terraform → 빌드 → SSM → 스모크 단일 진입점
+- 빌드 + S3 업로드 (`build-and-upload.ps1` / `.sh`) — robocopy/rsync + npm + next build + prisma generate + tar + SHA256
+- SSM RunShellScript 트리거 (`trigger-deploy.ps1` / `.sh`)
+- EC2 호스트 pull-and-restart (`ec2-pull-and-restart.sh`) — atomic swap + prisma migrate deploy + 헬스체크 30s + 자동 롤백
+- Route53 FQDN 외부 스모크 (`post-deploy-smoke.sh`)
+- 최초 1회 인프라 부트스트랩 (`bootstrap-aws.ps1`, `seed-db-password.ps1`)
+- 6레포 placeholder 검사 게이트 (`preflight-placeholders.{sh,ps1}`)
+- SERVER ↔ AI soul catalog lockstep 검증 (`check-soul-catalog-sync.js`)
+- HW 로컬 프록시 Caddy (`Caddyfile.hw-proxy`, `start-hw-proxy.ps1`)
+
+### 3.5 GitHub Actions 파이프라인 (`.github/workflows/`)
+- `release-preflight` — 6레포 placeholder 검사 (미채운 PLACEHOLDER 가 prod 로 새는 사고 차단)
+- `test-gate` — SERVER/AI/ADMIN 단위·lint·typecheck + CI 자체 검증
+- `deploy` — 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크 (5단계 게이트)
+
+### 3.6 무중단 보장 5계층
+1. **체크섬** — SHA256 사이드카로 부분 업로드 차단
+2. **원자 swap** — `mv` 한 번에 신/구 교체, 다운타임 < 1s
+3. **테스트 게이트** — `test-gate.yml` 실패 시 배포 잡 진입 자체 차단
+4. **헬스체크** — restart 후 30s 내 `is-active` + HTTP `/health` 통과 필수
+5. **자동 롤백** — 헬스체크 실패 시 `.old.<ts>` 로 swap-back 후 재기동
+
+---
+
+## 4. 추가 개발 항목
+
+### 4.1 부분 가능 (현재 보유 IaC/Lambda 위에서 확장 가능)
+
+| 항목 | 현재 상태 | 부분 가능 이유 |
+|---|---|---|
+| ASG N=2+ cutover (단일 EC2 → fleet) | `asg.tf` / `alb.tf` / `launch_template.tf` 정의됨, `asg_desired_capacity=1` | tfvars 토글 + `EVENT_STORE_BACKEND=prisma` cutover → 실제 N=2+ 운영 검증 필요 (`docs/scale-up-runbook.md`, `docs/event-store-cutover.md`) |
+| Quotas auto-lift 정책 확장 | `gcp_quotas_auto_lift.py` 가 GCP/Gemini 한도 상향. AWS 측 quota(예: SES 발송, SQS 처리량) 자동 상향은 별도 람다 추가 필요 | 패턴은 동일 (`rds_password_rotator` 와 같은 운영 자산 추가). |
+| EFS 사용자별 SOUL 격리 강화 | `efs-user-access-points.tf` + provisioner 람다 — 디렉토리 / Access Point per user | 페르소나 결정화 기억의 백업 정책(AWS Backup) 일일 스냅샷 / 7일 보관 강화는 별도 라운드. |
+| Budget 알람 세분화 | `budgets.tf` 월간 USD + Gemini cost hourly/daily 정의. **사용자당 비용 추적 알람**은 미정의 | SERVER 의 `perUserCostService` 가 emit 할 메트릭이 정의되면 그에 맞춰 알람 추가 가능. |
+| SLO 보드 widget 추가 | `cloudwatch_dashboard.tf` 의 `iconia_slo` 6 widget. **사용자당 비용 추세 / Cost Anomaly Detection** widget 추가 가능 | 메트릭 emit 라운드와 정합. |
+| Sentry / Push / Slack 알람 채널 | `deploy/aws/` 운영 정본에 가이드. 알람 SNS → Slack webhook 연결은 manual | webhook URL 만 secret 으로 주입하면 됨. |
+| HW 로컬 프록시 (개발 편의) | `Caddyfile.hw-proxy`, `start-hw-proxy.ps1` 보유 | TLS 자체 서명 인증서 자동 갱신·신뢰 등록은 별도 OS 정책. |
+
+### 4.2 당장 불가능 (외부 인프라 / 운영 결정 / 다른 레포 영역)
+
+| 항목 | 이유 |
+|---|---|
+| Route53 다중 리전 페일오버 promote | 도메인 인수·다중 리전 인프라(서울 외 + 도쿄/버지니아) 확장 결정 필요. 비용 영향 큼. |
+| RDS Aurora Global Database | 다중 리전 운영 결정 + 비용 모델 확정 필요. 현재 Aurora Serverless v2 단일 리전. |
+| Sentry tracesSampleRate 단계적 ramp-up | Sentry plan 한도·운영 결정 영역. |
+| 펌웨어 OTA 트랙 (`1. HW` 빌드 산출물) | 본 레포 범위 밖. `1. HW` 의 ESP-IDF 빌드 시스템과 firmware S3 버킷 lifecycle 정책만 본 레포가 제공. |
+| Expo EAS Build / Submit (`4. APP`) | EAS 자체 인프라 + Apple/Google 계정 영역. 본 레포는 환경변수 (LOCAL_LAN_IP, API base URL) 만 전파. |
+| 운영 시크릿(Secrets Manager 의 db/JWT/HMAC/KEK 실값) | 운영팀이 직접 입력 — IaC 는 "secret 컨테이너" 만 생성, 실값은 `seed-db-password.ps1` 또는 콘솔. |
+| AWS 계정 결제·서비스 한도 직접 상향 | AWS Support Case · 비즈니스 계약 영역. |
+
+---
+
+## 5. 로컬 / AWS 기동 빠른 참조
+
+### 5.1 로컬 (PowerShell)
 
 ```powershell
-# 6. CI 폴더로 이동
 cd "C:\Users\user\Music\ICONIA\6. CI"
+Copy-Item .env.example .env   # DEPLOY_TARGET=local 이 기본
+notepad .env                   # LOCAL_LAN_IP / Postgres 포트 등 확인
 
-# .env 생성 (DEPLOY_TARGET=local 이 기본값)
-Copy-Item .env.example .env
-
-# .env 편집 — 로컬 기동에 필요한 키 확인/수정
-#   DEPLOY_TARGET=local
-#   ICONIA_REPO_ROOT=C:\Users\user\Music\ICONIA   (비우면 자동 추정)
-#   LOCAL_PG_USE_DOCKER=true                       (Docker Desktop 사용 시)
-#   LOCAL_SERVER_PORT=8080 / LOCAL_AI_PORT=3001 / LOCAL_ADMIN_PORT=3000
-notepad .env
-```
-
-### 3.2 전체 기동 — 단일 커맨드 (권장)
-
-```powershell
-# PostgreSQL 16 + SERVER + AI + ADMIN 을 한 번에 기동
-# (각 서비스는 별도 PowerShell 창에서 떠서 로그가 분리된다)
+# PostgreSQL 16 + SERVER + AI + ADMIN 한 번에 기동 (각 PowerShell 창 분리)
 pwsh -File scripts\local-up.ps1
-
-# APP(Expo) 까지 포함해 6개 컴포넌트 전부 기동
+# +APP(Expo)
 pwsh -File scripts\local-up.ps1 -IncludeApp
-
-# 두 번째 기동부터는 npm install / prisma 생략으로 빠르게
+# 두 번째 기동부터 npm install/prisma 생략으로 빠르게
 pwsh -File scripts\local-up.ps1 -SkipInstall
-```
 
-`local-up.ps1` 이 자동 수행하는 일:
-
-1. **PostgreSQL 16** — `iconia-pg` Docker 컨테이너 기동(`postgres:16`) + `pg_isready` 대기
-   (`LOCAL_PG_USE_DOCKER=false` 면 기설치 로컬 서비스 사용).
-2. **SERVER** — `npm install` → `prisma generate` + `prisma migrate deploy` →
-   `npm run dev` (`PORT=8080`, `DATABASE_URL` 로컬 주입, `AI_BASE_URL=http://127.0.0.1:3001`).
-3. **AI** — `npm install` → `npm run dev` (`PORT=3001`, `DATABASE_URL` 주입).
-4. **ADMIN** — `npm install` → `npm run dev -- --port 3000`
-   (`NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080`).
-5. **APP** (`-IncludeApp`) — `npm install` → `npx expo start`.
-6. **HW** — 로컬 기동 대상 아님(별도 펌웨어 빌드 트랙).
-
-SERVER/AI/ADMIN 에 `DEPLOY_TARGET=local`, APP(Expo) 에 `EXPO_PUBLIC_DEPLOY_TARGET=local`
-이 각각 주입돼 sibling 끼리 127.0.0.1 로 통신한다.
-
-### 3.3 동작 확인
-
-```powershell
-# SERVER / AI 헬스 체크
+# 헬스 확인
 Invoke-RestMethod http://127.0.0.1:8080/health
 Invoke-RestMethod http://127.0.0.1:3001/health
-
-# ADMIN 콘솔 — 브라우저로 열기
 Start-Process "http://127.0.0.1:3000/"
 
-# PostgreSQL 접속 확인 (Docker 모드)
-docker exec -it iconia-pg psql -U iconia -d iconia -c "\dt"
-```
-
-### 3.4 수동 단계별 기동 (스크립트 없이, 디버깅용)
-
-```powershell
-$root = "C:\Users\user\Music\ICONIA"
-
-# 1) PostgreSQL 16
-docker run -d --name iconia-pg `
-  -e POSTGRES_USER=iconia -e POSTGRES_PASSWORD=iconia_local_dev -e POSTGRES_DB=iconia `
-  -p 5432:5432 -v iconia-pg-data:/var/lib/postgresql/data postgres:16
-$env:DATABASE_URL = "postgresql://iconia:iconia_local_dev@127.0.0.1:5432/iconia?schema=public"
-
-# 2) SERVER (:8080)  — 새 창
-Push-Location "$root\2. SERVER"
-npm install
-npx prisma generate; npx prisma migrate deploy
-$env:DEPLOY_TARGET="local"; $env:PORT="8080"; $env:AI_BASE_URL="http://127.0.0.1:3001"
-Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev'
-Pop-Location
-
-# 3) AI (:3001) — 새 창
-Push-Location "$root\3. AI"
-npm install
-$env:DEPLOY_TARGET="local"; $env:PORT="3001"
-Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev'
-Pop-Location
-
-# 4) ADMIN (:3000) — 새 창
-Push-Location "$root\5. ADMIN"
-npm install
-$env:DEPLOY_TARGET="local"; $env:NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
-Start-Process pwsh -ArgumentList '-NoExit','-Command','npm run dev -- --port 3000'
-Pop-Location
-
-# 5) APP (Expo) — 새 창
-Push-Location "$root\4. APP"
-npm install
-$env:EXPO_PUBLIC_DEPLOY_TARGET="local"; $env:EXPO_PUBLIC_API_BASE_URL="http://127.0.0.1:8080"
-Start-Process pwsh -ArgumentList '-NoExit','-Command','npx expo start'
-Pop-Location
-```
-
-### 3.5 전체 종료
-
-```powershell
-# Node 프로세스 종료 + PostgreSQL 컨테이너 stop (데이터 보존)
+# 종료
 pwsh -File scripts\local-down.ps1
-
-# DB 까지 완전 초기화 (컨테이너 + 볼륨 삭제)
+# DB 까지 초기화
 pwsh -File scripts\local-down.ps1 -RemoveDb
 ```
 
----
-
-## 4. 실사용(AWS) 서버 완전 자동화 배포 PowerShell 커맨드
-
-Windows PowerShell 기준. localhost 에서 동작 확인을 마친 코드를 AWS 로 실배포한다.
-사전 도구: `aws` CLI(`aws configure` 완료), `terraform`, `pwsh`, `git`, `tar`.
-
-### 4.1 최초 1회 — 인프라 부트스트랩
+### 5.2 AWS — 일상 배포 (단일 커맨드)
 
 ```powershell
 cd "C:\Users\user\Music\ICONIA\6. CI"
 
-# (1) tfstate S3 버킷 + DynamoDB lock 테이블 생성 (idempotent)
-pwsh -File scripts\bootstrap-aws.ps1
-
-# (2) RDS master password 랜덤 생성 → Secrets Manager 등록
-pwsh -File scripts\seed-db-password.ps1
-
-# (3) terraform.tfvars 작성 — root_domain / hosted_zone_id 등 입력
-cd terraform
-Copy-Item terraform.tfvars.example terraform.tfvars
-notepad terraform.tfvars
-
-# (4) backend.hcl 작성 (bootstrap-aws.ps1 출력의 -backend-config 값)
-Copy-Item backend.hcl.example backend.hcl
-notepad backend.hcl
-
-# (5) 인프라 생성 — VPC/EC2/RDS/S3/EFS/Route53/IAM/CloudWatch 일괄
-terraform init -backend-config="backend.hcl"
-terraform validate
-terraform plan -out=tfplan
-terraform apply tfplan
-cd ..
-
-# (6) .env 작성 — 단일 토글을 aws 로
-Copy-Item .env.example .env
-notepad .env
-#   DEPLOY_TARGET=aws
-#   ICONIA_ARTIFACTS_BUCKET=<terraform output artifacts_bucket_name>
-#   ICONIA_EC2_INSTANCE_ID =<terraform output ec2_instance_id>
-#   ICONIA_ROOT_DOMAIN     =<운영 도메인>
-```
-
-terraform output 값을 `.env` 로 그대로 옮기는 도우미:
-
-```powershell
-$tf = "terraform output -raw"
-"ICONIA_ARTIFACTS_BUCKET=$(terraform -chdir=terraform output -raw artifacts_bucket_name)"
-"ICONIA_EC2_INSTANCE_ID=$(terraform -chdir=terraform output -raw ec2_instance_id)"
-"ICONIA_ROOT_DOMAIN=$((terraform -chdir=terraform output -raw api_fqdn) -replace '^api\.','')"
-```
-
-### 4.2 일상 배포 — 완전 자동 (단일 커맨드)
-
-```powershell
-cd "C:\Users\user\Music\ICONIA\6. CI"
-
-# 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크 검증까지 한 번에
+# 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크
 pwsh -File scripts\aws-deploy.ps1 -Service all
 
-# 인프라 변경이 있을 때 — terraform apply 까지 포함
+# 인프라 변경 포함 (terraform apply 까지)
 pwsh -File scripts\aws-deploy.ps1 -ApplyInfra -Service all
 
-# 특정 서비스만
+# 특정 서비스만 / 리허설
 pwsh -File scripts\aws-deploy.ps1 -Service server
-
-# 리허설 — 빌드/업로드까지만 (SSM 배포·스모크 생략)
 pwsh -File scripts\aws-deploy.ps1 -Service all -DryRun
 ```
 
-`aws-deploy.ps1` 이 자동 수행하는 일:
+운영 표준 경로는 GitHub Actions 태그 푸시 (`git tag v1.2.3 && git push origin v1.2.3`).
+로컬 PowerShell 은 폴백.
 
-1. `.env` 로드 + `DEPLOY_TARGET=aws` 확인.
-2. (`-ApplyInfra`) `terraform init / validate / plan / apply` — 인프라 정합.
-3. `terraform output` / `.env` 로 artifacts bucket·instance·domain 해석.
-4. `build-and-upload.ps1` — 3서비스 + `_bootstrap` 빌드 → S3 업로드(SHA256 포함).
-5. `trigger-deploy.ps1` — SSM RunShellScript → EC2 `ec2-pull-and-restart.sh`
-   (호스트에서 atomic swap + `prisma migrate deploy` + 헬스체크 30s + 자동 롤백).
-6. Route53 FQDN 외부 스모크 — `api/ai/admin.<domain>` 의 `/health` 검증.
-
-### 4.3 GitHub Actions 표준 경로 (권장 — 태그 푸시 출시)
-
-운영 표준은 GitHub Actions `deploy.yml` 이다. 로컬 PowerShell 은 폴백.
-
-```powershell
-# 코드 push 후 버전 태그 → deploy.yml 이 preflight→test-gate→build→deploy→smoke 자동 실행
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-또는 GitHub Actions 콘솔 → `deploy` 워크플로우 → Run workflow
-(`service` / `dry_run` 선택).
-
-### 4.4 개별 단계 수동 실행 (디버깅 / 부분 배포)
-
-```powershell
-$env:ICONIA_ARTIFACTS_BUCKET = (terraform -chdir=terraform output -raw artifacts_bucket_name)
-
-# 빌드 + S3 업로드만
-pwsh -File scripts\build-and-upload.ps1 -Service all
-
-# 빌드 + 업로드 + 배포 트리거를 한 번에
-pwsh -File scripts\build-and-upload.ps1 -Service all -TriggerDeploy
-
-# 이미 올라간 artifact 로 배포만 트리거
-pwsh -File scripts\trigger-deploy.ps1 -Service all
-```
-
-### 4.5 배포 검증 / 롤백
-
-```powershell
-$domain = (terraform -chdir=terraform output -raw api_fqdn) -replace '^api\.',''
-
-# 외부 스모크 — Route53 FQDN + TLS + nginx 라우팅 E2E
-Invoke-WebRequest "https://api.$domain/health"          -UseBasicParsing
-Invoke-WebRequest "https://api.$domain/health?deep=1"   -UseBasicParsing
-Invoke-WebRequest "https://ai.$domain/health"           -UseBasicParsing
-Invoke-WebRequest "https://admin.$domain/"              -UseBasicParsing
-
-# 특정 버전으로 수동 롤백 (예: server)
-$bucket = (terraform -chdir=terraform output -raw artifacts_bucket_name)
-aws s3 cp "s3://$bucket/server/20260520-101010Z.tar.gz"        "s3://$bucket/server/latest.tar.gz"
-aws s3 cp "s3://$bucket/server/20260520-101010Z.tar.gz.sha256" "s3://$bucket/server/latest.tar.gz.sha256"
-pwsh -File scripts\trigger-deploy.ps1 -Service server
-```
-
-배포 가시성: CloudWatch `ICONIA/Deploy` namespace, `/iconia/<env>/*` 로그그룹,
-운영 Dashboard(`terraform/observability.tf`).
-
----
-
-## 부록 A — 디렉토리 구성
-
-| 경로 | 내용 |
-|---|---|
-| `terraform/` | AWS 인프라 IaC (VPC/EC2/RDS/S3/EFS/Route53/IAM/CloudWatch/SSM) |
-| `ec2-bootstrap/` | EC2 user-data 템플릿 (최초 부팅 시 1회) |
-| `deploy/systemd/` | systemd unit 3종 (server/ai/admin) — hardening 풀세트 |
-| `deploy/nginx/` | nginx 리버스 프록시 conf + 공통 proxy snippet |
-| `deploy/aws/` | CloudWatch/Sentry/Push/Canary/DR 운영 정본 |
-| `deploy/RUNBOOK.md` | 배포 runbook (부트스트랩 / 자동·수동 배포 / 롤백 / 트러블슈팅) |
-| `scripts/` | 빌드·배포·로컬 오케스트레이션 스크립트 (PowerShell + bash) |
-| `.github/workflows/` | GitHub Actions — test-gate / deploy / release-preflight |
-| `.env.example` | 단일 토글(`DEPLOY_TARGET`) 포함 로컬·AWS 공용 설정 템플릿 |
-
-## 부록 B — scripts/ 목록
-
-| 스크립트 | 용도 |
-|---|---|
-| `local-up.ps1` / `local-up.sh` | **localhost 전체 기동** — PG16 + SERVER + AI + ADMIN (+APP) |
-| `local-down.ps1` / `local-down.sh` | localhost 전체 종료 |
-| `aws-deploy.ps1` | **AWS 완전 자동 배포** — terraform→빌드→SSM→스모크 단일 진입점 |
-| `build-and-upload.ps1` / `.sh` | 빌드(robocopy/rsync + npm + next build + prisma) + S3 업로드 |
-| `trigger-deploy.ps1` / `.sh` | SSM RunShellScript 로 EC2 배포 트리거 |
-| `ec2-pull-and-restart.sh` | EC2 호스트 실행 — pull + atomic swap + 헬스체크 + 자동 롤백 |
-| `post-deploy-smoke.sh` | 배포 후 Route53 FQDN 외부 E2E 스모크 |
-| `bootstrap-aws.ps1` | 최초 1회 — tfstate S3 버킷 + DynamoDB lock 생성 |
-| `seed-db-password.ps1` | 최초 1회 — RDS password 생성 → Secrets Manager 등록 |
-| `preflight-placeholders.{sh,ps1}` | 6레포 placeholder 검사 (release 차단 게이트) |
-| `check-soul-catalog-sync.js` | SERVER↔AI soul catalog lockstep 검증 |
-
-## 부록 C — 단일 토글 (`DEPLOY_TARGET`)
-
-`.env` 의 `DEPLOY_TARGET` 한 줄이 localhost ↔ AWS 를 가른다. 레포가 동일 키를
-읽도록 정합한다 — SERVER/AI/ADMIN/CI 는 `DEPLOY_TARGET`, APP(Expo) 만
-`EXPO_PUBLIC_` prefix 가 필수라 `EXPO_PUBLIC_DEPLOY_TARGET` 을 읽는다(의도된 차이).
+### 5.3 단일 토글 (`DEPLOY_TARGET`)
 
 | 값 | 진입 스크립트 | 서비스 통신 | 데이터 |
 |---|---|---|---|
-| `local` | `scripts/local-up.ps1` | 127.0.0.1 sibling 포트 | 로컬 PostgreSQL 16 |
-| `aws` | `scripts/aws-deploy.ps1` | Route53 FQDN (api/ai/admin) | RDS PostgreSQL 16 |
+| `local` | `scripts/local-up.ps1` | 127.0.0.1 sibling 포트 | 로컬 PostgreSQL 16 (Docker `iconia-pg`) |
+| `aws` | `scripts/aws-deploy.ps1` | Route53 FQDN (api/ai/admin) | RDS PostgreSQL 16 (Multi-AZ) |
 
-> **포트 주의** — 로컬은 SERVER:8080 / AI:3001 / ADMIN:3000 (개발 관례).
-> AWS 측 systemd 는 SERVER:8080 / AI:8081 / ADMIN:3000 이며 nginx 가 앞단에서
-> TLS 종단 + 라우팅을 담당한다. AI 포트 차이는 로컬/운영 의도된 분리다.
+> **포트 주의** — 로컬: SERVER `:8080` / AI `:3001` / ADMIN `:3000` (개발 관례).
+> AWS systemd: SERVER `:8080` / AI `:8081` / ADMIN `:3000` (nginx 앞단 TLS 종단 + 라우팅).
+> AI 포트 차이는 로컬/운영 의도된 분리.
 
 ---
 
-## 5. 최근 라운드 (Phase 5~11) 누적 변경
+## 부록 — 디렉토리 구성
 
-Terraform / 알람 / S3 lifecycle / systemd 운영 자산을 SLO·비용 가시성 라운드에 맞춰 확장.
-무중단 배포 5계층(체크섬·atomic swap·테스트 게이트·헬스체크·자동 롤백)은 그대로 유지.
-
-### 5.1 신규 Terraform
-- `asg.tf` · `alb.tf` · `launch_template.tf` — ASG·ALB 진입 분리 (단일 EC2 호환 토글 유지)
-- `rds.tf` — **RDS Proxy** 추가 (connection pool, Multi-AZ failover 정합)
-- `elasticache.tf` — Multi-AZ Redis (Server 의 quota/idempotency/rate Redis 외부화와 정합)
-- `cloudwatch_dashboard.tf` — **`iconia_slo` Dashboard 6 widget** (5xx / p95 / fallback / 비용 / 큐 / BLE)
-- `budgets.tf` — 월간 USD budget + **Gemini cost alarms 2종** (hourly / daily)
-
-### 5.2 `alarms.tf` 추가 알람
-- `iconia_device_silent_24h_high` — Server `deviceSilenceMetric` 와 정합
-- `iconia_ai_cost_hourly_high` / `iconia_ai_cost_daily_high` — AI `cost_usd` / `cost_krw` 차원 forward 와 정합
-- SLO 알람 3종 — 5xx / p95 / `ai_fallback` rate (CloudWatch SLO 보드 정합)
-
-### 5.3 S3 lifecycle / systemd
-- voice S3 lifecycle 분리: **in 7일 / out 30일 / legacy 30일** (Server 의 voice prefix in/out 분리와 정합)
-- `iconia-efs-janitor.service` + `iconia-efs-janitor.timer` — daily **03:00 KST** EFS tmp janitor
-
-### 5.4 신규 문서
-| 문서 | 내용 |
+| 경로 | 내용 |
 |---|---|
-| `docs/scale-up-runbook.md` | ASG/ALB 도입 시 단일 EC2 → fleet 전환 runbook |
-| `docs/event-store-cutover.md` | EventStore fs → prisma cutover 절차 (단일 EC2 → ASG 전환) |
-| `terraform/README.md` | Terraform 모듈 정본 (변수/출력/의존성 정리) |
-
----
-
-## 6. Server claim/lease + EventStore 환경변수 (Phase 6 ASG 정합)
-
-Server `src/server.js:849~850` 의 claim/lease 표식 및 EventStore 백엔드 선택용
-환경변수 3종은 **user-data 가 `/etc/iconia.env` 에 주입**한다 (systemd unit
-`iconia-server.service` 가 `EnvironmentFile=/etc/iconia.env` 로 자동 로드).
-
-### 6.1 환경변수 표 — `/etc/iconia.env` 주입분
-
-| 키 | 의미 | 기본값 | 주입 경로 |
-|---|---|---|---|
-| `INSTANCE_ID` | **application-side** 식별자. claim/lease `claimed_by` 표식. ASG N 인스턴스에서 hostname 중복 회피. | EC2 instance-id (`i-xxx`) — user-data 가 IMDSv2 로 fetch | `ec2-bootstrap/user-data.sh.tftpl` |
-| `ANALYSIS_CLAIM_LEASE_MS` | analysis claim lease (ms). 인스턴스 죽으면 다른 인스턴스가 이 시간 이후 재claim. | `300000` (5분) | `terraform/variables.tf` → `var.analysis_claim_lease_ms` |
-| `EVENT_STORE_BACKEND` | EventStore 백엔드. `fs` (단일 EC2 / EFS atomic 파일) \| `prisma` (ASG N race-free Postgres) | `fs` | `terraform/variables.tf` → `var.event_store_backend` |
-
-> **`INSTANCE_ID` vs `ICONIA_EC2_INSTANCE_ID`** — 의미가 다르다. 본 표의 `INSTANCE_ID`
-> 는 application 측 `claimed_by` 표식 (server.js 가 읽는 런타임 env). `.env.example:71`
-> 의 `ICONIA_EC2_INSTANCE_ID` 는 **로컬 PowerShell 의 SSM 배포 target 으로 쓰는 AWS
-> instance-id** (Phase 6 ASG 전환 후 `ICONIA_ASG_NAME` 으로 대체 예정).
-
-### 6.2 단계적 cutover — `EVENT_STORE_BACKEND`
-
-| 단계 | 조건 | `event_store_backend` | 설명 |
-|---|---|---|---|
-| 1 | 단일 EC2 (`asg_desired_capacity=1`) | `fs` | EFS atomic 파일. race 없음. 기본값. |
-| 2 | ASG N=2+ 직전 | `fs` | RDS 가용/마이그레이션 확인. cutover 직전 상태. |
-| 3 | ASG N=2+ cutover | `prisma` | Postgres `event_store` 테이블 + `event_id` unique 제약으로 race-free dedup. |
-| 4 | 롤백 시 | `fs` | PostgreSQL 데이터는 그대로 보존 (다음 cutover 시 재사용). |
-
-cutover 상세 절차: `docs/event-store-cutover.md`.
-
-### 6.3 IMDSv2 fail-soft
-
-user-data 는 IMDSv2 token 발급 → instance-id fetch 를 2초 timeout / 2회 retry 로 시도.
-실패 시 `INSTANCE_ID=` (빈 값) 로 두며, `server.js:849` 가 `${os.hostname()}-${process.pid}`
-로 fallback 한다. 단일 EC2 환경에서는 호환되지만 ASG N 인스턴스 환경에선
-**IMDSv2 가용성 점검 필수** (`launch_template.tf` 의 `http_tokens=required` /
-`http_put_response_hop_limit=2` 가 이미 설정됨).
+| `terraform/` | AWS 인프라 IaC (VPC/EC2/RDS/S3/EFS/Route53/IAM/CloudWatch/SSM + ASG/ALB/Elasticache/Lambda) |
+| `terraform/lambda/` | Lambda 함수 소스(Python) — RDS rotator / EFS userspace / GCP quotas |
+| `ec2-bootstrap/` | EC2 user-data 템플릿 (최초 부팅 시 1회) |
+| `deploy/systemd/` | systemd unit 3종 — hardening 풀세트 |
+| `deploy/nginx/` | nginx 리버스 프록시 conf + 공통 proxy snippet |
+| `deploy/aws/` | CloudWatch/Sentry/Push/Canary/DR 운영 정본 |
+| `deploy/RUNBOOK.md` | 배포 runbook (부트스트랩/자동·수동 배포/롤백/트러블슈팅) |
+| `scripts/` | 빌드·배포·로컬 오케스트레이션 (PowerShell + bash) |
+| `.github/workflows/` | GitHub Actions — test-gate / deploy / release-preflight |
+| `.env.example` | 단일 토글(`DEPLOY_TARGET`) 포함 로컬·AWS 공용 설정 템플릿 |
+| `docs/` | scale-up-runbook / event-store-cutover / terraform module 정본 등 |
