@@ -138,13 +138,14 @@ ICONIA 는 6개 레포로 구성된다.
 
 ### 3.4 빌드·배포 스크립트 (`scripts/`)
 - 로컬 전체 기동/종료 (`local-up.ps1` / `local-up.sh` / `local-down.ps1` / `local-down.sh`) — PG16 + SERVER + AI + ADMIN (+APP)
-- AWS 완전 자동 배포 (`aws-deploy.ps1`) — terraform → 빌드 → SSM → 스모크 단일 진입점
+- AWS 완전 자동 배포 (`aws-deploy.ps1`) — terraform → 빌드 → SSM → 스모크 → (선택)Seed 단일 진입점. switch: `-ApplyInfra` / `-DryRun` / `-Seed` / `-Reseed` / `-NoSeed` / `-EssentialOnly` — 첫 배포 시 `/v1/admin/seed/status` 의 `last_seeded_at == null` 자동 감지로 mock 데이터 1회 자동 시드 (운영 데이터 보호: 무인자 일반 배포는 시드 안 함)
 - 빌드 + S3 업로드 (`build-and-upload.ps1` / `.sh`) — robocopy/rsync + npm + next build + prisma generate + tar + SHA256
 - SSM RunShellScript 트리거 (`trigger-deploy.ps1` / `.sh`)
 - EC2 호스트 pull-and-restart (`ec2-pull-and-restart.sh`) — atomic swap + prisma migrate deploy + 헬스체크 30s + 자동 롤백
 - Route53 FQDN 외부 스모크 (`post-deploy-smoke.sh`)
 - 최초 1회 인프라 부트스트랩 (`bootstrap-aws.ps1`, `seed-db-password.ps1`)
 - 6레포 placeholder 검사 게이트 (`preflight-placeholders.{sh,ps1}`) — 도메인/시크릿 14패턴 + (주)숨코리아 약관/사업자정보 4패턴 (`docs/legal/`, `src/config/legal.*`, `src/legal/`, `app.config.*`, `README.md` 강제 스캔)
+- seed-data 검증 (`preflight-seed-data.ps1`) — cross-repo `ICONIA-SERVER/prisma/seed-data/*.json` valid + 필수 카테고리(users / characters / rooms / legal-agreements / notices) 존재 + 비핵심 카테고리 sampling 점검
 - SERVER ↔ AI soul catalog lockstep 검증 (`check-soul-catalog-sync.js`)
 - HW 로컬 프록시 Caddy (`Caddyfile.hw-proxy`, `start-hw-proxy.ps1`)
 
@@ -176,6 +177,7 @@ ICONIA 는 6개 레포로 구성된다.
 | Sentry / Push / Slack 알람 채널 | `deploy/aws/` 운영 정본에 가이드. 알람 SNS → Slack webhook 연결은 manual | webhook URL 만 secret 으로 주입하면 됨. |
 | HW 로컬 프록시 (개발 편의) | `Caddyfile.hw-proxy`, `start-hw-proxy.ps1` 보유 | TLS 자체 서명 인증서 자동 갱신·신뢰 등록은 별도 OS 정책. |
 | (주)숨코리아 약관/사업자정보 placeholder guard | `scripts/preflight-placeholders.{sh,ps1}` 의 LEGAL 패턴 4종 (`__TBD__` / `__PLACEHOLDER__` / `XXX-XX-XXXXX` / `Soom Korea Inc. (placeholder)`) + `docs/legal/business-info.md` 정본 + `aws-deploy.ps1` 의 출시 전 placeholder 갱신 단계 | 운영팀 갱신 절차는 `docs/legal/business-info.md` §4 — 실 사업자등록번호 / 통신판매업 신고번호 / DPO 확정 후 release tag. |
+| AWS 첫 배포 mock 데이터 자동 시드 | `aws-deploy.ps1 -ApplyInfra` 가 `/v1/admin/seed/status` 의 `last_seeded_at` 으로 첫 배포 감지 → SSM Run Command 로 EC2 위 `npm run seed:aws` 1회 실행. `-Seed`/`-Reseed`/`-NoSeed`/`-EssentialOnly` switch + cross-repo `preflight-seed-data.ps1` 가드 + RUNBOOK §2-A 시드 의사결정 매트릭스 | SERVER 의 `prisma/seed.js` + `npm run seed:aws` 진입점 + `/v1/admin/seed/status` endpoint, APP 의 `prisma/seed-data/*.json` mock export 가 cross-repo 의존성 — 본 레포는 트리거/가드만 담당. |
 
 ### 4.2 당장 불가능 (외부 인프라 / 운영 결정 / 다른 레포 영역)
 

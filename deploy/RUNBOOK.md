@@ -87,6 +87,93 @@ scripts/post-deploy-smoke.sh --root-domain <domain> --env prod
 
 ---
 
+## 2-A. 시드 (최초 1회 자동 / 명시 수동)
+
+운영 RDS 에 mock 데이터(SERVER 의 `prisma/seed-data/*.json` — APP 에이전트가 export)
+를 주입한다. **시드 코드는 SERVER 의 `npm run seed:aws`** 가 표준이며, CI 는 다음 두
+경로로 트리거한다.
+
+```
+운영자 콘솔 (aws-deploy.ps1)
+   ├── 1차 (권장): SSM Run Command
+   │     aws ssm send-command --document-name AWS-RunShellScript
+   │       --instance-ids <EC2>
+   │       --parameters '{"commands":["cd /app/server && npm run seed:aws"]}'
+   │     → EC2 instance role 의 AmazonSSMManagedInstanceCore 가 수신
+   │     → CloudWatch /aws/ssm/*/output 로그로 관찰
+   └── 2차 (폴백): SERVER POST /v1/admin/seed/run
+         ADMIN_SEED_ENABLED=1 + admin JWT 토큰 필요
+         (SSM 경로가 막혔거나 SSM agent 미준비 시)
+```
+
+### 의사결정 매트릭스 (aws-deploy.ps1 switch 조합)
+
+| Switch 조합 | 시드 실행? | 설명 |
+|---|---|---|
+| `(인자 없음)` | ❌ | 일반 배포 — 운영 중 데이터 보호 |
+| `-ApplyInfra` | ✅ (자동, 1회) | `/v1/admin/seed/status` 의 `last_seeded_at == null` 이면 자동 시드 |
+| `-ApplyInfra -NoSeed` | ❌ | 첫 배포지만 시드는 별도 운영 결정으로 수동 |
+| `-Seed` | ✅ | 시드만 단독 실행 (인프라/빌드/배포 skip) |
+| `-Seed -EssentialOnly` | ✅ (필수만) | feed/products/orders skip — `SEED_SKIP_NONESSENTIAL=1` |
+| `-Reseed` | ✅ (truncate+시드) | 개발용 — `SEED_RESET=1` 전달, **운영 데이터 파괴** |
+| `-DryRun -Seed` | ⚠️ echo만 | 명령만 출력, SSM SendCommand 안 함 |
+
+### 사용 예
+
+```powershell
+# 첫 배포 — 인프라 + 코드 + 자동 시드 (테이블이 비어 있을 때만)
+pwsh -File scripts/aws-deploy.ps1 -ApplyInfra -Service all
+
+# 첫 배포지만 시드는 수동으로
+pwsh -File scripts/aws-deploy.ps1 -ApplyInfra -NoSeed
+pwsh -File scripts/aws-deploy.ps1 -Seed -EssentialOnly
+
+# 시드만 단독 (인프라 안 건드림)
+pwsh -File scripts/aws-deploy.ps1 -Seed
+
+# 개발 DB 재시드 — 운영에서는 사용 금지
+pwsh -File scripts/aws-deploy.ps1 -Reseed
+```
+
+### 시드 데이터 위치 (cross-repo 의존성)
+
+| 경로 | 산출 주체 | 검증 |
+|---|---|---|
+| `ICONIA-SERVER/prisma/seed.js` | SERVER 에이전트 | `npm run seed:aws` 진입점 |
+| `ICONIA-SERVER/prisma/seed-data/*.json` | APP 에이전트 (mock export) | `scripts/preflight-seed-data.ps1` 가 valid + 필수 카테고리 검증 |
+
+필수 카테고리 (없으면 preflight ERROR): `users`, `characters`, `rooms`,
+`legal-agreements`, `notices`. 비핵심 (`feed`, `products`, `orders`) 는
+`-EssentialOnly` 와 함께 skip 가능.
+
+### 트러블슈팅
+
+| 증상 | 확인 |
+|---|---|
+| SSM SendCommand `InvalidInstanceId` | EC2 SSM agent 가 active 한가 (`systemctl status amazon-ssm-agent`), instance role 에 `AmazonSSMManagedInstanceCore` 있는가 |
+| SSM Status=`Failed` 즉시 종료 | CommandId 로 `aws ssm get-command-invocation` → STDERR 확인, JSON 형식 오류일 가능성 (preflight 통과 못한 채 trigger) |
+| 시드 후 테이블이 여전히 비어 보임 | `last_seeded_at` 갱신 확인, prisma 트랜잭션 롤백 여부, RLS / 권한 오류 (SERVER 로그) |
+| `seed:aws` 자체가 없음 | SERVER 에이전트 산출물 누락 — `package.json` 의 `scripts.seed:aws` 확인 |
+| 자동 시드가 안 트리거됨 | `/v1/admin/seed/status` 가 200 + `last_seeded_at: null` 반환하는지 확인 — 그 외에는 보수적으로 skip |
+| 권한 오류 (`AccessDenied`) | 발행 측 OIDC IAM role 에 `ssm:SendCommand` + `ssm:GetCommandInvocation` 있는지 (수신 측 EC2 role 은 본 레포 `terraform/iam.tf` 에서 보장) |
+
+### 필요한 IAM (발행 측 — OIDC GitHub Actions / 운영자 콘솔)
+
+본 레포 `terraform/iam.tf` 는 **수신 측(EC2)** 만 관리한다. 발행 측 OIDC IAM role
+은 별도 stack (RUNBOOK §0 #7) — 다음 actions 가 필요:
+
+```
+ssm:SendCommand
+ssm:GetCommandInvocation
+ssm:ListCommandInvocations
+ec2:DescribeInstances           (태그 기반 자동조회 시)
+```
+
+리소스 스코프 권장: `arn:aws:ec2:<region>:<account>:instance/<i-...>` +
+`arn:aws:ssm:<region>::document/AWS-RunShellScript`.
+
+---
+
 ## 3. 배포 중 호스트에서 일어나는 일 (ec2-pull-and-restart.sh)
 
 1. `inject_database_url` — Secrets Manager 에서 DB 비밀 fetch → `/etc/iconia.{server,ai}.env`
@@ -180,3 +267,4 @@ Manager 접속 후 디렉토리 swap + `systemctl restart`.
 | `prisma migrate deploy` 실패 | `/etc/iconia.server.env` 의 `DATABASE_URL`, RDS SG |
 | `RollbackFailed` 알람 | 호스트 자체 점검 — `.failed.<ts>` 디렉토리 보존됨 |
 | certbot 인증서 미발급 | Route53 A record 가 EIP 로 전파됐는지, 80 포트 개방 |
+| 시드 단계 SSM 실패 / 시드 데이터 결손 | §2-A 의 시드 트러블슈팅 표 참조 (preflight-seed-data.ps1 + /v1/admin/seed/status) |
