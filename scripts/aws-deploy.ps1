@@ -10,11 +10,13 @@
 
   단계:
     1. .env 로드 + DEPLOY_TARGET=aws 확인
-    2. (-ApplyInfra) terraform init/plan/apply — 인프라 정합
-    3. terraform output 으로 artifacts bucket / instance id / domain 해석
-    4. build-and-upload.ps1 — 3개 서비스 + _bootstrap 빌드 → S3
-    5. trigger-deploy.ps1 — SSM RunShellScript → EC2 무중단 배포 + 자동 롤백
-    6. post-deploy 검증 — Route53 FQDN 외부 스모크 (curl)
+    2. preflight — 6 레포 placeholder 검사 + (주)숨코리아 약관/사업자정보 LEGAL guard
+       (잔존 시 출시 차단 — `docs/legal/business-info.md` 갱신 후 재시도)
+    3. (-ApplyInfra) terraform init/plan/apply — 인프라 정합
+    4. terraform output 으로 artifacts bucket / instance id / domain 해석
+    5. build-and-upload.ps1 — 3개 서비스 + _bootstrap 빌드 → S3
+    6. trigger-deploy.ps1 — SSM RunShellScript → EC2 무중단 배포 + 자동 롤백
+    7. post-deploy 검증 — Route53 FQDN 외부 스모크 (curl)
 
   무중단 / 테스트 게이트 / 자동 롤백 / 헬스체크는 EC2 호스트의
   ec2-pull-and-restart.sh 와 deploy.yml 의 test-gate 가 보장한다. 본 스크립트는
@@ -95,7 +97,22 @@ Write-Host "  target    : aws"
 Write-Host "  service   : $Service"
 Write-Host "  region    : $region"
 Write-Host "  applyInfra: $ApplyInfra   dryRun: $DryRun"
+Write-Host "  repoRoot  : $RepoRoot"
 Write-Host "=================================================" -ForegroundColor Cyan
+
+# ----- 0) preflight — 약관/사업자정보 placeholder 검사 -----
+# (주)숨코리아 사업자등록번호 / 통신판매업 신고번호 / 대표자 등 placeholder 가
+# prod 배포로 새는 사고 차단. 정본 갱신 절차는 docs/legal/business-info.md.
+Write-Host "[preflight] 6 레포 placeholder + (주)숨코리아 약관/사업자정보 검사"
+$preflightPs1 = Join-Path $scriptRoot 'preflight-placeholders.ps1'
+if (Test-Path -LiteralPath $preflightPs1) {
+  & pwsh -File $preflightPs1 -RepoRoot $RepoRoot
+  if ($LASTEXITCODE -ne 0) {
+    throw "preflight 실패 — placeholder 잔존. docs/legal/business-info.md 갱신 후 재시도."
+  }
+} else {
+  Write-Warning "preflight-placeholders.ps1 누락 — 검사 skip (CI 의 release-preflight 가 최종 게이트)."
+}
 
 # ----- 1) terraform (선택) -----
 if ($ApplyInfra) {

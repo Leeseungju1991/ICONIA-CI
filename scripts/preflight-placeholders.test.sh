@@ -192,5 +192,86 @@ fi
 echo "PASS Test 8b: build_profiles/prod.h 는 정상 검출"
 rm -rf "$tmp/1. HW/build_profiles"
 
+# ---------- Test 9: 약관/사업자정보 placeholder (docs/legal/) — docs/** ignore 우회 ----------
+# (주)숨코리아 약관/사업자정보 정본 placeholder 가 docs/** ignore 와 무관하게 차단되어야 함.
+mkdir -p "$tmp/2. SERVER/docs/legal"
+cat > "$tmp/2. SERVER/docs/legal/privacy_policy.md" <<'EOF'
+# 개인정보처리방침
+회사명: __TBD__
+사업자등록번호: XXX-XX-XXXXX
+대표자: __PLACEHOLDER__
+EOF
+set +e
+"$preflight" "$tmp" >"$OUT" 2>&1
+rc=$?
+set -e
+if [ "$rc" -ne 1 ]; then
+  echo "FAIL Test 9: docs/legal/ 의 약관 placeholder 가 검출되지 않음 (rc=$rc)"
+  cat "$OUT"
+  exit 1
+fi
+for pat in '__TBD__' 'XXX-XX-XXXXX' '__PLACEHOLDER__'; do
+  if ! grep -q "$pat" "$OUT"; then
+    echo "FAIL Test 9: 약관 패턴 $pat 출력 누락"
+    cat "$OUT"
+    exit 1
+  fi
+done
+if ! grep -q '\[FAIL/legal\]' "$OUT"; then
+  echo "FAIL Test 9: legal 강제 검사 마커 [FAIL/legal] 누락"
+  cat "$OUT"
+  exit 1
+fi
+echo "PASS Test 9: docs/legal/ 약관 placeholder (__TBD__ / XXX-XX-XXXXX / __PLACEHOLDER__) 검출"
+rm -rf "$tmp/2. SERVER/docs/legal"
+
+# ---------- Test 10: src/config/legal.ts 사업자정보 placeholder ----------
+mkdir -p "$tmp/4. APP/src/config"
+cat > "$tmp/4. APP/src/config/legal.ts" <<'EOF'
+export const COMPANY_LEGAL_NAME_EN = 'Soom Korea Inc. (placeholder)';
+export const COMPANY_BUSINESS_NUMBER = 'XXX-XX-XXXXX';
+EOF
+set +e
+"$preflight" "$tmp" >"$OUT" 2>&1
+rc=$?
+set -e
+if [ "$rc" -ne 1 ]; then
+  echo "FAIL Test 10: src/config/legal.ts 의 placeholder 가 검출되지 않음 (rc=$rc)"
+  cat "$OUT"
+  exit 1
+fi
+for pat in 'Soom Korea Inc. (placeholder)' 'XXX-XX-XXXXX'; do
+  if ! grep -qF "$pat" "$OUT"; then
+    echo "FAIL Test 10: 패턴 $pat 출력 누락"
+    cat "$OUT"
+    exit 1
+  fi
+done
+echo "PASS Test 10: src/config/legal.ts (Soom Korea Inc. (placeholder) / XXX-XX-XXXXX) 검출"
+rm -rf "$tmp/4. APP/src/config"
+
+# ---------- Test 11: clean legal 본문은 통과 (실제 (주)숨코리아 약관 형식 모방) ----------
+mkdir -p "$tmp/2. SERVER/docs/legal"
+cat > "$tmp/2. SERVER/docs/legal/privacy_policy.md" <<'EOF'
+# 개인정보처리방침
+회사명: (주)숨코리아
+사업자등록번호: 123-45-67890
+통신판매업 신고번호: 제2026-서울강남-12345호
+대표자: 홍길동
+EOF
+mkdir -p "$tmp/4. APP/src/config"
+cat > "$tmp/4. APP/src/config/legal.ts" <<'EOF'
+export const COMPANY_LEGAL_NAME_KO = '주식회사 숨코리아';
+export const COMPANY_TRADE_NAME = '(주)숨코리아';
+export const COMPANY_BUSINESS_NUMBER = '123-45-67890';
+EOF
+if ! "$preflight" "$tmp" >"$OUT" 2>&1; then
+  echo "FAIL Test 11: clean 약관/legal 본문이 false positive 로 차단됨"
+  cat "$OUT"
+  exit 1
+fi
+echo "PASS Test 11: clean (주)숨코리아 약관 본문 통과"
+rm -rf "$tmp/2. SERVER/docs/legal" "$tmp/4. APP/src/config"
+
 echo ""
 echo "All preflight-placeholders.sh tests passed."

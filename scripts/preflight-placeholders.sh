@@ -44,6 +44,34 @@ PATTERNS_SPEC=(
   #       필요 시 별도 lint 로 분리. 본 preflight 는 release-blocker 신호만 유지.
 )
 
+# --- 약관/사업자정보 placeholder 패턴 (2026-05-26 추가) -----------------------
+# (주)숨코리아 약관 본문 / 사업자정보 정본의 placeholder 가 prod 빌드에 새는 사고
+# 차단용. 본 패턴은 docs/CHANGELOG/README ignore 와 별개로, 아래 LEGAL_SUBPATHS
+# (legal config / 약관 본문) 에 한해 강제 검사된다.
+LEGAL_PATTERNS_SPEC=(
+  "__TBD__|F"
+  "__PLACEHOLDER__|F"
+  "XXX-XX-XXXXX|F"
+  "Soom Korea Inc. (placeholder)|F"
+)
+
+# 6 레포 횡단으로 강제 검사할 약관/사업자정보 정본 경로 (ROOT/<repo>/<subpath>).
+# - docs/legal/                  : SERVER/HW 등의 약관·DPIA·사업자정보 정본
+# - src/config/legal.            : APP 의 사업자정보 코드 (legal.ts / legal.js)
+# - src/legal/                   : 임의 레포의 legal 모듈
+# - app.config.ts / app.config.js: APP/ADMIN expo/next 설정의 회사명·URL 잔존
+# README.md 도 약관 회사명 잔존 사고 잦은 위치라 본 패스에서는 검사 대상.
+LEGAL_SUBPATHS=(
+  "docs/legal"
+  "src/config/legal.ts"
+  "src/config/legal.js"
+  "src/config/legal.tsx"
+  "src/legal"
+  "app.config.ts"
+  "app.config.js"
+  "README.md"
+)
+
 # 내장 fallback exclude (rg/grep 양쪽 모두). .preflightignore 는 별도 추가.
 EXCLUDE_GLOBS=(
   "*/node_modules/*"
@@ -142,6 +170,22 @@ run_search() {
   fi
 }
 
+# 약관/사업자정보 강제 검사 — docs/README ignore 와 무관하게 LEGAL_SUBPATHS 직접 스캔.
+# node_modules / .git / build 산출물만 회피하고, 약관 본문/legal config 의 placeholder
+# 잔존을 잡는다. fixed-string 만 사용 (legal placeholder 는 모두 fixed).
+run_legal_search() {
+  local pat="$1" path="$2"
+  if [ -d "$path" ]; then
+    grep -RHnF --binary-files=without-match \
+      --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.terraform \
+      --exclude-dir=.next --exclude-dir=.expo --exclude-dir=build --exclude-dir=dist \
+      --exclude-dir=out --exclude-dir=coverage \
+      -- "$pat" "$path" 2>/dev/null || true
+  elif [ -f "$path" ]; then
+    grep -HnF --binary-files=without-match -- "$pat" "$path" 2>/dev/null || true
+  fi
+}
+
 FOUND=0
 TOTAL_HITS=0
 
@@ -162,12 +206,39 @@ for target in "${TARGETS[@]}"; do
   done
 done
 
+# --- 약관 / 사업자정보 강제 검사 (LEGAL_PATTERNS_SPEC × LEGAL_SUBPATHS) -------
+# 본 패스는 docs/README ignore 와 별개로 약관 본문/legal config 만 직격 스캔한다.
+# (주)숨코리아 사업자등록번호/통신판매업 신고번호 등 placeholder 가 prod 빌드로
+# 새는 사고 차단.
+for target in "${TARGETS[@]}"; do
+  base="$ROOT/$target"
+  [ -d "$base" ] || continue
+  for sub in "${LEGAL_SUBPATHS[@]}"; do
+    path="$base/$sub"
+    [ -e "$path" ] || continue
+    for spec in "${LEGAL_PATTERNS_SPEC[@]}"; do
+      pat="${spec%|*}"
+      mode="${spec#*|}"
+      hits=$(run_legal_search "$pat" "$path")
+      if [ -n "$hits" ]; then
+        FOUND=1
+        n=$(printf '%s\n' "$hits" | grep -c '^' || true)
+        TOTAL_HITS=$((TOTAL_HITS + n))
+        printf '\n[FAIL/legal] %s/%s 의 [%s] (%s) %d 건:\n' "$target" "$sub" "$pat" "$mode" "$n"
+        printf '%s\n' "$hits"
+      fi
+    done
+  done
+done
+
 if [ "$FOUND" -ne 0 ]; then
   printf '\n========================================================================\n'
   printf 'preflight FAIL: 총 %d 건 placeholder 발견. release 차단.\n' "$TOTAL_HITS"
+  printf '약관/사업자정보 잔존이면 (주)숨코리아 운영팀 갱신 절차 — docs/legal/business-info.md 참조.\n'
   printf '========================================================================\n'
   exit 1
 fi
 
-printf 'preflight OK - %d 패턴 검사 통과, placeholder 없음.\n' "${#PATTERNS_SPEC[@]}"
+printf 'preflight OK - %d 패턴 + %d 약관 패턴 검사 통과, placeholder 없음.\n' \
+  "${#PATTERNS_SPEC[@]}" "${#LEGAL_PATTERNS_SPEC[@]}"
 exit 0

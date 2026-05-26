@@ -63,6 +63,8 @@ provider "aws" {
       service     = "iconia"
       environment = var.env
       managed_by  = "terraform"
+      owner       = "soomkorea"
+      company     = "soom-korea-inc"
     }
   }
 }
@@ -76,6 +78,8 @@ provider "aws" {
       service     = "iconia"
       environment = var.env
       managed_by  = "terraform"
+      owner       = "soomkorea"
+      company     = "soom-korea-inc"
     }
   }
 }

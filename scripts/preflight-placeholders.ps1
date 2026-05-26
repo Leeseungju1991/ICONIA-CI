@@ -22,6 +22,12 @@
       - INSERT_..._HERE                     [regex]
       - @example.com word-boundary          [regex]
 
+    추가 약관/사업자정보 패턴 (LEGAL_SUBPATHS 만 강제 검사 - docs/README ignore 우회):
+      - __TBD__
+      - __PLACEHOLDER__
+      - XXX-XX-XXXXX                        (사업자번호 placeholder)
+      - 'Soom Korea Inc. (placeholder)'     (영문 회사명 라벨 잔존)
+
     .preflightignore 자동 로드: <RepoRoot>/6. CI/.preflightignore.
 
 .PARAMETER RepoRoot
@@ -57,6 +63,28 @@ $patterns = @(
     @{ Pat = '<replace[^>]*here>'; Mode = 'R' }
     @{ Pat = 'INSERT_[A-Z0-9_]+_HERE'; Mode = 'R' }
     # NOTE: example.com URL 패턴은 false positive (env 템플릿/문서/test) 폭주로 제외.
+)
+
+# --- 약관/사업자정보 placeholder 패턴 (2026-05-26 추가) -----------------------
+# (주)숨코리아 약관 본문/legal config 의 placeholder 가 prod 빌드에 새는 사고 차단.
+# 본 패턴은 docs/README ignore 와 별개로 $legalSubpaths 에 한해 강제 검사된다.
+$legalPatterns = @(
+    @{ Pat = '__TBD__'; Mode = 'F' }
+    @{ Pat = '__PLACEHOLDER__'; Mode = 'F' }
+    @{ Pat = 'XXX-XX-XXXXX'; Mode = 'F' }
+    @{ Pat = 'Soom Korea Inc. (placeholder)'; Mode = 'F' }
+)
+
+# 6 레포 횡단 강제 검사할 약관/legal 정본 경로 (RepoRoot/<repo>/<subpath>).
+$legalSubpaths = @(
+    'docs\legal'
+    'src\config\legal.ts'
+    'src\config\legal.js'
+    'src\config\legal.tsx'
+    'src\legal'
+    'app.config.ts'
+    'app.config.js'
+    'README.md'
 )
 
 $excludeDirs = @('node_modules', '.git', '.terraform', 'dist', 'build', '.next', '.expo', 'coverage', 'out', '__tests__', '__fixtures__')
@@ -152,13 +180,59 @@ foreach ($t in $targets) {
     }
 }
 
+# --- 약관/사업자정보 강제 검사 ($legalPatterns × $legalSubpaths) ---------------
+# 본 패스는 docs/README ignore 와 무관하게 약관 본문/legal config 만 직격 스캔.
+# node_modules / .git / .next / .terraform 만 회피하고 docs/legal/ 본문은 검사함.
+$legalExcludeDirs = @('node_modules', '.git', '.terraform', '.next', '.expo', 'build', 'dist', 'out', 'coverage')
+foreach ($t in $targets) {
+    $base = Join-Path $RepoRoot $t
+    if (-not (Test-Path -LiteralPath $base -PathType Container)) { continue }
+    foreach ($sub in $legalSubpaths) {
+        $path = Join-Path $base $sub
+        if (-not (Test-Path -LiteralPath $path)) { continue }
+        $isDir = (Test-Path -LiteralPath $path -PathType Container)
+        if ($isDir) {
+            $legalFiles = Get-ChildItem -LiteralPath $path -Recurse -File -Force |
+                Where-Object {
+                    $skip = $false
+                    foreach ($d in $legalExcludeDirs) {
+                        if ($_.FullName -match [regex]::Escape("\$d\")) { $skip = $true; break }
+                    }
+                    -not $skip
+                }
+        } else {
+            $legalFiles = @(Get-Item -LiteralPath $path)
+        }
+        foreach ($p in $legalPatterns) {
+            $pat = $p.Pat
+            $mode = $p.Mode
+            if ($mode -eq 'F') {
+                $hits = $legalFiles | Select-String -SimpleMatch -Pattern $pat -ErrorAction SilentlyContinue
+            } else {
+                $hits = $legalFiles | Select-String -Pattern $pat -ErrorAction SilentlyContinue
+            }
+            if ($hits) {
+                $found = $true
+                $count = ($hits | Measure-Object).Count
+                $total += $count
+                Write-Host ""
+                Write-Host "[FAIL/legal] $t/$sub 의 [$pat] ($mode) $count 건:" -ForegroundColor Red
+                foreach ($h in $hits) {
+                    Write-Host ("  {0}:{1}: {2}" -f $h.Path, $h.LineNumber, $h.Line.Trim())
+                }
+            }
+        }
+    }
+}
+
 if ($found) {
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Red
     Write-Host "preflight FAIL: 총 $total 건 placeholder 발견. release 차단." -ForegroundColor Red
+    Write-Host "약관/사업자정보 잔존이면 (주)숨코리아 운영팀 갱신 절차 — docs/legal/business-info.md 참조." -ForegroundColor Red
     Write-Host "========================================================================" -ForegroundColor Red
     exit 1
 }
 
-Write-Host ("preflight OK - {0} 패턴 검사 통과, placeholder 없음." -f $patterns.Count) -ForegroundColor Green
+Write-Host ("preflight OK - {0} 패턴 + {1} 약관 패턴 검사 통과, placeholder 없음." -f $patterns.Count, $legalPatterns.Count) -ForegroundColor Green
 exit 0

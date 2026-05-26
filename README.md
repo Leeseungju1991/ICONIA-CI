@@ -96,11 +96,15 @@ ICONIA 는 6개 레포로 구성된다.
 
 ## 2. 동작 설명 (5줄)
 
-- 코드 push → tag 만 붙이면 GitHub Actions 가 6개 레포 placeholder 검사 → 테스트 → 빌드 → S3 업로드 → EC2 무중단 swap → Route53 외부 스모크까지 자동 진행한다.
+- 코드 push → tag 만 붙이면 GitHub Actions 가 6개 레포 placeholder 검사 (도메인/시크릿 + **(주)숨코리아 약관/사업자정보 placeholder** — `__TBD__` / `__PLACEHOLDER__` / `XXX-XX-XXXXX` / `Soom Korea Inc. (placeholder)`) → 테스트 → 빌드 → S3 업로드 → EC2 무중단 swap → Route53 외부 스모크까지 자동 진행한다.
 - EC2 한 호스트 위에 SERVER · AI · ADMIN 세 서비스가 systemd 로 떠 있고 nginx 가 앞단에서 TLS 종단과 라우팅을 담당한다.
 - 데이터는 RDS(PostgreSQL) · ElastiCache(Redis) · EFS(페르소나) · S3(이미지/펌웨어/배포 산출물) 로 분리되고 모두 암호화 + 백업이 적용된다.
 - 배포 실패 시 5단계 가드(체크섬·atomic swap·테스트 게이트·헬스체크 30초·자동 롤백) 가 다운타임 1초 이내로 직전 버전을 복원한다.
 - 로컬에서는 `pwsh scripts/local-up.ps1` 한 번으로 PostgreSQL 16 컨테이너 + SERVER + AI + ADMIN (+APP) 이 한꺼번에 뜬다.
+
+> preflight 의 약관/사업자정보 강제 검사는 docs/README ignore 와 별개로 `docs/legal/`,
+> `src/config/legal.{ts,js,tsx}`, `src/legal/`, `app.config.{ts,js}`, `README.md` 만
+> 직격 스캔한다. 정본은 `docs/legal/business-info.md` — 운영팀 갱신 절차 포함.
 
 ---
 
@@ -140,12 +144,12 @@ ICONIA 는 6개 레포로 구성된다.
 - EC2 호스트 pull-and-restart (`ec2-pull-and-restart.sh`) — atomic swap + prisma migrate deploy + 헬스체크 30s + 자동 롤백
 - Route53 FQDN 외부 스모크 (`post-deploy-smoke.sh`)
 - 최초 1회 인프라 부트스트랩 (`bootstrap-aws.ps1`, `seed-db-password.ps1`)
-- 6레포 placeholder 검사 게이트 (`preflight-placeholders.{sh,ps1}`)
+- 6레포 placeholder 검사 게이트 (`preflight-placeholders.{sh,ps1}`) — 도메인/시크릿 14패턴 + (주)숨코리아 약관/사업자정보 4패턴 (`docs/legal/`, `src/config/legal.*`, `src/legal/`, `app.config.*`, `README.md` 강제 스캔)
 - SERVER ↔ AI soul catalog lockstep 검증 (`check-soul-catalog-sync.js`)
 - HW 로컬 프록시 Caddy (`Caddyfile.hw-proxy`, `start-hw-proxy.ps1`)
 
 ### 3.5 GitHub Actions 파이프라인 (`.github/workflows/`)
-- `release-preflight` — 6레포 placeholder 검사 (미채운 PLACEHOLDER 가 prod 로 새는 사고 차단)
+- `release-preflight` — 6레포 placeholder 검사 + (주)숨코리아 약관/사업자정보 LEGAL guard (미채운 PLACEHOLDER · 약관 placeholder 가 prod 로 새는 사고 차단 — 정본 `docs/legal/business-info.md`)
 - `test-gate` — SERVER/AI/ADMIN 단위·lint·typecheck + CI 자체 검증
 - `deploy` — 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크 (5단계 게이트)
 
@@ -171,6 +175,7 @@ ICONIA 는 6개 레포로 구성된다.
 | SLO 보드 widget 추가 | `cloudwatch_dashboard.tf` 의 `iconia_slo` 6 widget. **사용자당 비용 추세 / Cost Anomaly Detection** widget 추가 가능 | 메트릭 emit 라운드와 정합. |
 | Sentry / Push / Slack 알람 채널 | `deploy/aws/` 운영 정본에 가이드. 알람 SNS → Slack webhook 연결은 manual | webhook URL 만 secret 으로 주입하면 됨. |
 | HW 로컬 프록시 (개발 편의) | `Caddyfile.hw-proxy`, `start-hw-proxy.ps1` 보유 | TLS 자체 서명 인증서 자동 갱신·신뢰 등록은 별도 OS 정책. |
+| (주)숨코리아 약관/사업자정보 placeholder guard | `scripts/preflight-placeholders.{sh,ps1}` 의 LEGAL 패턴 4종 (`__TBD__` / `__PLACEHOLDER__` / `XXX-XX-XXXXX` / `Soom Korea Inc. (placeholder)`) + `docs/legal/business-info.md` 정본 + `aws-deploy.ps1` 의 출시 전 placeholder 갱신 단계 | 운영팀 갱신 절차는 `docs/legal/business-info.md` §4 — 실 사업자등록번호 / 통신판매업 신고번호 / DPO 확정 후 release tag. |
 
 ### 4.2 당장 불가능 (외부 인프라 / 운영 결정 / 다른 레포 영역)
 

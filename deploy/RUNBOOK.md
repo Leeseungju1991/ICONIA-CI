@@ -105,8 +105,10 @@ scripts/post-deploy-smoke.sh --root-domain <domain> --env prod
 
 ## 4. 출시 전 체크리스트
 
+### 4-A. 운영 / 인프라
+
 - [ ] `test-gate` 워크플로우 녹색 (SERVER/AI/ADMIN 테스트 통과)
-- [ ] `preflight` 통과 — 미채운 PLACEHOLDER 없음
+- [ ] `preflight` 통과 — 미채운 PLACEHOLDER 없음 (도메인/시크릿 + 약관 placeholder 모두 포함)
 - [ ] DB 마이그레이션이 **하위 호환** (구버전 코드와 신 스키마 공존 가능 —
       롤백 시 신 스키마 + 구 코드가 떠야 하므로)
 - [ ] `terraform plan` diff 검토 — 의도치 않은 인프라 변경 없음
@@ -114,6 +116,27 @@ scripts/post-deploy-smoke.sh --root-domain <domain> --env prod
 - [ ] Route53 A record 가 EC2 EIP 를 가리키는지 확인
 - [ ] CloudWatch 알람 SNS 구독(email/PagerDuty) confirmed 상태
 - [ ] (메이저 변경 시) `dry_run=true` 로 빌드 리허설 1회
+
+### 4-B. (주)숨코리아 사업자 정보 / 약관 (PIPA · 전자상거래법)
+
+본 블록은 **release-preflight 의 LEGAL_PATTERNS 가 강제 검사**한다 — 잔존 시
+prod 배포 자체가 차단된다. 정본은 `docs/legal/business-info.md`.
+
+- [ ] **실 사업자등록번호** 확정 — `4. APP/src/config/legal.ts` `COMPANY_BUSINESS_NUMBER`
+      에 실값 (xxx-xx-xxxxx 형식, 사업자 placeholder 패턴 잔존 금지)
+- [ ] **통신판매업 신고번호** 확정 — `COMPANY_MAIL_ORDER_NUMBER` 실값
+      (전자상거래법 §13 — 결제약관 본문에 등장)
+- [ ] **약관 본문 검토** — `4. APP/src/copy/terms/ko/*.ts` 7종 (termsOfService,
+      privacyPolicy, paymentTerms, sensorDataPolicy, aiServiceTerms,
+      communityPolicy, externalLinkPolicy) 의 회사명·연락처·시행일 일관성
+- [ ] **청소년 보호** — 만 18세 이상 검증 게이트(생년월일 입력) 정상 동작 + 청소년
+      유해성 검토 회사명 (주)숨코리아 로 통일
+- [ ] **개인정보 보호 책임자(DPO)** 확정 — `DPO_NAME`, 전화·이메일
+- [ ] **KC·FCC 인증** — `1. HW/docs/safety-certification-roadmap.md` 에 제조사
+      (주)숨코리아 + 인증번호 채움 (한국 출시 시 KC 필수, 미국 진출 시 FCC Part 15)
+- [ ] **처리방침 정본 시행일** — `2. SERVER/docs/legal/privacy_policy.md` 의
+      "시행일" 확정 (현재 법무 검토 토큰 잔존 시 차단)
+- [ ] **WooCommerce (dollsoom.com)** 약관·연락처가 본 정본과 동기화 — 별도 트랙
 
 ---
 
