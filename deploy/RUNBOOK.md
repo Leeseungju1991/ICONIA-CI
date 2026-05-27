@@ -190,6 +190,117 @@ ec2:DescribeInstances           (태그 기반 자동조회 시)
 
 ---
 
+## 3.5 Canary 10% rollout (ALB weighted target group)
+
+`atomic swap + 자동 롤백` 위에 한 단계 더 — **신 빌드를 일부 트래픽(예: 10%)
+에만 먼저 노출** 하고 5분 모니터링 후 promote 또는 rollback. 메이저 변경
+(prisma migration / 외부 API 마이그레이션 / 결제 흐름 변경) 출시 권장.
+
+### 3.5.1 사전 조건
+
+| 항목 | 확인 |
+|---|---|
+| `terraform/canary.tf` apply 완료 | `terraform output canary_target_group_arn` 가 ARN 반환 |
+| `var.enable_canary = true` | tfvars 기본값. `false` 면 canary TG 미생성 |
+| ACM 인증서 등록 | `var.acm_certificate_arn` 가 비어 있으면 listener rule 미생성 (HTTP only PoC 모드에서는 canary 불가) |
+| ASG running instance ≥ 2 | canary 가 1대를 가져가도 primary 가 최소 1대 남아야 함 (`asg_min_size` 권장 2 이상) |
+
+### 3.5.2 흐름 다이어그램
+
+```
+T+0   pwsh aws-deploy.ps1 -Canary 10
+       └─ canary TG 에 latest 인스턴스 1대 register
+       └─ Wait-TgHealthy (최대 5분)
+       └─ ALB listener rule weight: primary=90 / canary=10
+
+T+0~5 [관찰]  CloudWatch ICONIA/Server/5xx + p95 latency
+              dashboard iconia_slo + Synthetics canary
+              운영자 메트릭 통과 판단
+
+T+5   판단 → 통과 ──▶ pwsh aws-deploy.ps1 -PromoteCanary
+                      └─ canary 인스턴스를 primary TG 에 register
+                      └─ primary TG healthy 대기
+                      └─ weight 100/0 으로 복원
+                      └─ canary TG drain
+                      ▶ 새 빌드가 primary 로 승격됨.
+
+      판단 → 실패 ──▶ pwsh aws-deploy.ps1 -RollbackCanary
+                      └─ weight 100/0 즉시 복원 (primary 의 기존 빌드 그대로)
+                      └─ canary TG drain
+                      ▶ 사용자 영향 < 5분 × 10% = 0.5 instance-min.
+```
+
+### 3.5.3 명령어
+
+```powershell
+# 1) canary 시작 — 10% 트래픽 분배.
+pwsh -File scripts/aws-deploy.ps1 -Canary 10
+
+# (관찰 5분)
+
+# 2-a) 통과 → primary 로 atomic swap.
+pwsh -File scripts/aws-deploy.ps1 -PromoteCanary
+
+# 2-b) 실패 → 즉시 회수.
+pwsh -File scripts/aws-deploy.ps1 -RollbackCanary
+```
+
+| Switch | 검증 | 비고 |
+|---|---|---|
+| `-Canary <pct>` | 1..50 범위 (50 초과는 canary 가 아님) | `-PromoteCanary`/`-RollbackCanary` 와 상호 배타 |
+| `-PromoteCanary` | canary TG 에 등록된 인스턴스 ≥ 1 | primary TG 에 같은 인스턴스 register 후 weight 복원 |
+| `-RollbackCanary` | 언제든 안전 (idempotent) | weight 만 복원 + canary 인스턴스 drain |
+| `-DryRun` (canary 모드와 조합) | aws elbv2 호출 echo 만 | resources 출력 후 종료 |
+
+### 3.5.4 자동화 — `Set-CanaryWeight` 내부
+
+```
+aws elbv2 modify-rule --rule-arn <canary listener rule>
+  --actions file://actions.json
+```
+
+`actions.json` 예 (10% 분배):
+
+```json
+[{
+  "Type": "forward",
+  "ForwardConfig": {
+    "TargetGroups": [
+      { "TargetGroupArn": "<primary TG>", "Weight": 90 },
+      { "TargetGroupArn": "<canary TG>",  "Weight": 10 }
+    ],
+    "TargetGroupStickinessConfig": { "Enabled": false }
+  }
+}]
+```
+
+`terraform/canary.tf` 의 `aws_lb_listener_rule.server_canary_weighted` 는
+`lifecycle { ignore_changes = [action] }` 가 걸려 있어 운영 중 weight 변경이
+다음 `terraform plan` 으로 되돌아가지 않는다.
+
+### 3.5.5 자동 promote 미도입 — 운영팀 판단 사이클 유지 정책
+
+V1.x 본 라운드는 **수동 promote** 만 지원한다. CloudWatch alarm 기반 자동
+회수(rollback) / 자동 승격(promote) 은 다음 라운드에서 다음 메트릭으로 정의:
+
+- 자동 rollback: canary TG 의 `HTTPCode_Target_5XX_Count` > 1% (5분 평균)
+  **또는** `TargetResponseTime` p95 > primary × 2.0
+- 자동 promote: canary TG 의 `HealthyHostCount` 가 5분 안정 + 위 임계 모두 미충족
+
+본 라운드는 운영자 메트릭 판단 사이클을 유지 — 폭주 차단 효과 동일.
+
+### 3.5.6 트러블슈팅
+
+| 증상 | 확인 |
+|---|---|
+| `canary TG ARN 미해석` | `terraform output canary_target_group_arn` 값 확인. `var.enable_canary=true` + `terraform apply` 완료 여부 |
+| `canary listener rule ARN 미해석` | `var.acm_certificate_arn` 비어 있음 — ACM 인증서 등록 + apply 재실행 |
+| `canary health 실패 (5분 초과)` | TG `/health` 헬스체크 응답 확인. instance 가 ALB SG 의 8080 inbound 허용하는지 |
+| `register-targets 실패` | EC2 가 same VPC 인지, instance state running 인지 |
+| weight 가 0/100 으로 안 돌아감 | terraform plan 으로 listener rule action 변경이 보이면 `lifecycle.ignore_changes` 가 동작 안 함 — terraform 1.5+ 사용 확인 |
+
+---
+
 ## 4. 출시 전 체크리스트
 
 ### 4-A. 운영 / 인프라
@@ -380,7 +491,7 @@ KMS sign-only) 권장 — Principle of Least Privilege.
 | Kubernetes (EKS) | **보류** | 현 architecture 는 EC2 + ASG + ALB 로 N=2+ 운영 가능. K8s 전환은 ICONIA fleet 1만대 이상 또는 multi-tenancy 요구 시 — 운영 비용/복잡도 트레이드오프 결정 필요. |
 | Multi-region active-active | **보류** | 1차 출시는 single region (ap-northeast-2). Aurora Global DB / Route53 failover / S3 CRR 도입은 V1.x. |
 | AWS FIS (chaos automation) | **보류** | `docs/chaos-test-plan.md` 의 manual 3종 시나리오로 V1.0 cover. 자동화는 V1.x. |
-| Canary 배포 (10% 트래픽 분배) | **보류 / 스텁** | `aws-deploy.ps1 -Canary <pct>` 인자 reserved — V1.0 은 atomic swap + 자동 롤백으로 충분. ALB weighted target group 도입은 V1.x. |
+| Canary 배포 (10% 트래픽 분배) | **활성** (V1.x 라운드 도입) | `aws-deploy.ps1 -Canary <pct>` / `-PromoteCanary` / `-RollbackCanary` 로 ALB weighted target group 트래픽 분배 — 운영 절차는 §3.5. 자동 promote/rollback 알람은 다음 라운드. |
 | dual-key firmware trust roll | **보류** | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 별도 라운드. |
 | Contract test 하네스 (Pact / OpenAPI) | **부분 보유** | `api-contract-lint.yml` 가 `❌ 미구현` baseline 14 ratchet. 본격 Pact broker 는 V1.x. |
 

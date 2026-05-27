@@ -193,6 +193,13 @@ ICONIA 는 6개 레포로 구성된다.
   정책은 `deploy/RUNBOOK.md` §9.
 - **deploy approval gate** — `build` / `deploy` / `smoke` 는 `environment: production` —
   GitHub Settings 에서 reviewer 승인 + 5분 wait timer + audit log.
+- **Canary 10% rollout** — `terraform/canary.tf` 가 ALB weighted target group (primary + canary)
+  을 생성하고, `aws-deploy.ps1 -Canary <pct>` / `-PromoteCanary` / `-RollbackCanary` 가 listener
+  rule weight 를 동적으로 갱신한다. 메이저 변경(prisma migration / 결제 흐름 / 외부 API) 출시 시
+  10% → 5분 관찰 → promote/rollback. 자동 promote/rollback 알람은 다음 라운드 (`deploy/RUNBOOK.md` §3.5).
+- **출시 전 운영팀 액션 정본** — `deploy/OPS_HANDOFF.md` 가 7개 운영팀 액션 (사업자정보 / DPO /
+  약관 시행일·법무 / Secrets Manager 11종 / Sentry / OIDC / 본인인증) + 출시 D-day 체크리스트를
+  비개발 언어로 정리. 누가 / 언제 / 어디에 입력 / 어떻게 확인 4축.
 
 ---
 
@@ -211,6 +218,8 @@ ICONIA 는 6개 레포로 구성된다.
 | HW 로컬 프록시 (개발 편의) | `Caddyfile.hw-proxy`, `start-hw-proxy.ps1` 보유 | TLS 자체 서명 인증서 자동 갱신·신뢰 등록은 별도 OS 정책. |
 | (주)숨코리아 약관/사업자정보 placeholder guard | `scripts/preflight-placeholders.{sh,ps1}` 의 LEGAL 패턴 4종 (`__TBD__` / `__PLACEHOLDER__` / `XXX-XX-XXXXX` / `Soom Korea Inc. (placeholder)`) + `docs/legal/business-info.md` 정본 + `aws-deploy.ps1` 의 출시 전 placeholder 갱신 단계 | 운영팀 갱신 절차는 `docs/legal/business-info.md` §4 — 실 사업자등록번호 / 통신판매업 신고번호 / DPO 확정 후 release tag. |
 | AWS 첫 배포 mock 데이터 자동 시드 | `aws-deploy.ps1 -ApplyInfra` 가 `/v1/admin/seed/status` 의 `last_seeded_at` 으로 첫 배포 감지 → SSM Run Command 로 EC2 위 `npm run seed:aws` 1회 실행. `-Seed`/`-Reseed`/`-NoSeed`/`-EssentialOnly` switch + cross-repo `preflight-seed-data.ps1` 가드 + RUNBOOK §2-A 시드 의사결정 매트릭스 | SERVER 의 `prisma/seed.js` + `npm run seed:aws` 진입점 + `/v1/admin/seed/status` endpoint, APP 의 `prisma/seed-data/*.json` mock export 가 cross-repo 의존성 — 본 레포는 트리거/가드만 담당. |
+| Canary 10% 트래픽 분배 (ALB weighted TG) | `terraform/canary.tf` (canary TG + listener rule with `lifecycle.ignore_changes`) + `aws-deploy.ps1 -Canary <pct>` / `-PromoteCanary` / `-RollbackCanary` switch + RUNBOOK §3.5 흐름 다이어그램 | 자동 promote/rollback (CloudWatch alarm 기반) 은 다음 라운드 — `HTTPCode_Target_5XX_Count` > 1% 또는 `TargetResponseTime` p95 > primary × 2.0 임계 정의 후 SNS → Lambda 가 weight=0 으로 즉시 회수. |
+| 출시 전 운영팀 액션 정본 | `deploy/OPS_HANDOFF.md` 가 7개 액션 (사업자정보 / DPO / 약관 시행일·법무 / Secrets Manager 11종 / Sentry / AWS OIDC / 본인인증) + 출시 D-day 체크리스트 — 누가 / 언제 / 어디에 입력 / 어떻게 확인 4축 | 회사 정보·법무 검토·계약 등 운영팀 책임 영역. 본 레포는 체크리스트와 placeholder guard 만 담당. |
 
 ### 4.2 당장 불가능 (외부 인프라 / 운영 결정 / 다른 레포 영역)
 
@@ -224,7 +233,7 @@ ICONIA 는 6개 레포로 구성된다.
 | 운영 시크릿(Secrets Manager 의 db/JWT/HMAC/KEK 실값) | 운영팀이 직접 입력 — IaC 는 "secret 컨테이너" 만 생성, 실값은 `seed-db-password.ps1` 또는 콘솔. |
 | AWS 계정 결제·서비스 한도 직접 상향 | AWS Support Case · 비즈니스 계약 영역. |
 | Kubernetes (EKS) | EC2 + ASG + ALB 로 N=2+ 운영 가능. K8s 는 fleet 1만대 이상 / multi-tenancy 시 V1.x. |
-| Canary 배포 (트래픽 분배) | atomic swap + 자동 롤백으로 V1.0 충분. ALB weighted TG 도입은 V1.x — `aws-deploy.ps1 -Canary` 인자만 reserve. |
+| Canary 자동 promote/rollback (알람 기반) | V1.x 본 라운드는 `aws-deploy.ps1 -Canary <pct>` / `-PromoteCanary` / `-RollbackCanary` 로 **수동 promote** 활성. CloudWatch alarm 기반 자동 회수(canary 5xx > 1% 또는 p95 latency 2배)는 다음 라운드 — 운영자 메트릭 판단 사이클 유지 정책. |
 | Pact / OpenAPI 본격 contract test broker | `api-contract-lint.yml` baseline ratchet 으로 V1.0 cover. broker 운영은 V1.x. |
 | AWS FIS (chaos automation) | `docs/chaos-test-plan.md` 의 manual 3종 시나리오로 V1.0 cover. 자동화는 V1.x. |
 | dual-key firmware trust roll | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 V1.x. |
