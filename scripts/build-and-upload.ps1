@@ -94,16 +94,15 @@ function New-ServiceTarball {
   Write-Host "[$Svc] copy source -> $stage"
   # robocopy 가 PowerShell 의 큰 디렉터리 복사에 훨씬 빠르다.
   # 제외 패턴: node_modules, .next/cache, dist, build, tests output, .env*, .git
-  $rcArgs = @(
-    $src, $stage,
-    '/MIR',
-    '/XD', 'node_modules', '.next', '.expo', '.git', 'coverage', 'tmp', '.turbo',
-    '/XF', '.env', '.env.*', '*.log', '*.tsbuildinfo',
-    '/NFL','/NDL','/NJH','/NJS','/NP'
-  )
-  $rc = Start-Process -FilePath 'robocopy' -ArgumentList $rcArgs -NoNewWindow -Wait -PassThru
+  # & 직접 호출 — Start-Process 의 ArgumentList 가 공백 포함 path("2. SERVER") 를 분리해 버림.
+  & robocopy $src $stage `
+    /MIR `
+    /XD node_modules .next .expo .git coverage tmp .turbo `
+    /XF .env .env.* *.log *.tsbuildinfo `
+    /NFL /NDL /NJH /NJS /NP | Out-Host
+  $rcCode = $LASTEXITCODE
   # robocopy 종료코드 0~7 은 성공(8+ 가 에러).
-  if ($rc.ExitCode -ge 8) { throw "robocopy 실패 ($Svc) exit=$($rc.ExitCode)" }
+  if ($rcCode -ge 8) { throw "robocopy 실패 ($Svc) exit=$rcCode" }
 
   if (-not $SkipNpmInstall) {
     Write-Host "[$Svc] npm ci --omit=dev"
@@ -111,12 +110,12 @@ function New-ServiceTarball {
     try {
       # 빌드용 의존성 설치. 운영 EC2 에서도 npm ci 하지만, 빌드 단계가 있는 admin(Next.js) 은
       # 여기서 빌드 산출물(.next/) 까지 만들어 올려야 EC2 부담이 줄어든다.
-      & npm ci
+      & npm ci | Out-Host
       if ($LASTEXITCODE -ne 0) { throw "npm ci 실패 ($Svc)" }
 
       if ($Svc -eq 'admin') {
         Write-Host "[admin] npm run build (Next.js)"
-        & npm run build
+        & npm run build | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "next build 실패" }
 
         # Next.js standalone 산출물에는 .next/static 과 public/ 가 포함되지 않으므로
@@ -146,13 +145,13 @@ function New-ServiceTarball {
       # 운영 EC2 가 prisma CLI 없이 부팅 가능 (devDependencies prune 후에도 동작).
       if ($Svc -eq 'server' -and (Test-Path (Join-Path $stage 'prisma/schema.prisma'))) {
         Write-Host "[server] npx prisma generate"
-        & npx --yes prisma generate
+        & npx --yes prisma generate | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "prisma generate 실패 (server)" }
       }
 
       # 운영용으로 다시 prune (devDependencies 제거).
       Write-Host "[$Svc] npm prune --omit=dev"
-      & npm prune --omit=dev
+      & npm prune --omit=dev | Out-Host
     } finally { Pop-Location }
   }
 
@@ -161,7 +160,7 @@ function New-ServiceTarball {
 
   Write-Host "[$Svc] tar -> $tar"
   # tar 의 -C 로 stage 안으로 들어가 .gitignore 무시하고 통째로 패키징.
-  & tar -czf $tar -C $stage '.'
+  & tar -czf $tar -C $stage '.' | Out-Host
   if ($LASTEXITCODE -ne 0) { throw "tar 실패 ($Svc)" }
 
   return [pscustomobject]@{

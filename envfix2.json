@@ -1,0 +1,1 @@
+{"commands":["cat /etc/iconia.admin.env","sed -i 's/^ICONIA_ENV=prod$/ICONIA_ENV=production/' /etc/iconia.admin.env","echo '---after---'","grep ICONIA_ENV /etc/iconia.admin.env","systemctl restart iconia-admin","sleep 10","systemctl is-active iconia-admin","journalctl -u iconia-admin -n 10 --no-pager | tail -10"]}

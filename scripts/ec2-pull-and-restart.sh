@@ -287,8 +287,8 @@ pull_bootstrap() {
   fi
 
   # nginx 메인 conf - ${ROOT_DOMAIN} 치환 + 인증서 존재 시에만 TLS server 블록 활성.
-  if [ -f "$stage/deploy/nginx/iconia.conf" ]; then
-    : "${ROOT_DOMAIN:?ROOT_DOMAIN 미설정 (/etc/iconia.env 에 ROOT_DOMAIN 추가 필요)}"
+  # ROOT_DOMAIN 미설정(도메인 미보유 PoC) 시 nginx vhost 렌더링은 스킵 - ALB 가 직접 backend port 로 forward.
+  if [ -f "$stage/deploy/nginx/iconia.conf" ] && [ -n "${ROOT_DOMAIN:-}" ]; then
 
     local rendered="/etc/nginx/conf.d/iconia.conf"
     # 기존 conf 가 정상 동작 중이면 직전 백업 보존 - nginx -t 실패 시 복원에 사용.

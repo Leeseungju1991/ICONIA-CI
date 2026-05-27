@@ -15,10 +15,12 @@ resource "aws_autoscaling_group" "iconia_server" {
   max_size            = var.asg_max_size
   desired_capacity    = var.asg_desired_capacity
 
-  health_check_type         = "ELB"
-  health_check_grace_period = 180 # user-data + npm ci + systemd start 합산 여유.
+  # 첫 프로비저닝(SERVER 미배포 상태)에서는 EC2 만 사용 - /api/v1/health 가 아직 200 을 못 줌.
+  # aws-deploy.ps1 로 SERVER 배포 후 "ELB" 로 전환 권장 (애플리케이션 레벨 failure 감지).
+  health_check_type         = "EC2"
+  health_check_grace_period = 300 # user-data + npm ci + systemd start 합산 여유.
 
-  target_group_arns = [aws_lb_target_group.server.arn]
+  target_group_arns = [aws_lb_target_group.server.arn, aws_lb_target_group.admin.arn]
 
   launch_template {
     id      = aws_launch_template.iconia_server.id

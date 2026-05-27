@@ -1,0 +1,1 @@
+{"commands":["journalctl -u iconia-server -n 80 --no-pager | tail -80","systemctl status iconia-server --no-pager -l | head -15","free -h"]}

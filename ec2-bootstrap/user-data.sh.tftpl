@@ -16,6 +16,15 @@ set -euxo pipefail
 LOG=/var/log/iconia-user-data.log
 exec > >(tee -a $LOG | logger -t user-data -s 2>/dev/console) 2>&1
 
+# t3.micro RAM 1GB - apt 대량 설치 시 OOM 방지용 swap 2GB. Paid 전환 후 더 큰 인스턴스로 가면 제거 가능.
+if ! swapon --show | grep -q swap; then
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo "/swapfile none swap sw 0 0" >> /etc/fstab
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 # awscli (v1) 는 의도적으로 제외 - AWS 공식 zip 으로 v2 설치 (아래).
@@ -24,9 +33,18 @@ apt-get update -y
 apt-get install -y \
   curl unzip jq rsync git \
   nginx \
-  amazon-efs-utils \
+  nfs-common \
   build-essential \
   certbot python3-certbot-nginx
+
+# amazon-efs-utils 는 Ubuntu 기본 apt 저장소에 없음. 별도 install (실패해도 user-data 계속 - EFS 는 nfs-common fallback).
+# 소스 빌드는 rust toolchain + 5분 소요 → t3.micro 부담. 일단 시도, 실패 시 NFS 직접 마운트로 진행.
+if ! command -v mount.efs >/dev/null 2>&1; then
+  (
+    cd /tmp
+    git clone --depth=1 https://github.com/aws/efs-utils && cd efs-utils && ./build-deb.sh && apt-get install -y ./build/amazon-efs-utils*deb
+  ) || echo "WARN: amazon-efs-utils 설치 실패 - NFS 직접 마운트로 fallback"
+fi
 
 # AWS CLI v2 - 공식 zip 설치. 멱등 (이미 설치된 경우 update).
 if ! command -v aws >/dev/null 2>&1 || ! aws --version 2>&1 | grep -q "aws-cli/2"; then
@@ -67,8 +85,8 @@ if [ -n "${cw_agent_ssm_param}" ]; then
     || echo "WARN: CloudWatch Agent fetch-config 실패 - SSM Parameter ${cw_agent_ssm_param} / IAM 권한 확인."
 fi
 
-# Service user.
-id -u iconia >/dev/null 2>&1 || useradd -m -s /bin/bash -u 1000 iconia
+# Service user. UID 1000 은 ubuntu 가 점유 — 자동 할당으로 위임.
+id -u iconia >/dev/null 2>&1 || useradd -m -s /bin/bash iconia || true
 
 # Directories.
 mkdir -p /opt/iconia/{server,ai,admin}
@@ -76,15 +94,22 @@ mkdir -p /mnt/efs/iconia
 mkdir -p /var/log/iconia
 chown -R iconia:iconia /opt/iconia /var/log/iconia
 
-# EFS mount via amazon-efs-utils + access point.
-echo "${efs_id} /mnt/efs/iconia efs _netdev,tls,iam,accesspoint=${efs_ap_id} 0 0" >> /etc/fstab
-mount -a -t efs
-chown -R iconia:iconia /mnt/efs/iconia
-chmod 0700 /mnt/efs/iconia
+# EFS mount — amazon-efs-utils 가 있으면 그걸로 (access point 사용 가능), 없으면 직접 NFS.
+# 실패해도 user-data 는 진행 (|| true) — SERVER 가 EFS 미사용 모드로도 부팅 가능.
+if command -v mount.efs >/dev/null 2>&1; then
+  echo "${efs_id} /mnt/efs/iconia efs _netdev,tls,iam,accesspoint=${efs_ap_id} 0 0" >> /etc/fstab
+  mount -a -t efs || echo "WARN: EFS mount via amazon-efs-utils 실패"
+else
+  # NFS 직접 마운트 (access point 미사용 - 추후 amazon-efs-utils 설치되면 fstab 교체).
+  echo "${efs_id}.efs.${region}.amazonaws.com:/ /mnt/efs/iconia nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+  mount -a -t nfs4 || echo "WARN: NFS 마운트 실패 - EFS 없이 진행"
+fi
+chown -R iconia:iconia /mnt/efs/iconia 2>/dev/null || true
+chmod 0700 /mnt/efs/iconia 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Application-side instance identifier (claim/lease 의 claimed_by 표식).
-#   - server.js:849 의 fallback (`${os.hostname()}-${process.pid}`) 은 단일 EC2 에선
+#   - server.js:849 의 fallback (`$${os.hostname()}-$${process.pid}`) 은 단일 EC2 에선
 #     충분하지만 ASG N 인스턴스 환경에서 hostname 중복 (또는 AMI 동일 prefix) 시
 #     claimed_by 식별이 모호해진다.
 #   - AWS EC2 metadata (IMDSv2) 에서 instance-id 를 받아 INSTANCE_ID 로 export.

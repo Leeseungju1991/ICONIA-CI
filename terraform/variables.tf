@@ -204,6 +204,12 @@ variable "db_allocated_storage_gb" {
   default     = 50
 }
 
+variable "enable_rds_proxy" {
+  description = "RDS Proxy 생성 여부. Free Plan 은 미지원이라 false. Paid 전환 후 true 권장 (connection multiplexing)."
+  type        = bool
+  default     = true
+}
+
 # -----------------------------------------------------------------------------
 # S3.
 # -----------------------------------------------------------------------------

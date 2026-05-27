@@ -43,7 +43,7 @@ resource "aws_security_group_rule" "alb_https_in" {
   protocol          = "tcp"
   cidr_blocks       = var.http_allowed_cidrs
   security_group_id = aws_security_group.alb.id
-  description       = "HTTPS (TLS 종단)."
+  description       = "HTTPS (TLS termination)."
 }
 
 resource "aws_security_group_rule" "alb_egress_to_ec2" {
@@ -53,7 +53,7 @@ resource "aws_security_group_rule" "alb_egress_to_ec2" {
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.ec2.id
   security_group_id        = aws_security_group.alb.id
-  description              = "ALB → EC2 SG (server 8080 + ai 8081)."
+  description              = "ALB to EC2 SG (server 8080 + ai 8081)."
 }
 
 resource "aws_security_group_rule" "alb_egress_to_ec2_admin" {
@@ -63,7 +63,7 @@ resource "aws_security_group_rule" "alb_egress_to_ec2_admin" {
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.ec2.id
   security_group_id        = aws_security_group.alb.id
-  description              = "ALB → EC2 SG (admin 3000)."
+  description              = "ALB to EC2 SG (admin 3000)."
 }
 
 # EC2 SG 인바운드: ALB SG 로부터 backend 포트 허용. nginx 인바운드(80/443)는
@@ -132,7 +132,7 @@ resource "aws_lb_target_group" "server" {
 
   health_check {
     enabled             = true
-    path                = "/api/v1/health"
+    path                = "/health"
     protocol            = "HTTP"
     port                = "traffic-port"
     matcher             = "200"
@@ -178,12 +178,77 @@ resource "aws_lb_listener" "http_redirect" {
   port              = 80
   protocol          = "HTTP"
 
-  default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
+  # 도메인+ACM 인증서가 있으면 443 으로 redirect, 없으면 backend 로 직접 forward (PoC/도메인 미보유 시).
+  dynamic "default_action" {
+    for_each = var.acm_certificate_arn != "" ? [1] : []
+    content {
+      type = "redirect"
+      redirect {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
     }
   }
+  dynamic "default_action" {
+    for_each = var.acm_certificate_arn == "" ? [1] : []
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.server.arn
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# ADMIN 전용 노출 (도메인 미보유 PoC 한정).
+# 별도 ALB port :8082 -> EC2 :3000 (admin Next.js standalone).
+# 도메인+ACM 도입 후에는 nginx 의 admin.<domain> vhost 가 :443 으로 받게 되므로
+# 본 listener 는 제거하거나 internal 전환 권장.
+# -----------------------------------------------------------------------------
+resource "aws_lb_target_group" "admin" {
+  name                 = "${local.name_prefix}-tg-admin"
+  port                 = 3000
+  protocol             = "HTTP"
+  vpc_id               = local.vpc_id
+  target_type          = "instance"
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    path                = "/"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    matcher             = "200-399"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-tg-admin" })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_lb_listener" "admin_http" {
+  load_balancer_arn = aws_lb.iconia.arn
+  port              = 8082
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.admin.arn
+  }
+}
+
+resource "aws_security_group_rule" "alb_admin_in" {
+  type              = "ingress"
+  from_port         = 8082
+  to_port           = 8082
+  protocol          = "tcp"
+  cidr_blocks       = var.http_allowed_cidrs
+  security_group_id = aws_security_group.alb.id
+  description       = "ADMIN PoC port (no domain)."
 }

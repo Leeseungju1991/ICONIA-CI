@@ -47,7 +47,7 @@ variable "gcp_project_id" {
 }
 
 variable "gcp_quotas_sa_secret_name" {
-  description = "Secrets Manager 의 GCP service account JSON secret 이름. 기본값은 iconia/${var.env}/gcp/service_account_json."
+  description = "Secrets Manager 의 GCP service account JSON secret 이름. 기본값은 iconia/<env>/gcp/service_account_json."
   type        = string
   default     = ""
 }

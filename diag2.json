@@ -1,0 +1,1 @@
+{"commands":["journalctl -u iconia-server -n 50 --no-pager","systemctl status iconia-server --no-pager -l | head -20","ls -la /opt/iconia/server /opt/iconia/ai /opt/iconia/admin","cat /etc/iconia.env | head -20"]}

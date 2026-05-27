@@ -52,7 +52,7 @@ resource "aws_db_instance" "postgres" {
 
   identifier                          = "${local.name_prefix}-db"
   engine                              = "postgres"
-  engine_version                      = "16.4"
+  engine_version                      = "16"     # major-only - AWS RDS 가 가용 최신 minor 자동 매칭 (16.4 deprecated 회피).
   instance_class                      = var.db_instance_class
   allocated_storage                   = var.db_allocated_storage_gb
   max_allocated_storage               = var.db_allocated_storage_gb * 4
@@ -63,15 +63,15 @@ resource "aws_db_instance" "postgres" {
   password                            = var.db_password
   db_subnet_group_name                = aws_db_subnet_group.main[0].name
   vpc_security_group_ids              = [aws_security_group.rds.id]
-  multi_az                            = var.env == "prod"
+  multi_az                            = false  # Free Plan: Multi-AZ 비가용. 추후 Paid 전환 시 var.env == "prod" 로 복원.
   publicly_accessible                 = false
-  backup_retention_period             = var.env == "prod" ? 30 : 7
-  deletion_protection                 = var.env == "prod"
-  skip_final_snapshot                 = var.env != "prod"
+  backup_retention_period             = 1      # Free Plan: 최대 1일. Paid 전환 시 (var.env == "prod" ? 30 : 7).
+  deletion_protection                 = false  # Free Plan / PoC. Paid prod 에서는 (var.env == "prod") 로 복원.
+  skip_final_snapshot                 = true   # Free Plan / PoC. Paid prod 에서는 (var.env != "prod") 로 복원.
   copy_tags_to_snapshot               = true
   apply_immediately                   = false
   iam_database_authentication_enabled = true
-  performance_insights_enabled        = var.env == "prod"
+  performance_insights_enabled        = false  # db.t3.micro 미지원. Paid 전환 시 (var.env == "prod") 로 복원.
   enabled_cloudwatch_logs_exports     = ["postgresql"]
 
   tags = merge(var.tags, { Name = "${local.name_prefix}-db" })
@@ -91,7 +91,7 @@ resource "aws_rds_cluster" "aurora" {
   cluster_identifier                  = "${local.name_prefix}-aurora"
   engine                              = "aurora-postgresql"
   engine_mode                         = "provisioned"
-  engine_version                      = "16.4"
+  engine_version                      = "16"     # major-only - 가용 최신 minor 자동 매칭.
   database_name                       = var.db_name
   master_username                     = var.db_username
   master_password                     = var.db_password
@@ -199,7 +199,7 @@ resource "aws_security_group" "rds_proxy" {
   vpc_id      = local.vpc_id
 
   egress {
-    description = "RDS Proxy → backend DB."
+    description = "RDS Proxy to backend DB."
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
@@ -233,7 +233,8 @@ resource "aws_security_group_rule" "rds_from_proxy" {
 }
 
 resource "aws_db_proxy" "iconia_pg" {
-  count = var.db_engine_mode == "instance" && length(aws_db_instance.postgres) > 0 ? 1 : 0
+  # Free Plan: RDS Proxy 미가용. Paid 전환 시 var.enable_rds_proxy=true 로.
+  count = var.enable_rds_proxy && var.db_engine_mode == "instance" && length(aws_db_instance.postgres) > 0 ? 1 : 0
 
   name                   = "${local.name_prefix}-pg-proxy"
   engine_family          = "POSTGRESQL"
@@ -269,7 +270,7 @@ resource "aws_db_proxy_default_target_group" "iconia_pg" {
 
 resource "aws_db_proxy_target" "iconia_pg" {
   count                  = var.db_engine_mode == "instance" && length(aws_db_proxy.iconia_pg) > 0 ? 1 : 0
-  db_instance_identifier = aws_db_instance.postgres[0].id
+  db_instance_identifier = aws_db_instance.postgres[0].identifier
   db_proxy_name          = aws_db_proxy.iconia_pg[0].name
   target_group_name      = aws_db_proxy_default_target_group.iconia_pg[0].name
 }

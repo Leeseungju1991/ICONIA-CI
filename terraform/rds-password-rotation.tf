@@ -124,7 +124,7 @@ resource "aws_lambda_function" "rds_password_rotator" {
     variables = {
       RDS_INSTANCE_IDENTIFIER = (
         length(aws_db_instance.postgres) > 0
-        ? aws_db_instance.postgres[0].id
+        ? aws_db_instance.postgres[0].identifier
         : ""
       )
       PASSWORD_LENGTH = "32"

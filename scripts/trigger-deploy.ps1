@@ -42,15 +42,17 @@ if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
 }
 
 if (-not $InstanceId) {
-  Write-Host "InstanceId 미지정 -> 태그(Name=$NamePrefix-host) 로 조회"
+  $tagName = "$NamePrefix-asg-host"  # ASG launch template 의 instance tag 와 정합.
+  Write-Host "InstanceId 미지정 -> 태그(Name=$tagName) 로 조회"
   $json = & aws ec2 describe-instances `
     --region $Region `
-    --filters "Name=tag:Name,Values=$NamePrefix-host" "Name=instance-state-name,Values=running" `
+    --filters "Name=tag:Name,Values=$tagName" "Name=instance-state-name,Values=running" `
     --query 'Reservations[].Instances[].InstanceId' `
     --output json
   if ($LASTEXITCODE -ne 0) { throw "EC2 조회 실패" }
-  $ids = $json | ConvertFrom-Json
-  if ($ids.Count -eq 0) { throw "running 인스턴스를 찾지 못했습니다 (tag Name=$NamePrefix-host)" }
+  # ConvertFrom-Json 이 단일 항목/빈 배열일 때 .Count 실패 — @(...) 로 강제 array.
+  $ids = @($json | ConvertFrom-Json)
+  if ($ids.Count -eq 0) { throw "running 인스턴스를 찾지 못했습니다 (tag Name=$tagName)" }
   if ($ids.Count -gt 1) { throw "여러 인스턴스가 매칭됩니다. -InstanceId 명시 필요: $($ids -join ', ')" }
   $InstanceId = $ids[0]
   Write-Host "Resolved InstanceId=$InstanceId"

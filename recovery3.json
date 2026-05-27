@@ -1,0 +1,1 @@
+{"commands":["aws s3 cp s3://iconia-prod-artifacts-022671037305/_bootstrap/ec2-pull-and-restart.sh /usr/local/bin/iconia-pull-and-restart.sh --region ap-northeast-2","sed -i 's/\\r$//' /usr/local/bin/iconia-pull-and-restart.sh","chmod +x /usr/local/bin/iconia-pull-and-restart.sh","/usr/local/bin/iconia-pull-and-restart.sh all 2>&1 | tail -200"]}

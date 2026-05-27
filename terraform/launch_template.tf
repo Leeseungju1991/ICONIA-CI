@@ -70,7 +70,7 @@ resource "aws_launch_template" "iconia_server" {
   instance_type = var.ec2_instance_type
   key_name      = var.ec2_key_pair_name != "" ? var.ec2_key_pair_name : null
 
-  vpc_security_group_ids = [aws_security_group.ec2.id]
+  # SG 는 network_interfaces 블록 안에만 둠 (top-level vpc_security_group_ids 와 동시 정의 시 AWS API 거부).
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2.name

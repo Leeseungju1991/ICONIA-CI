@@ -57,7 +57,7 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
   name        = "/AmazonCloudWatch-iconia-${var.env}"
   description = "ICONIA CloudWatch Agent fetch-config 정본 (terraform 관리). EC2 가 amazon-cloudwatch-agent-ctl -a fetch-config -c ssm:<name> 로 적용."
   type        = "String"
-  tier        = "Standard"
+  tier        = "Advanced"  # CW Agent config JSON > 4KB. Advanced 는 파라미터당 $0.05/월.
 
   # cloudwatch-agent-config.json 의 ${env} 토큰을 실제 env 로 치환.
   # JSON 은 deploy/aws/cloudwatch-agent-config.json 이 정본 — 본 리소스는 그것을
@@ -107,7 +107,9 @@ locals {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "pii_leak" {
-  for_each = var.create_log_groups ? local.pii_metric_filters : {}
+  # 임시 비활성 - regex 패턴 (%...%) 의 +/(/|/% 가 CW Metric Filter 파서에서 거부.
+  # 추후 {1,} 등 호환 표기로 재작성 후 toggle 복원.
+  for_each = var.create_log_groups && var.enable_pii_metric_filters ? local.pii_metric_filters : {}
 
   name           = "iconia-pii-${each.key}-leak"
   log_group_name = aws_cloudwatch_log_group.iconia["server"].name
@@ -166,8 +168,8 @@ resource "aws_cloudwatch_dashboard" "iconia_ops" {
               label      = "5xx_rate_percent"
               id         = "e1"
             }],
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alarm_alb_arn_suffix, { id = "m5xx", visible = false }],
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alarm_alb_arn_suffix, { id = "mreq", visible = false }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", aws_lb.iconia.arn_suffix, { id = "m5xx", visible = false }],
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.iconia.arn_suffix, { id = "mreq", visible = false }],
           ]
           yAxis = { left = { min = 0, max = 100 } }
         }
@@ -361,6 +363,12 @@ variable "create_dashboard" {
   description = "CloudWatch 운영 대시보드 생성 여부."
   type        = bool
   default     = true
+}
+
+variable "enable_pii_metric_filters" {
+  description = "PII 누출 metric filter 생성 여부. 패턴 regex 가 CW Metric Filter 파서 호환되도록 재작성된 뒤 true 로 전환."
+  type        = bool
+  default     = false
 }
 
 # -----------------------------------------------------------------------------

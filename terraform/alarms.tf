@@ -28,7 +28,7 @@ module "alarms" {
   # RDS identifier 는 main stack 의 rds.tf 출력에서 자동 주입.
   rds_instance_identifier = (
     length(aws_db_instance.postgres) > 0
-    ? aws_db_instance.postgres[0].id
+    ? aws_db_instance.postgres[0].identifier
     : ""
   )
 
