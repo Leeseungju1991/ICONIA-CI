@@ -114,6 +114,18 @@ function New-ServiceTarball {
       if ($LASTEXITCODE -ne 0) { throw "npm ci 실패 ($Svc)" }
 
       if ($Svc -eq 'admin') {
+        # CSP: upgrade-insecure-requests 비활성화 (HTTPS 미도입 PoC 한정).
+        # 현재 ALB(:8082) 가 HTTP only — 디렉티브 활성 시 브라우저가 모든 자산을 HTTPS 로
+        # 강제 변환해 CSS/JS 가 모두 차단되어 unstyled 화면이 됨. ALB+ACM HTTPS 도입 후
+        # `$env:DISABLE_UPGRADE_INSECURE=$null` 로 해제하거나 본 라인 삭제.
+        # 호출자가 명시적으로 설정해두면(`$env:DISABLE_UPGRADE_INSECURE`) 그 값을 존중.
+        if (-not $env:DISABLE_UPGRADE_INSECURE) {
+          $env:DISABLE_UPGRADE_INSECURE = '1'
+          Write-Host "[admin] DISABLE_UPGRADE_INSECURE=1 (HTTPS 미도입 임시 우회 — next.config.mjs:55 정합)"
+        } else {
+          Write-Host "[admin] DISABLE_UPGRADE_INSECURE=$($env:DISABLE_UPGRADE_INSECURE) (호출자 지정값 존중)"
+        }
+
         Write-Host "[admin] npm run build (Next.js)"
         & npm run build | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "next build 실패" }
