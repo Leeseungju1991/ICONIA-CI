@@ -230,6 +230,7 @@ ICONIA 는 6개 레포로 구성된다.
 | dual-key firmware trust roll | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 V1.x. |
 
 > V1.x K8s 전환 스캐폴드는 `k8s/` 디렉토리. 단계적 적용 절차는 `docs/k8s-migration.md`.
+> V1.x Multi-region 스캐폴드는 `terraform/multi-region/`. 적용 절차는 `docs/multi-region.md`.
 
 ---
 
