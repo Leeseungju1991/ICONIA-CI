@@ -1,0 +1,5 @@
+# stage — 비용 절감: replicas 2 → 1 (단, PDB minAvailable=1 과 함께면 무중단 배포는 RollingUpdate
+# maxSurge=1 로 보장) — 실 trial 시 maintenance window 에 한해 사용 권장
+- op: replace
+  path: /spec/replicas
+  value: 1

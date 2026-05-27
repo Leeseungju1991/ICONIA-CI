@@ -1,0 +1,238 @@
+# ICONIA — NetworkPolicy (V1.x scaffold)
+#
+# 정책:
+#   1. default deny (ingress + egress 모두) — 정책에 명시되지 않은 트래픽 차단
+#   2. ingress: ALB Ingress Controller (kube-system / 외부 LB) → server/ai/admin :http
+#   3. east-west: admin → server, server → ai (현재 운영 그래프와 정합)
+#   4. egress: DNS (kube-system) + 외부 HTTPS (Gemini API, RDS/ElastiCache 등 VPC 내부)
+#
+# CNI 가 NetworkPolicy 를 지원해야 한다 (AWS VPC CNI 의 경우 `ENABLE_POLICY=true` 또는 Calico).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  labels:
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  labels:
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-server
+  labels:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-server
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Ingress
+  ingress:
+    # ALB Ingress (target-type: ip 이므로 직접 pod IP 로 들어옴 — namespace label 로 좁힐 수 없어 ipBlock 사용)
+    - from:
+        - ipBlock:
+            # overlay 에서 VPC CIDR 로 교체 (예: 10.42.0.0/16)
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8080
+    # admin → server
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: iconia-admin
+              app.kubernetes.io/part-of: iconia
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-ai
+  labels:
+    app.kubernetes.io/name: iconia-ai
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-ai
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Ingress
+  ingress:
+    # ALB Ingress
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8081
+    # server → ai
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: iconia-server
+              app.kubernetes.io/part-of: iconia
+      ports:
+        - protocol: TCP
+          port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-admin
+  labels:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-admin
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-server
+  labels:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-server
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Egress
+  egress:
+    # server → ai
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: iconia-ai
+              app.kubernetes.io/part-of: iconia
+      ports:
+        - protocol: TCP
+          port: 8081
+    # server → RDS / ElastiCache / Secrets Manager / S3 (외부 VPC endpoint / HTTPS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32  # IMDS 차단 (IRSA 사용)
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 5432  # PostgreSQL
+        - protocol: TCP
+          port: 6379  # Redis
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-ai
+  labels:
+    app.kubernetes.io/name: iconia-ai
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-ai
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Egress
+  egress:
+    # Gemini API / S3 / Secrets Manager (HTTPS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-admin
+  labels:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-admin
+      app.kubernetes.io/part-of: iconia
+  policyTypes:
+    - Egress
+  egress:
+    # admin → server
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: iconia-server
+              app.kubernetes.io/part-of: iconia
+      ports:
+        - protocol: TCP
+          port: 8080
+    # admin → 외부 (CDN / Secrets Manager / S3)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: 443

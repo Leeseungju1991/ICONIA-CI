@@ -1,0 +1,23 @@
+# ICONIA — Kustomize base (V1.x scaffold)
+#
+# overlay 가 `bases: [../../base]` 또는 `resources: [../../base]` 로 참조한다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+commonLabels:
+  app.kubernetes.io/part-of: iconia
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret-template.yaml
+  - server-deployment.yaml
+  - server-service.yaml
+  - ai-deployment.yaml
+  - ai-service.yaml
+  - admin-deployment.yaml
+  - admin-service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - networkpolicy.yaml

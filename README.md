@@ -229,5 +229,7 @@ ICONIA 는 6개 레포로 구성된다.
 | AWS FIS (chaos automation) | `docs/chaos-test-plan.md` 의 manual 3종 시나리오로 V1.0 cover. 자동화는 V1.x. |
 | dual-key firmware trust roll | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 V1.x. |
 
+> V1.x K8s 전환 스캐폴드는 `k8s/` 디렉토리. 단계적 적용 절차는 `docs/k8s-migration.md`.
+
 ---
 

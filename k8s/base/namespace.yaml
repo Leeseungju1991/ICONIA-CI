@@ -1,0 +1,31 @@
+# ICONIA — Kubernetes namespaces (V1.x scaffold)
+#
+# 본 manifest 는 V1.0 운영(EC2 + systemd) 과 병행 운영되지 않는다.
+# V1.x 단계적 전환(`docs/k8s-migration.md`) 시 overlay 가 base 의 이 두 namespace 를 모두 적용한다.
+#
+# overlay 는 metadata.name 을 그대로 사용하되, kustomization.yaml 의 `namespace:` 설정으로
+# 동일 manifest 가 prod / stage 에 분리 적용된다.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iconia-prod
+  labels:
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+    iconia.soomkorea/env: prod
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iconia-stage
+  labels:
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+    iconia.soomkorea/env: stage
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

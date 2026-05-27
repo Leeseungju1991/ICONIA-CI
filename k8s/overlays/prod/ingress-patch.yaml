@@ -1,0 +1,13 @@
+# prod Ingress 호스트네임 + ACM cert ARN 패치 (V1.x scaffold — placeholder)
+- op: add
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1certificate-arn
+  value: arn:aws:acm:ap-northeast-2:__ACCOUNT_ID__:certificate/__CERT_ID__
+- op: replace
+  path: /spec/rules/0/host
+  value: api.placeholder.example.com
+- op: replace
+  path: /spec/rules/1/host
+  value: ai.placeholder.example.com
+- op: replace
+  path: /spec/rules/2/host
+  value: admin.placeholder.example.com

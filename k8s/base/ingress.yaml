@@ -1,0 +1,66 @@
+# ICONIA — AWS ALB Ingress (V1.x scaffold)
+#
+# AWS Load Balancer Controller (https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
+# 가 EKS 클러스터에 설치되어 있다고 가정.
+#
+# - api.<domain>   → iconia-server
+# - ai.<domain>    → iconia-ai
+# - admin.<domain> → iconia-admin
+#
+# 실제 ACM 인증서 ARN / 호스트네임은 overlay 의 patch 또는 annotations replace 로 주입.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iconia
+  labels:
+    app.kubernetes.io/name: iconia-ingress
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /health/ready
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    # overlay 에서 실제 ACM cert ARN 주입
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:__ACCOUNT__:certificate/__CERT_ID__
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/load-balancer-attributes: routing.http2.enabled=true,idle_timeout.timeout_seconds=60
+spec:
+  rules:
+    - host: api.placeholder.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: iconia-server
+                port:
+                  name: http
+    - host: ai.placeholder.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: iconia-ai
+                port:
+                  name: http
+    - host: admin.placeholder.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: iconia-admin
+                port:
+                  name: http

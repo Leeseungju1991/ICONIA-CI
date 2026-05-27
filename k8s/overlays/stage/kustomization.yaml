@@ -1,0 +1,56 @@
+# ICONIA — Kustomize overlay: staging (V1.x scaffold)
+#
+# stage: 적은 replicas, 낮은 resource limit, 분리된 도메인 / Secrets Manager path.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iconia-stage
+
+resources:
+  - ../../base
+
+commonLabels:
+  iconia.soomkorea/env: stage
+
+commonAnnotations:
+  iconia.soomkorea/managed-by: iconia-ci
+  iconia.soomkorea/overlay: stage
+
+images:
+  - name: iconia-server
+    newName: __ECR_REGISTRY__/iconia-server
+    newTag: stage
+  - name: iconia-ai
+    newName: __ECR_REGISTRY__/iconia-ai
+    newTag: stage
+  - name: iconia-admin
+    newName: __ECR_REGISTRY__/iconia-admin
+    newTag: stage
+
+configMapGenerator:
+  - name: iconia-server-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - SENTRY_ENVIRONMENT=staging
+  - name: iconia-ai-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - SENTRY_ENVIRONMENT=staging
+  - name: iconia-admin-config
+    behavior: merge
+    literals:
+      - SENTRY_ENVIRONMENT=staging
+
+patches:
+  - path: ingress-patch.yaml
+    target:
+      kind: Ingress
+      name: iconia
+  - path: replicas-patch.yaml
+    target:
+      kind: Deployment
+  - path: hpa-patch.yaml
+    target:
+      kind: HorizontalPodAutoscaler

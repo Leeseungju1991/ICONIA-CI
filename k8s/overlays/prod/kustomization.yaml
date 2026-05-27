@@ -1,0 +1,62 @@
+# ICONIA — Kustomize overlay: production (V1.x scaffold)
+#
+# 실제 적용 시:
+#   - images.newTag 를 ECR 의 tag 로 교체
+#   - patches 의 도메인 / ACM cert ARN / VPC CIDR 을 실값으로 교체
+#   - configMapGenerator 의 prod 전용 env 추가
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iconia-prod
+
+resources:
+  - ../../base
+
+commonLabels:
+  iconia.soomkorea/env: prod
+
+commonAnnotations:
+  iconia.soomkorea/managed-by: iconia-ci
+  iconia.soomkorea/overlay: prod
+
+# ECR image tag — 실 운영 적용 시 newName/newTag 교체
+images:
+  - name: iconia-server
+    newName: __ECR_REGISTRY__/iconia-server
+    newTag: placeholder
+  - name: iconia-ai
+    newName: __ECR_REGISTRY__/iconia-ai
+    newTag: placeholder
+  - name: iconia-admin
+    newName: __ECR_REGISTRY__/iconia-admin
+    newTag: placeholder
+
+# prod 전용 환경 변수 (configMapGenerator 가 base ConfigMap 을 merge)
+configMapGenerator:
+  - name: iconia-server-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - SENTRY_ENVIRONMENT=production
+  - name: iconia-ai-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - SENTRY_ENVIRONMENT=production
+  - name: iconia-admin-config
+    behavior: merge
+    literals:
+      - SENTRY_ENVIRONMENT=production
+
+# Ingress 호스트 / cert / scaling 패치는 별도 파일로 분리
+patches:
+  - path: ingress-patch.yaml
+    target:
+      kind: Ingress
+      name: iconia
+  - path: external-secret-env-patch.yaml
+    target:
+      kind: ExternalSecret
+  - path: hpa-patch.yaml
+    target:
+      kind: HorizontalPodAutoscaler

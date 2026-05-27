@@ -1,0 +1,57 @@
+# ICONIA — ConfigMap (V1.x scaffold)
+#
+# **secret 이 아닌 환경 변수만** 담는다. 실제 secret (DB password / JWT / HMAC / KEK / Gemini API
+# key 등) 은 `secret-template.yaml` 의 External Secrets Operator 패턴으로 Secrets Manager
+# 에서 fetch 한다.
+#
+# 값은 V1.x 라운드에 overlay 의 `configMapGenerator` 로 환경별 주입.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iconia-server-config
+  labels:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+data:
+  NODE_ENV: "production"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+  # AI service base URL (cluster-internal)
+  AI_BASE_URL: "http://iconia-ai.iconia-prod.svc.cluster.local"
+  # overlay 에서 override:
+  #   AWS_REGION, S3_EVENTS_BUCKET, S3_EXPORTS_BUCKET, EVENT_STORE_BACKEND, etc.
+  AWS_REGION: "ap-northeast-2"
+  EVENT_STORE_BACKEND: "prisma"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iconia-ai-config
+  labels:
+    app.kubernetes.io/name: iconia-ai
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+data:
+  NODE_ENV: "production"
+  PORT: "8081"
+  LOG_LEVEL: "info"
+  AWS_REGION: "ap-northeast-2"
+  # Gemini endpoint / model name 같은 비-secret 설정만. API key 는 Secret.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iconia-admin-config
+  labels:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # admin → server (cluster-internal)
+  NEXT_PUBLIC_API_BASE_URL: "http://iconia-server.iconia-prod.svc.cluster.local"
+  AWS_REGION: "ap-northeast-2"

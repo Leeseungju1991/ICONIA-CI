@@ -1,0 +1,7 @@
+# prod HPA — 안정 운영 위한 minReplicas 상향 / maxReplicas 확장 (V1.x scaffold)
+- op: replace
+  path: /spec/minReplicas
+  value: 3
+- op: replace
+  path: /spec/maxReplicas
+  value: 20

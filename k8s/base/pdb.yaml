@@ -1,0 +1,49 @@
+# ICONIA — PodDisruptionBudget (V1.x scaffold)
+#
+# minAvailable: 1 — 노드 drain / 자발적 disruption 중 최소 1 pod 유지.
+# replicas: 2 기준 — replica 가 늘어나도 정책은 유효.
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: iconia-server
+  labels:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-server
+      app.kubernetes.io/part-of: iconia
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: iconia-ai
+  labels:
+    app.kubernetes.io/name: iconia-ai
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-ai
+      app.kubernetes.io/part-of: iconia
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: iconia-admin
+  labels:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iconia-admin
+      app.kubernetes.io/part-of: iconia

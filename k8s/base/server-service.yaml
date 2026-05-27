@@ -1,0 +1,21 @@
+# ICONIA SERVER — ClusterIP Service (V1.x scaffold)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iconia-server
+  labels:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iconia-server
+    app.kubernetes.io/part-of: iconia
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

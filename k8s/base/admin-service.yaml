@@ -1,0 +1,21 @@
+# ICONIA ADMIN — ClusterIP Service (V1.x scaffold)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iconia-admin
+  labels:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/component: admin-console
+    app.kubernetes.io/part-of: iconia
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iconia-admin
+    app.kubernetes.io/part-of: iconia
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

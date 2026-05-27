@@ -1,0 +1,7 @@
+# stage HPA — 비용 절감: minReplicas 낮춤, maxReplicas 축소
+- op: replace
+  path: /spec/minReplicas
+  value: 1
+- op: replace
+  path: /spec/maxReplicas
+  value: 4
