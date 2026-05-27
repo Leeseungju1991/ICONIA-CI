@@ -153,6 +153,17 @@ ICONIA 는 6개 레포로 구성된다.
 - `release-preflight` — 6레포 placeholder 검사 + (주)숨코리아 약관/사업자정보 LEGAL guard (미채운 PLACEHOLDER · 약관 placeholder 가 prod 로 새는 사고 차단 — 정본 `docs/legal/business-info.md`)
 - `test-gate` — SERVER/AI/ADMIN 단위·lint·typecheck + CI 자체 검증
 - `deploy` — 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크 (5단계 게이트)
+- `cross-repo-e2e` — Server local-up + Admin smoke + App jest + Server full test + AI test 직렬
+- `api-contract-lint` — `ADMIN/docs/api_contract.md` 의 `❌ 미구현` baseline ratchet
+- **V1.0 라운드 추가**:
+  - `sbom` — syft 로 SPDX + CycloneDX SBOM (push/tag 시 산출물, tag 시 GitHub Release 첨부)
+  - `vuln-scan` — trivy fs SARIF + npm audit (push/PR/weekly schedule, GitHub Security 탭)
+  - `license-compliance` — license-checker production 의존성 summary (V1.1 차단 게이트 승격)
+  - `coverage-gate` — SERVER 80 / AI 75 / ADMIN 70 % lines coverage (V1.0 warning / V1.1 차단)
+  - `dr-restore-dryrun` — monthly schedule + manual full-drill (RDS PITR / EFS Backup / S3 lifecycle 점검)
+  - `firmware-sign` — KMS-backed cosign sign-blob → S3 `firmware/*.sig` (HW OTA 신뢰 체인)
+  - `changelog` — tag v* 시 CHANGELOG.md auto-prepend + GitHub Release notes 생성
+  - `actions-sha-pin-audit` — 3rd-party action @SHA pin 누락 감지 (supply-chain 가드)
 
 ### 3.6 무중단 보장 5계층
 1. **체크섬** — SHA256 사이드카로 부분 업로드 차단
@@ -160,6 +171,28 @@ ICONIA 는 6개 레포로 구성된다.
 3. **테스트 게이트** — `test-gate.yml` 실패 시 배포 잡 진입 자체 차단
 4. **헬스체크** — restart 후 30s 내 `is-active` + HTTP `/health` 통과 필수
 5. **자동 롤백** — 헬스체크 실패 시 `.old.<ts>` 로 swap-back 후 재기동
+
+### 3.7 V1.0 컨테이너 / 보안 / DR 정책 (보고서 정본)
+- **컨테이너 미사용 정책** — ICONIA 는 EC2 + systemd 배포 모델. Dockerfile / K8s manifest 는
+  생성하지 않는다. 격리는 systemd hardening 풀세트(`deploy/systemd/*.service` 의 `NoNewPrivileges`,
+  `ProtectSystem=strict`, `ReadOnlyPaths` 등) 로 달성. K8s 전환은 ICONIA fleet 1만대 이상 또는
+  multi-tenancy 요구 시 V1.x 라운드에서 결정.
+- **SBOM / 취약점 / 라이선스** — `.github/workflows/{sbom,vuln-scan,license-compliance}.yml` 로
+  공급망 가시성 확보. V1.0 은 정보 수집 / GitHub Security 탭 SARIF — V1.1 라운드에 release
+  차단 게이트로 승격.
+- **DR** — 단일 region (ap-northeast-2) Multi-AZ. RDS Multi-AZ (RTO < 5분 / RPO < 1분),
+  EFS region-scoped Multi-AZ (RTO < 10분), ElastiCache Multi-AZ (RTO < 2분), ASG cross-AZ.
+  `dr-restore-dryrun.yml` 이 매월 1회 자동 점검 + 분기 1회 운영팀 full-drill.
+  Multi-region active-active 는 V1.x.
+- **Synthetics** — `terraform/synthetics.tf` 가 CloudWatch Synthetics canary 3종 (api/ai/admin)
+  을 5분 주기로 외부 호출. `SuccessPercent < 90%` 면 SNS 알람.
+- **펌웨어 OTA 신뢰 체인** — KMS-backed cosign signing (`firmware-sign.yml`). 부트로더가
+  ECDSA-P256 public key 로 검증 — 미서명 펌웨어 거부.
+- **OIDC 정적 키 제거** — `deploy.yml` / `dr-restore-dryrun.yml` / `firmware-sign.yml` 모두
+  long-lived access key 금지 — OIDC `AssumeRoleWithWebIdentity` 단명 토큰만 사용. 신뢰
+  정책은 `deploy/RUNBOOK.md` §9.
+- **deploy approval gate** — `build` / `deploy` / `smoke` 는 `environment: production` —
+  GitHub Settings 에서 reviewer 승인 + 5분 wait timer + audit log.
 
 ---
 
@@ -190,6 +223,11 @@ ICONIA 는 6개 레포로 구성된다.
 | Expo EAS Build / Submit (`4. APP`) | EAS 자체 인프라 + Apple/Google 계정 영역. 본 레포는 환경변수 (LOCAL_LAN_IP, API base URL) 만 전파. |
 | 운영 시크릿(Secrets Manager 의 db/JWT/HMAC/KEK 실값) | 운영팀이 직접 입력 — IaC 는 "secret 컨테이너" 만 생성, 실값은 `seed-db-password.ps1` 또는 콘솔. |
 | AWS 계정 결제·서비스 한도 직접 상향 | AWS Support Case · 비즈니스 계약 영역. |
+| Kubernetes (EKS) | EC2 + ASG + ALB 로 N=2+ 운영 가능. K8s 는 fleet 1만대 이상 / multi-tenancy 시 V1.x. |
+| Canary 배포 (트래픽 분배) | atomic swap + 자동 롤백으로 V1.0 충분. ALB weighted TG 도입은 V1.x — `aws-deploy.ps1 -Canary` 인자만 reserve. |
+| Pact / OpenAPI 본격 contract test broker | `api-contract-lint.yml` baseline ratchet 으로 V1.0 cover. broker 운영은 V1.x. |
+| AWS FIS (chaos automation) | `docs/chaos-test-plan.md` 의 manual 3종 시나리오로 V1.0 cover. 자동화는 V1.x. |
+| dual-key firmware trust roll | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 V1.x. |
 
 ---
 

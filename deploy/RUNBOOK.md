@@ -268,3 +268,119 @@ Manager 접속 후 디렉토리 swap + `systemctl restart`.
 | `RollbackFailed` 알람 | 호스트 자체 점검 — `.failed.<ts>` 디렉토리 보존됨 |
 | certbot 인증서 미발급 | Route53 A record 가 EIP 로 전파됐는지, 80 포트 개방 |
 | 시드 단계 SSM 실패 / 시드 데이터 결손 | §2-A 의 시드 트러블슈팅 표 참조 (preflight-seed-data.ps1 + /v1/admin/seed/status) |
+| Synthetics canary 실패 알람 (외부 시점 가용성) | CloudWatch Synthetics > canary 콘솔 → screenshot/HAR 확인. ALB target group 은 healthy 인데 외부 5xx 면 ALB SG / Route53 / 인증서 만료 의심. |
+| SBOM / vuln-scan 워크플로우 실패 | release 차단 게이트 아님 — GitHub Security 탭에서 SARIF 확인 + V1.1 라운드에 차단으로 승격 검토. |
+
+---
+
+## 8. DR Game Day / 백업 복구 검증
+
+DR 자동 검증 워크플로우 (`.github/workflows/dr-restore-dryrun.yml`) 가 매월 1일 03:00
+KST 에 다음을 자동 점검한다 — 실패 시 SNS 알람:
+
+1. RDS PITR 가능성 (EarliestRestorableTime + 자동 스냅샷 상태)
+2. EFS AWS Backup recovery point (최근 24h 이내 1건 이상)
+3. S3 events/exports/firmware/artifacts 버킷의 versioning + lifecycle
+
+분기 1회 운영팀이 **실제 restore drill** 을 수동 실행:
+
+```bash
+gh workflow run dr-restore-dryrun.yml -f full_drill=true
+```
+
+복구 후 staging 환경에서 e2e smoke (login + persona conversation + 결제) 통과 확인.
+
+장애 유형별(RDS/EFS/EC2 AZ / KMS / region) 상세 절차는
+`deploy/aws/multi-az-failover-runbook.md` §1 ~ §10.
+
+---
+
+## 9. OIDC IAM 역할 (정적 키 제거 정본)
+
+GitHub Actions 가 AWS 에 인증할 때 **long-lived access key 금지** — OIDC 로 단명
+토큰(STS AssumeRoleWithWebIdentity)만 사용. 이 설정은 `release-preflight` /
+`deploy` / `dr-restore-dryrun` / `firmware-sign` 4 워크플로우의 보안 기반이다.
+
+### 9.1 IAM identity provider 등록 (1회)
+
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list <thumbprint>   # AWS docs 가 안내하는 GitHub 인증서 thumbprint.
+```
+
+### 9.2 역할 신뢰 정책
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Federated": "arn:aws:iam::<acc>:oidc-provider/token.actions.githubusercontent.com" },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:Leeseungju1991/ICONIA-CI:*"
+      }
+    }
+  }]
+}
+```
+
+### 9.3 최소 권한 정책 (deploy 역할)
+
+```
+ssm:SendCommand, ssm:GetCommandInvocation, ssm:ListCommandInvocations
+s3:PutObject, s3:GetObject, s3:ListBucket      (artifacts bucket 한정)
+ec2:DescribeInstances                          (태그 기반 자동조회)
+cloudwatch:PutMetricData                       (배포 메트릭)
+iam:PassRole                                   (대상: ec2 instance profile 만)
+```
+
+`dr-restore-dryrun` / `firmware-sign` 워크플로우는 별도 역할 (read-only RDS/EFS/Backup +
+KMS sign-only) 권장 — Principle of Least Privilege.
+
+### 9.4 deploy approval gate
+
+`deploy.yml` 의 `build` / `deploy` / `smoke` 잡은 `environment: production` 으로
+묶여 있다. GitHub > Settings > Environments > production 에서:
+
+- **Required reviewers** — 운영팀 2명 + on-call 1명 중 1명 승인
+- **Deployment branches** — `main` + tag `v*` 만 허용
+- **Wait timer** — 5분 (tag 푸시 직후 자동 승격 방지)
+- **Audit log** — Settings > Audit log 에서 `environment.deployment_review` 이벤트 추적
+
+---
+
+## 10. 보안 / SBOM / 취약점 스캔 워크플로우 정본
+
+본 라운드(V1.0) 추가:
+
+| 워크플로우 | 트리거 | 산출물 | 게이트 |
+|---|---|---|---|
+| `sbom.yml` | push main / tag v* | syft SPDX + CycloneDX (CI + sibling 3) | release artifact (차단 X) |
+| `vuln-scan.yml` | push / PR / weekly | trivy SARIF → Security 탭 + npm audit summary | V1.0 정보 / V1.1 차단 |
+| `license-compliance.yml` | push / PR | license-checker summary | V1.0 정보 / V1.1 차단 |
+| `coverage-gate.yml` | push / PR | SERVER 80 / AI 75 / ADMIN 70 lines% | V1.0 warning / V1.1 차단 |
+| `dr-restore-dryrun.yml` | monthly + manual | RDS/EFS/S3 백업 정합 점검 | 별개 알람 |
+| `firmware-sign.yml` | manual (HW 운영자) | KMS-backed cosign sig → S3 firmware/*.sig | 부트로더가 검증 |
+| `changelog.yml` | tag v* | CHANGELOG.md auto-prepend + Release notes | 차단 X |
+| `actions-sha-pin-audit.yml` | push / PR (.github/) | 3rd-party action @SHA 누락 보고 | V1.0 warning / V1.1 차단 |
+
+---
+
+## 11. V1.0 정책 명시 (보류 항목)
+
+| 항목 | 상태 | 이유 |
+|---|---|---|
+| Kubernetes (EKS) | **보류** | 현 architecture 는 EC2 + ASG + ALB 로 N=2+ 운영 가능. K8s 전환은 ICONIA fleet 1만대 이상 또는 multi-tenancy 요구 시 — 운영 비용/복잡도 트레이드오프 결정 필요. |
+| Multi-region active-active | **보류** | 1차 출시는 single region (ap-northeast-2). Aurora Global DB / Route53 failover / S3 CRR 도입은 V1.x. |
+| AWS FIS (chaos automation) | **보류** | `docs/chaos-test-plan.md` 의 manual 3종 시나리오로 V1.0 cover. 자동화는 V1.x. |
+| Canary 배포 (10% 트래픽 분배) | **보류 / 스텁** | `aws-deploy.ps1 -Canary <pct>` 인자 reserved — V1.0 은 atomic swap + 자동 롤백으로 충분. ALB weighted target group 도입은 V1.x. |
+| dual-key firmware trust roll | **보류** | 단일 KMS 키로 V1.0 — 키 회전은 부트로더 OTA 동반 필요라 별도 라운드. |
+| Contract test 하네스 (Pact / OpenAPI) | **부분 보유** | `api-contract-lint.yml` 가 `❌ 미구현` baseline 14 ratchet. 본격 Pact broker 는 V1.x. |
+

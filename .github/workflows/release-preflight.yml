@@ -23,6 +23,10 @@ on:
         required: false
         default: ''
 
+# 최소권한 — placeholder/preflight 는 read-only.
+permissions:
+  contents: read
+
 jobs:
   preflight-placeholders:
     runs-on: ubuntu-latest

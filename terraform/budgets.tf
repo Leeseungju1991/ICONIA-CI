@@ -101,36 +101,36 @@ resource "aws_budgets_budget" "iconia_monthly_usd" {
   }
 
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 50
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "ACTUAL"
-    subscriber_sns_topic_arns  = [aws_sns_topic.budgets.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = 50
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "ACTUAL"
+    subscriber_sns_topic_arns = [aws_sns_topic.budgets.arn]
   }
 
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 80
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "ACTUAL"
-    subscriber_sns_topic_arns  = [aws_sns_topic.budgets.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = 80
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "ACTUAL"
+    subscriber_sns_topic_arns = [aws_sns_topic.budgets.arn]
   }
 
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 100
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "ACTUAL"
-    subscriber_sns_topic_arns  = [aws_sns_topic.budgets.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = 100
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "ACTUAL"
+    subscriber_sns_topic_arns = [aws_sns_topic.budgets.arn]
   }
 
   # FORECASTED — 월 예측치 기준. ACTUAL 도달 전에 선제 알림.
   notification {
-    comparison_operator        = "GREATER_THAN"
-    threshold                  = 100
-    threshold_type             = "PERCENTAGE"
-    notification_type          = "FORECASTED"
-    subscriber_sns_topic_arns  = [aws_sns_topic.budgets.arn]
+    comparison_operator       = "GREATER_THAN"
+    threshold                 = 100
+    threshold_type            = "PERCENTAGE"
+    notification_type         = "FORECASTED"
+    subscriber_sns_topic_arns = [aws_sns_topic.budgets.arn]
   }
 
   tags = merge(var.tags, { purpose = "monthly-budget-aws" })

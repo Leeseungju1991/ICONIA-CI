@@ -1,0 +1,110 @@
+###############################################################################
+# sbom.yml — Software Bill of Materials 생성 (V1.0 라운드 #2).
+#
+# ICONIA 는 EC2 + systemd 배포 모델이라 컨테이너 이미지 SBOM 이 아니라
+# **소스 트리 / 의존성 SBOM** 을 생성한다. anchore/syft 의 dir scan 으로
+# CI 리포 자체 + (가능하면) sibling 3 레포(SERVER/AI/ADMIN)의 의존성을
+# SPDX + CycloneDX 형식으로 출력해 release artifact 로 보존한다.
+#
+# 보존 정책: tag (v*) 푸시 시 GitHub Release artifact 로 첨부.
+#            push (main) 시 GitHub Actions artifact 로 30 일 보관.
+#
+# 회귀 0: 본 워크플로우는 release 트랙에 들어가지 않는다 (deploy.yml 의 needs 가 아님).
+# SBOM 생성 실패는 release 를 막지 않는다 (continue-on-error).
+###############################################################################
+name: sbom
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom-syft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: ICONIA-CI }
+
+      - name: Checkout SERVER (best-effort)
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-SERVER
+
+      - name: Checkout AI (best-effort)
+        id: ai
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-AI
+
+      - name: Checkout ADMIN (best-effort)
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-ADMIN
+
+      - name: Install syft
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+          syft version
+
+      - name: Generate SBOM (CI repo, SPDX + CycloneDX)
+        run: |
+          mkdir -p sbom
+          syft "dir:ICONIA-CI" -o spdx-json=sbom/ci.spdx.json     -o cyclonedx-json=sbom/ci.cdx.json
+
+      - name: Generate SBOM (SERVER)
+        if: steps.srv.outcome == 'success'
+        run: |
+          syft "dir:ICONIA-SERVER" -o spdx-json=sbom/server.spdx.json -o cyclonedx-json=sbom/server.cdx.json
+
+      - name: Generate SBOM (AI)
+        if: steps.ai.outcome == 'success'
+        run: |
+          syft "dir:ICONIA-AI" -o spdx-json=sbom/ai.spdx.json -o cyclonedx-json=sbom/ai.cdx.json
+
+      - name: Generate SBOM (ADMIN)
+        if: steps.adm.outcome == 'success'
+        run: |
+          syft "dir:ICONIA-ADMIN" -o spdx-json=sbom/admin.spdx.json -o cyclonedx-json=sbom/admin.cdx.json
+
+      - name: SBOM 요약
+        run: |
+          echo "## SBOM 산출물" >> "$GITHUB_STEP_SUMMARY"
+          for f in sbom/*.json; do
+            size=$(wc -c <"$f")
+            echo "- $f ($size bytes)" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iconia-sbom-${{ github.sha }}
+          path: sbom/
+          retention-days: 30
+
+      - name: Attach to GitHub Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom/*
+          fail_on_unmatched_files: false

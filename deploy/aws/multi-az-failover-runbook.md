@@ -251,8 +251,136 @@ CRR 을 활성한 경우 secondary region 의 bucket 으로 swap:
 위 §1 ~ §4 의 명령들을 AWS Systems Manager Document 로 packaging 해 1-click runbook 으로 만든다.
 본 라운드는 manual 절차 정합. 자동화는 별도 라운드.
 
-## 8. 변경 이력
+## 8. 전체 AZ 장애 (Single-AZ blackout)
+
+**달성 목표**: RTO < 15분, RPO < 1분.
+
+ap-northeast-2 의 단일 AZ (예: 2a) 가 완전히 다운된 경우. RDS / EFS / EC2 / ALB 가
+동시에 영향받는 복합 시나리오.
+
+### 8.1 즉시 진단
+
+```bash
+# 영향 AZ 식별 — health check 결과 비교.
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=iconia-prod-host" "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[].{ID:InstanceId,AZ:Placement.AvailabilityZone,State:State.Name}'
+# 영향 AZ 의 instance 가 모두 unreachable / impaired 상태.
+```
+
+### 8.2 ASG 가 healthy AZ 로 capacity 재분배
+
+ASG 는 multi-AZ 로 설정되어 있어 (`terraform/asg.tf`) 정상 AZ 들에 자동으로 desired
+capacity 를 채운다. 단, max_size 에 도달하면 추가 인스턴스 띄울 수 없으므로:
+
+```bash
+aws autoscaling update-auto-scaling-group \
+  --auto-scaling-group-name iconia-server-asg \
+  --max-size 8 \
+  --desired-capacity 4
+```
+
+### 8.3 RDS Multi-AZ — primary AZ 가 장애 AZ 면 §1 자동 failover
+
+`backup_retention_period=30` (`terraform/rds.tf:68`) + Multi-AZ standby → §1 자동 failover.
+
+### 8.4 EFS — mount target 이 정상 AZ 에 존재
+
+EFS 는 region-scoped 라 단일 AZ blackout 에도 file system 자체는 살아있다.
+정상 AZ 의 EC2 가 EFS mount target 으로 라우팅 — §2.2 의 재마운트 절차.
+
+### 8.5 검증
+
+- ALB `HealthyHostCount` 가 desired_capacity 회복
+- `/health?deep=1` 응답 200 + 모든 probe healthy
+- p95 latency < 평소 × 2
+
+---
+
+## 9. KMS / Secrets 키 분실 / 손상
+
+**달성 목표**: RTO < 1시간 (재발급), RPO 0 (Secrets Manager 자체 versioning).
+
+### 9.1 인지
+
+- Server `getSecret()` 실패 → `KMS access denied` 또는 `secret not found`
+- 알람 `iconia-server-secret-fetch-failed` (V1.x 추가 예정)
+
+### 9.2 KMS CMK 손상 / 비활성화
+
+```bash
+# CMK 상태 확인.
+aws kms describe-key --key-id alias/iconia-prod-data \
+  --query 'KeyMetadata.{State:KeyState,Enabled:Enabled}'
+# 'PendingDeletion' / 'Disabled' 면 즉시:
+aws kms cancel-key-deletion --key-id alias/iconia-prod-data
+aws kms enable-key --key-id alias/iconia-prod-data
+```
+
+### 9.3 Secrets Manager — 키 ARN 변경
+
+Secrets Manager 의 secret 이 다른 KMS 로 재암호화되어야 한다면:
+
+```bash
+# 1) 새 CMK 생성 (콘솔 또는 terraform).
+# 2) 영향받는 secret 의 KMS 키 교체.
+aws secretsmanager update-secret \
+  --secret-id iconia/prod/db/master_password \
+  --kms-key-id alias/iconia-prod-data-v2
+# 3) Server 재시작 — Secrets Manager 의 keyId 캐시 갱신.
+aws ssm send-command \
+  --document-name AWS-RunShellScript \
+  --targets "Key=tag:aws:autoscaling:groupName,Values=iconia-server-asg" \
+  --parameters 'commands=["sudo systemctl restart iconia-server iconia-ai iconia-admin"]'
+```
+
+### 9.4 Secrets 자체 분실 (예: 운영자 실수로 delete)
+
+```bash
+# Secrets Manager 는 default 30일 recovery window — 그 안에 복구 가능.
+aws secretsmanager restore-secret --secret-id iconia/prod/db/master_password
+# 30일 초과 후 분실이면 신규 secret 생성 + RDS master_user_password 재설정
+# (rds_password_rotator.py 의 manual rotation 트리거).
+```
+
+### 9.5 펌웨어 서명 키 분실 (cosign / KMS)
+
+- KMS ECDSA-P256 키가 분실되면 새 키 생성 → 펌웨어 빌드 + 서명 → OTA 배포.
+- **단**, 기존 출시된 펌웨어의 trusted cert 는 ESP32 부트로더에 임베드된 옛 public key 라
+  새 키로 서명한 firmware 는 거부된다 → 키 회전은 **부트로더 OTA 동반 필요**.
+- V1.x 라운드에 dual-key trust roll (옛 + 새 둘 다 신뢰) 후 옛 키 폐기 절차 도입.
+
+---
+
+## 10. 전 region 장애 (ap-northeast-2 full outage)
+
+**달성 목표**: V1.0 라운드는 **수동 통지 + 사후 복구** — 자동 cross-region failover 미적용.
+
+V1.0 정책: 단일 region (ap-northeast-2) 만 운영. Multi-region active-active 또는
+warm standby 는 V1.x 라운드 (Aurora Global DB / Route53 health-check failover /
+S3 CRR / EFS replication 도입 결정 + 비용 모델 확정 후).
+
+### 10.1 사고 통지
+
+- 운영팀 슬랙 #iconia-incident 채널 즉시 통지
+- 사용자 공지: dollsoom.com 상태 페이지 + APP push notification ("점검 중")
+
+### 10.2 S3 CRR 백업 — 사후 복구 시 사용
+
+`terraform/s3.tf` 에 CRR 정의돼 있으면 secondary region 의 bucket 에 events / firmware
+사본이 보존됨. region 복구 후 또는 신 region 배포 시 source 로 활용.
+
+### 10.3 DR 시점 의사결정
+
+- region 장애 < 2시간: 자체 복구 대기 (S3 SLA 99.99% — 대부분 빠르게 회복)
+- 2시간 이상: 슬랙에서 운영팀 의사결정 — 신 region (us-east-1 또는 ap-northeast-1)
+  에서 terraform apply 수행 (별도 가이드 — V1.x 라운드 정본화 예정)
+
+---
+
+## 11. 변경 이력
 
 | 날짜 | 변경 | 작성자 |
 |---|---|---|
 | 2026-05-07 | 초기 정본 (P1 #5) | sre-team |
+| 2026-05-27 | §8 AZ blackout / §9 KMS·Secrets 분실 / §10 전 region 장애 추가 (V1.0) | (주)숨코리아 운영팀 |

@@ -1,0 +1,113 @@
+###############################################################################
+# firmware-sign.yml — HW 펌웨어 OTA 서명 (V1.0 라운드 #20).
+#
+# 1. HW 레포 (별도 트랙) 의 펌웨어 빌드 산출물(.bin) 에 대해 cosign 으로
+# detached signature 를 생성하고 S3 firmware 버킷에 함께 업로드한다.
+#
+#   - 키 관리: AWS KMS 의 ECDSA-P256 키를 cosign sign-blob 의 `--key awskms://...`
+#             로 직접 참조 (HSM-backed signing). 키 마테리얼이 GitHub Actions
+#             러너에 노출되지 않는다.
+#   - 검증: ESP32 부트로더가 .bin.sig 와 ECDSA public key (펌웨어에 임베드된
+#             trusted cert) 를 사용해 검증 → 미서명/위변조 펌웨어 거부.
+#
+# 본 워크플로우는 트리거 자체가 manual (`workflow_dispatch`) — 1. HW 빌드가
+# CI 리포 직접 의존이 아니라 별도 트랙이라, 운영자가 펌웨어 artifact 를 명시
+# 지정해 서명 → 업로드한다.
+#
+# 회귀 0: 본 워크플로우는 deploy.yml 에 묶이지 않는다. SERVER/AI/ADMIN 의
+# 일상 배포 흐름과 무관.
+###############################################################################
+name: firmware-sign
+
+on:
+  workflow_dispatch:
+    inputs:
+      firmware_s3_key:
+        description: '서명 대상 펌웨어의 S3 key (예: firmware/iconia-hw-1.2.3.bin).'
+        required: true
+        type: string
+      kms_key_arn:
+        description: 'cosign sign-blob 가 사용할 AWS KMS 키 ARN (alias 가능). 비우면 secrets.ICONIA_FIRMWARE_KMS_ARN.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write   # OIDC.
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS 자격 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve firmware bucket
+        id: resolve
+        run: |
+          set -eo pipefail
+          BUCKET="$(aws s3api list-buckets \
+            --query 'Buckets[?starts_with(Name, `iconia-prod-firmware`)].Name' \
+            --output text | head -n1)"
+          if [ -z "$BUCKET" ]; then
+            echo "::error::iconia-prod-firmware-* 버킷 미발견 — terraform apply 필요"
+            exit 1
+          fi
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "Firmware bucket: $BUCKET"
+
+      - name: Install cosign
+        run: |
+          curl -fsSL -o /tmp/cosign \
+            https://github.com/sigstore/cosign/releases/download/v2.2.4/cosign-linux-amd64
+          sudo install -m0755 /tmp/cosign /usr/local/bin/cosign
+          cosign version
+
+      - name: Download firmware blob
+        run: |
+          aws s3 cp "s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}" /tmp/firmware.bin
+          ls -la /tmp/firmware.bin
+          sha256sum /tmp/firmware.bin | tee /tmp/firmware.bin.sha256
+
+      - name: Sign with KMS (cosign sign-blob)
+        env:
+          KMS_KEY: ${{ inputs.kms_key_arn != '' && inputs.kms_key_arn || secrets.ICONIA_FIRMWARE_KMS_ARN }}
+        run: |
+          if [ -z "$KMS_KEY" ]; then
+            echo "::error::KMS key ARN 미지정 — workflow input 또는 ICONIA_FIRMWARE_KMS_ARN secret 필요"
+            exit 1
+          fi
+          # awskms:///<arn> 형식.
+          cosign sign-blob \
+            --yes \
+            --key "awskms:///$KMS_KEY" \
+            --output-signature /tmp/firmware.bin.sig \
+            /tmp/firmware.bin
+          ls -la /tmp/firmware.bin.sig
+
+      - name: Upload signature + checksum to S3
+        run: |
+          aws s3 cp /tmp/firmware.bin.sig    "s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}.sig"     --content-type application/octet-stream
+          aws s3 cp /tmp/firmware.bin.sha256 "s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}.sha256"  --content-type text/plain
+
+      - name: 요약
+        run: |
+          echo "## 펌웨어 서명 완료" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 펌웨어: s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 서명  : s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}.sig" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SHA256: s3://${{ steps.resolve.outputs.bucket }}/${{ inputs.firmware_s3_key }}.sha256" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "검증 (ESP32 부트로더 또는 운영자 콘솔):" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "cosign verify-blob --key awskms:///<KMS_ARN> --signature firmware.bin.sig firmware.bin" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

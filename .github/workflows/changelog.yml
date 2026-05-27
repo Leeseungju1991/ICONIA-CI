@@ -1,0 +1,166 @@
+###############################################################################
+# changelog.yml — git tag 시 CHANGELOG.md 자동 갱신 (V1.0 라운드 #22).
+#
+# tag v* 푸시 시 직전 tag → 본 tag 의 git log 를 추출해 conventional-commit
+# 형식으로 분류 (feat / fix / docs / refactor / chore) → CHANGELOG.md 상단에
+# 새 섹션 prepend → 커밋 + push.
+#
+# 회귀 0:
+#   - tag push 만 처리 (push branch 와 무관).
+#   - GitHub Release notes 도 같이 갱신 (gh release create / edit).
+#   - 본 워크플로우 자체 실패는 deploy.yml 을 차단하지 않는다 (선행 게이트 아님).
+###############################################################################
+name: changelog
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '대상 tag (예: v1.0.0). 비우면 직전 tag 사용.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write   # CHANGELOG.md 커밋 + release notes.
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tag 비교에 전체 히스토리 필요.
+
+      - name: Resolve tag range
+        id: range
+        run: |
+          set -eo pipefail
+          TAG="${{ inputs.tag || github.ref_name }}"
+          # 본 워크플로우는 tag push 트리거 — github.ref_name = "v1.0.0".
+          # 직전 tag 찾기 (현 tag 제외).
+          PREV="$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo '')"
+          echo "tag=$TAG"       >> "$GITHUB_OUTPUT"
+          echo "prev=$PREV"     >> "$GITHUB_OUTPUT"
+          if [ -z "$PREV" ]; then
+            echo "range=$TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "range=$PREV..$TAG" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Tag: $TAG  Prev: ${PREV:-(none)}  Range: ${PREV:+$PREV..}$TAG"
+
+      - name: Build CHANGELOG entry
+        id: entry
+        run: |
+          set -eo pipefail
+          TAG='${{ steps.range.outputs.tag }}'
+          RANGE='${{ steps.range.outputs.range }}'
+          DATE="$(date -u +%Y-%m-%d)"
+
+          {
+            echo "## $TAG ($DATE)"
+            echo ""
+
+            print_section () {
+              local title="$1" pattern="$2"
+              # conventional-commit prefix 우선 매칭. fallback: prefix 없는 메시지.
+              local lines
+              lines="$(git log --pretty=format:'- %s (%h)' "$RANGE" 2>/dev/null \
+                       | grep -E "$pattern" || true)"
+              if [ -n "$lines" ]; then
+                echo "### $title"
+                echo "$lines"
+                echo ""
+              fi
+            }
+
+            print_section 'Features'       '^- (feat|feature)(\([^)]+\))?: '
+            print_section 'Fixes'          '^- fix(\([^)]+\))?: '
+            print_section 'Refactor'       '^- refactor(\([^)]+\))?: '
+            print_section 'Docs'           '^- docs(\([^)]+\))?: '
+            print_section 'CI / Chore'     '^- (ci|chore|build)(\([^)]+\))?: '
+
+            # Other — POSIX ERE 는 lookahead 미지원이라 conventional-commit prefix 매칭 후 grep -v 로 제외.
+            other_lines="$(git log --pretty=format:'- %s (%h)' "$RANGE" 2>/dev/null \
+              | grep -vE '^- (feat|feature|fix|refactor|docs|ci|chore|build)(\([^)]+\))?: ' \
+              || true)"
+            if [ -n "$other_lines" ]; then
+              echo "### Other"
+              echo "$other_lines"
+              echo ""
+            fi
+
+            echo "---"
+            echo ""
+          } > /tmp/new_entry.md
+
+          echo "size=$(wc -c </tmp/new_entry.md)" >> "$GITHUB_OUTPUT"
+          cat /tmp/new_entry.md
+
+      - name: Prepend to CHANGELOG.md
+        run: |
+          set -eo pipefail
+          if [ ! -f CHANGELOG.md ]; then
+            {
+              echo "# ICONIA-CI Changelog"
+              echo ""
+              echo "본 파일은 \`changelog.yml\` 워크플로우가 tag 푸시 시 자동 갱신한다."
+              echo "수동 편집은 권장되지 않는다. 형식: Keep a Changelog + conventional commits."
+              echo ""
+            } > CHANGELOG.md
+          fi
+          # 헤더(처음 4-5줄) 유지하고 그 뒤에 새 entry 삽입.
+          # 단순화: 헤더 검출 — 첫 빈 줄 뒤에 entry 삽입.
+          awk -v entry_file=/tmp/new_entry.md '
+            BEGIN { inserted=0 }
+            /^$/ && !inserted {
+              print ""
+              while ((getline line < entry_file) > 0) print line
+              close(entry_file)
+              inserted=1
+              next
+            }
+            { print }
+          ' CHANGELOG.md > /tmp/changelog.new
+          mv /tmp/changelog.new CHANGELOG.md
+          head -40 CHANGELOG.md
+
+      - name: Commit + push
+        env:
+          # 표준 GITHUB_TOKEN — main 직접 push 허용 (회사 규약).
+          GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eo pipefail
+          git config user.name "iconia-ci[bot]"
+          git config user.email "ci@soomkorea.invalid"
+          if git diff --quiet CHANGELOG.md; then
+            echo "변경 없음 — skip"
+            exit 0
+          fi
+          git add CHANGELOG.md
+          MSG="$(printf 'docs(ci): CHANGELOG.md auto-update for %s\n\nhttps://claude.ai/code/session_01EG8MdhBKiCzRCQSiuXrYjG' '${{ steps.range.outputs.tag }}')"
+          git commit -m "$MSG"
+          # main 으로 push (non-ff → 3회 rebase 재시도).
+          for i in 1 2 3; do
+            if git push origin HEAD:main; then
+              echo "push 성공 (시도 $i)"; break
+            fi
+            echo "push 실패 — rebase 재시도 ($i/3)"
+            git pull --rebase origin main
+            sleep $((i * 2))
+          done
+
+      - name: Update GitHub Release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eo pipefail
+          TAG='${{ steps.range.outputs.tag }}'
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file /tmp/new_entry.md
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file /tmp/new_entry.md
+          fi

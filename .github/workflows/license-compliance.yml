@@ -1,0 +1,107 @@
+###############################################################################
+# license-compliance.yml — 의존성 라이선스 화이트리스트 (V1.0 라운드 #21).
+#
+# (주)숨코리아 운영팀이 승인한 라이선스 화이트리스트:
+#   MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, CC0-1.0,
+#   CC-BY-3.0, CC-BY-4.0, Unlicense, Python-2.0, BlueOak-1.0.0.
+#
+# 본 워크플로우는 SERVER / AI / ADMIN 의 production 의존성을 license-checker 로
+# 점검해 화이트리스트 외 라이선스(GPL/AGPL/Commons Clause/Custom) 가 포함되면
+# 실패한다.
+#
+# 회귀 0:
+#   - 본 라운드는 `--summary` 만 출력 — V1.0 초기 baseline 도출 단계.
+#   - V1.1 라운드에 `--failOn` 으로 차단 게이트 승격 예정.
+###############################################################################
+name: license-compliance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # 화이트리스트 (license-checker --onlyAllow 형식, semicolon 구분).
+  LICENSE_ALLOWLIST: >-
+    MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0
+
+jobs:
+  license-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout SERVER (best-effort)
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+
+      - name: Checkout AI (best-effort)
+        id: ai
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ai
+
+      - name: Checkout ADMIN (best-effort)
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Install license-checker
+        run: npm install -g license-checker
+
+      - name: License summary (SERVER)
+        if: steps.srv.outcome == 'success'
+        working-directory: server
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          license-checker --production --summary || true
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### SERVER licenses" >> "$GITHUB_STEP_SUMMARY"
+          license-checker --production --summary >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: License summary (AI)
+        if: steps.ai.outcome == 'success'
+        working-directory: ai
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          license-checker --production --summary || true
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### AI licenses" >> "$GITHUB_STEP_SUMMARY"
+          license-checker --production --summary >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: License summary (ADMIN)
+        if: steps.adm.outcome == 'success'
+        working-directory: admin
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          license-checker --production --summary || true
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ADMIN licenses" >> "$GITHUB_STEP_SUMMARY"
+          license-checker --production --summary >> "$GITHUB_STEP_SUMMARY" || true
+
+      # ---- V1.1 라운드에 활성 (현재 baseline 도출 중이라 --onlyAllow 강제는 OFF) ----
+      # - name: License whitelist 게이트 (SERVER)
+      #   if: steps.srv.outcome == 'success'
+      #   working-directory: server
+      #   run: license-checker --production --onlyAllow "$LICENSE_ALLOWLIST"

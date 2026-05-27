@@ -1,0 +1,164 @@
+###############################################################################
+# coverage-gate.yml — 테스트 커버리지 임계치 게이트 (V1.0 라운드 #16).
+#
+# 각 레포의 커버리지 임계 (lines 기준):
+#   SERVER 80% / AI 75% / ADMIN 70%
+# (APP 은 별도 트랙 — Expo EAS 빌드 측에서 jest 커버리지 게이트)
+#
+# 본 워크플로우는 SERVER/AI/ADMIN 의 `npm test -- --coverage` 산출 lcov-summary
+# 를 파싱해 임계 미달 시 fail.
+#
+# 회귀 0:
+#   - 본 라운드는 임계 미달 시 `::warning::` 만 — V1.0 baseline 측정 단계.
+#   - V1.1 에서 `--strict` 모드로 승격해 deploy.yml 의 test-gate 에 묶을 예정.
+###############################################################################
+name: coverage-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'true 면 임계 미달 시 실패. 기본 false (warning).'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+
+env:
+  COVERAGE_THRESHOLD_SERVER: '80'
+  COVERAGE_THRESHOLD_AI: '75'
+  COVERAGE_THRESHOLD_ADMIN: '70'
+  STRICT: ${{ github.event.inputs.strict || 'false' }}
+
+jobs:
+  server-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout SERVER (best-effort)
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+      - uses: actions/setup-node@v4
+        if: steps.co.outcome == 'success'
+        with: { node-version: '20' }
+      - name: 커버리지 게이트 (SERVER >= 80%)
+        if: steps.co.outcome == 'success'
+        working-directory: server
+        env:
+          THRESHOLD: ${{ env.COVERAGE_THRESHOLD_SERVER }}
+        run: |
+          npm ci
+          [ -f prisma/schema.prisma ] && npx --yes prisma generate || true
+          npm test -- --coverage --coverageReporters=text-summary --coverageReporters=lcov || \
+            { echo "::warning::SERVER 테스트 실패 또는 커버리지 산출 실패"; [ "$STRICT" = "true" ] && exit 1 || exit 0; }
+          # text-summary 의 "Lines" 줄 파싱.
+          pct="$(grep -E '^Lines' coverage/lcov-report/index.html 2>/dev/null \
+                  | head -1 \
+                  | grep -oE '[0-9]+(\.[0-9]+)?' \
+                  | head -1)"
+          if [ -z "$pct" ]; then
+            # vitest 형식 fallback — coverage-summary.json.
+            if [ -f coverage/coverage-summary.json ]; then
+              pct="$(node -e "console.log(JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8')).total.lines.pct)")"
+            fi
+          fi
+          echo "SERVER lines coverage = ${pct:-unknown}% (threshold $THRESHOLD%)"
+          echo "- SERVER : ${pct:-unknown}% (threshold $THRESHOLD%)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$pct" ] && awk "BEGIN{exit !($pct + 0 < $THRESHOLD)}"; then
+            if [ "$STRICT" = "true" ]; then
+              echo "::error::SERVER 커버리지 $pct% < $THRESHOLD%"
+              exit 1
+            else
+              echo "::warning::SERVER 커버리지 $pct% < $THRESHOLD% (V1.0 라운드는 warning 만, V1.1 에서 강제)"
+            fi
+          fi
+
+  ai-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout AI (best-effort)
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ai
+      - uses: actions/setup-node@v4
+        if: steps.co.outcome == 'success'
+        with: { node-version: '20' }
+      - name: 커버리지 게이트 (AI >= 75%)
+        if: steps.co.outcome == 'success'
+        working-directory: ai
+        env:
+          THRESHOLD: ${{ env.COVERAGE_THRESHOLD_AI }}
+        run: |
+          npm ci
+          npm test -- --coverage --coverageReporters=text-summary --coverageReporters=json-summary || \
+            { echo "::warning::AI 테스트 실패 또는 커버리지 산출 실패"; [ "$STRICT" = "true" ] && exit 1 || exit 0; }
+          if [ -f coverage/coverage-summary.json ]; then
+            pct="$(node -e "console.log(JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8')).total.lines.pct)")"
+          fi
+          echo "AI lines coverage = ${pct:-unknown}% (threshold $THRESHOLD%)"
+          echo "- AI : ${pct:-unknown}% (threshold $THRESHOLD%)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$pct" ] && awk "BEGIN{exit !($pct + 0 < $THRESHOLD)}"; then
+            if [ "$STRICT" = "true" ]; then
+              echo "::error::AI 커버리지 $pct% < $THRESHOLD%"
+              exit 1
+            else
+              echo "::warning::AI 커버리지 $pct% < $THRESHOLD%"
+            fi
+          fi
+
+  admin-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout ADMIN (best-effort)
+        id: co
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+      - uses: actions/setup-node@v4
+        if: steps.co.outcome == 'success'
+        with: { node-version: '20' }
+      - name: 커버리지 게이트 (ADMIN >= 70%)
+        if: steps.co.outcome == 'success'
+        working-directory: admin
+        env:
+          THRESHOLD: ${{ env.COVERAGE_THRESHOLD_ADMIN }}
+        run: |
+          npm ci
+          npm test -- --coverage --coverageReporters=text-summary --coverageReporters=json-summary || \
+            { echo "::warning::ADMIN 테스트 실패 또는 커버리지 산출 실패"; [ "$STRICT" = "true" ] && exit 1 || exit 0; }
+          if [ -f coverage/coverage-summary.json ]; then
+            pct="$(node -e "console.log(JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8')).total.lines.pct)")"
+          fi
+          echo "ADMIN lines coverage = ${pct:-unknown}% (threshold $THRESHOLD%)"
+          echo "- ADMIN : ${pct:-unknown}% (threshold $THRESHOLD%)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$pct" ] && awk "BEGIN{exit !($pct + 0 < $THRESHOLD)}"; then
+            if [ "$STRICT" = "true" ]; then
+              echo "::error::ADMIN 커버리지 $pct% < $THRESHOLD%"
+              exit 1
+            else
+              echo "::warning::ADMIN 커버리지 $pct% < $THRESHOLD%"
+            fi
+          fi

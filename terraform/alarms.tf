@@ -104,7 +104,7 @@ resource "aws_cloudwatch_metric_alarm" "slo_api_latency_p95" {
   metric_name         = "TargetResponseTime"
   extended_statistic  = "p95"
   period              = 300
-  evaluation_periods  = 2 # 5분 × 2 = 10분.
+  evaluation_periods  = 2   # 5분 × 2 = 10분.
   threshold           = 3.0 # 초 단위 (TargetResponseTime).
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"

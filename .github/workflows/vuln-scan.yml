@@ -1,0 +1,212 @@
+###############################################################################
+# vuln-scan.yml — 취약점 스캔 (V1.0 라운드 #3).
+#
+# EC2 + systemd 배포 모델 — 컨테이너 이미지 스캔 대신 **filesystem + 의존성 스캔**.
+#
+#   1) trivy fs scan   : 본 레포 + sibling 3 레포의 의존성 lockfile (npm/python) +
+#                        설정 misconfig (terraform / dockerfile if any)
+#   2) npm audit       : SERVER / AI / ADMIN 의 production 의존성 high+ 카운트
+#                        (production 의존성만 가드 — devDependencies 는 정보용)
+#
+# 트리거: push(main), pull_request, weekly schedule(월요일 09:00 KST = 00:00 UTC).
+#
+# 회귀 0:
+#   - vuln-scan 실패 자체는 deploy.yml 을 차단하지 않는다 (release-preflight
+#     게이트에 묶이지 않음).
+#   - 다만 GitHub Actions 의 Security 탭에 SARIF 로 업로드되어 추적 가능해야 한다
+#     (운영팀이 매주 trivy 결과 점검).
+#   - CRITICAL 카운트가 baseline (현재 0) 초과 시 PR 차단 가능 — `--exit-code 0` 으로
+#     V1.0 라운드는 정보 수집 모드, V1.x 에서 강제 게이트로 승격.
+###############################################################################
+name: vuln-scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 1'   # 매주 월요일 00:00 UTC (= 09:00 KST).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # SARIF 업로드.
+
+jobs:
+  trivy-fs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: ICONIA-CI }
+
+      - name: Checkout SERVER (best-effort)
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-SERVER
+
+      - name: Checkout AI (best-effort)
+        id: ai
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-AI
+
+      - name: Checkout ADMIN (best-effort)
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ICONIA-ADMIN
+
+      - name: Install trivy
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y && sudo apt-get install -y trivy
+          trivy --version
+
+      # ----- 1) Filesystem 스캔 (의존성 + misconfig) — 정보 수집 모드 -----
+      - name: trivy fs (ICONIA-CI)
+        run: |
+          trivy fs \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            ICONIA-CI
+
+      - name: trivy fs SARIF (ICONIA-CI)
+        run: |
+          trivy fs \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-ci.sarif \
+            ICONIA-CI || true
+
+      - name: Upload trivy CI SARIF
+        if: hashFiles('trivy-ci.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-ci.sarif
+          category: trivy-iconia-ci
+
+      - name: trivy fs (SERVER)
+        if: steps.srv.outcome == 'success'
+        run: |
+          trivy fs --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
+            --format sarif --output trivy-server.sarif ICONIA-SERVER || true
+
+      - name: Upload trivy SERVER SARIF
+        if: steps.srv.outcome == 'success' && hashFiles('trivy-server.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-server.sarif
+          category: trivy-iconia-server
+
+      - name: trivy fs (AI)
+        if: steps.ai.outcome == 'success'
+        run: |
+          trivy fs --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
+            --format sarif --output trivy-ai.sarif ICONIA-AI || true
+
+      - name: Upload trivy AI SARIF
+        if: steps.ai.outcome == 'success' && hashFiles('trivy-ai.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-ai.sarif
+          category: trivy-iconia-ai
+
+      - name: trivy fs (ADMIN)
+        if: steps.adm.outcome == 'success'
+        run: |
+          trivy fs --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
+            --format sarif --output trivy-admin.sarif ICONIA-ADMIN || true
+
+      - name: Upload trivy ADMIN SARIF
+        if: steps.adm.outcome == 'success' && hashFiles('trivy-admin.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-admin.sarif
+          category: trivy-iconia-admin
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout SERVER (best-effort)
+        id: srv
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-SERVER
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: server
+
+      - name: Checkout AI (best-effort)
+        id: ai
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-AI
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: ai
+
+      - name: Checkout ADMIN (best-effort)
+        id: adm
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-ADMIN
+          ref: main
+          token: ${{ secrets.ICONIA_REPO_TOKEN }}
+          path: admin
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: npm audit (SERVER)
+        if: steps.srv.outcome == 'success'
+        working-directory: server
+        run: |
+          # production 의존성 high+ 만 신호. devDependencies 는 V1.x 에서 점검.
+          npm audit --omit=dev --audit-level=high || true
+
+      - name: npm audit (AI)
+        if: steps.ai.outcome == 'success'
+        working-directory: ai
+        run: |
+          npm audit --omit=dev --audit-level=high || true
+
+      - name: npm audit (ADMIN)
+        if: steps.adm.outcome == 'success'
+        working-directory: admin
+        run: |
+          npm audit --omit=dev --audit-level=high || true
+
+      - name: 요약
+        if: always()
+        run: |
+          echo "## vuln-scan / npm audit 결과" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SERVER : ${{ steps.srv.outcome }}"  >> "$GITHUB_STEP_SUMMARY"
+          echo "- AI     : ${{ steps.ai.outcome }}"   >> "$GITHUB_STEP_SUMMARY"
+          echo "- ADMIN  : ${{ steps.adm.outcome }}"  >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**V1.0 라운드는 정보 수집 모드** — high+ 카운트는 GitHub Security 탭으로 추적." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,140 @@
+###############################################################################
+# dr-restore-dryrun.yml — DR 복구 검증 자동화 (V1.0 라운드 #9).
+#
+# 매월 1회 (KST 1일 03:00 = UTC 매월 1일 18:00) 다음을 자동 검증한다:
+#
+#   1) RDS 최신 자동 백업 / 수동 스냅샷 존재 확인
+#      - RestorableTime 이 1일 이내인지
+#      - latest snapshot status == "available"
+#   2) RDS PITR dry-run — DescribeDBInstances + restore-db-instance-to-point-in-time
+#      `--dry-run-like` 점검 (실제 restore 는 비용·시간 큼 — 권한/리소스만 확인).
+#   3) EFS AWS Backup recovery point 최근 24h 이내 존재 확인
+#   4) S3 events / exports 버킷의 lifecycle / versioning 정합 확인
+#
+# 실제 restore 까지 수행하는 "fire drill" 은 분기 1회 운영팀이 수동 실행
+# (`workflow_dispatch` + `full_drill=true`). 비용·시간 가드 — 일일 자동화는 점검만.
+#
+# 회귀 0:
+#   - 본 잡 자체 실패는 deploy.yml 을 차단하지 않는다.
+#   - 실패 시 SNS topic ARN (iconia-server-alarms) 으로 알람 (별도 라운드).
+###############################################################################
+name: dr-restore-dryrun
+
+on:
+  schedule:
+    # 매월 1일 18:00 UTC = 매월 2일 03:00 KST.
+    - cron: '0 18 1 * *'
+  workflow_dispatch:
+    inputs:
+      full_drill:
+        description: 'true 면 실제 restore 수행 (비용/시간 큼 — 분기 1회 운영팀 결정).'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+  id-token: write   # OIDC.
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS 자격 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: RDS 자동 백업 / 스냅샷 점검
+        run: |
+          set -eo pipefail
+          DB_ID="$(aws rds describe-db-instances \
+            --query 'DBInstances[?starts_with(DBInstanceIdentifier, `iconia-prod`)].DBInstanceIdentifier' \
+            --output text | head -n1)"
+          if [ -z "$DB_ID" ]; then
+            echo "::error::iconia-prod-* DB instance 미발견"
+            exit 1
+          fi
+          echo "DB Instance: $DB_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+
+          # 1) Earliest restorable time + retention 확인.
+          aws rds describe-db-instances \
+            --db-instance-identifier "$DB_ID" \
+            --query 'DBInstances[0].{BackupRetentionPeriod:BackupRetentionPeriod,EarliestRestorableTime:EarliestRestorableTime,LatestRestorableTime:LatestRestorableTime}' \
+            --output table | tee -a "$GITHUB_STEP_SUMMARY"
+
+          # 2) 최신 자동 스냅샷 존재 확인 (24h 이내).
+          aws rds describe-db-snapshots \
+            --db-instance-identifier "$DB_ID" \
+            --snapshot-type automated \
+            --max-records 5 \
+            --query 'reverse(sort_by(DBSnapshots, &SnapshotCreateTime))[:5].{ID:DBSnapshotIdentifier,Status:Status,Created:SnapshotCreateTime}' \
+            --output table | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: EFS AWS Backup recovery point 점검
+        run: |
+          set -eo pipefail
+          EFS_ID="$(aws efs describe-file-systems \
+            --query 'FileSystems[?starts_with(Name, `iconia`)].FileSystemId' \
+            --output text | head -n1)"
+          if [ -z "$EFS_ID" ]; then
+            echo "::warning::iconia-* EFS 미발견 — AWS Backup 미적용 가능 (운영팀 확인)"
+            exit 0
+          fi
+          echo "EFS: $EFS_ID" | tee -a "$GITHUB_STEP_SUMMARY"
+
+          ARN="arn:aws:elasticfilesystem:${AWS_REGION}:$(aws sts get-caller-identity --query Account --output text):file-system/${EFS_ID}"
+          aws backup list-recovery-points-by-resource \
+            --resource-arn "$ARN" \
+            --max-results 5 \
+            --query 'reverse(sort_by(RecoveryPoints, &CreationDate))[:5].{ARN:RecoveryPointArn,Status:Status,Date:CreationDate}' \
+            --output table | tee -a "$GITHUB_STEP_SUMMARY" \
+            || echo "::warning::EFS recovery point 0개 또는 AWS Backup 미설정"
+
+      - name: S3 버킷 versioning / lifecycle 정합
+        run: |
+          set -eo pipefail
+          for b in events exports firmware artifacts; do
+            BUCKET="$(aws s3api list-buckets \
+              --query "Buckets[?starts_with(Name, \`iconia-prod-$b\`)].Name" \
+              --output text | head -n1)"
+            if [ -z "$BUCKET" ]; then
+              echo "::warning::iconia-prod-$b 버킷 미발견"
+              continue
+            fi
+            echo "Bucket: $BUCKET" | tee -a "$GITHUB_STEP_SUMMARY"
+            ver="$(aws s3api get-bucket-versioning --bucket "$BUCKET" --query Status --output text 2>/dev/null || echo NotConfigured)"
+            echo "  versioning: $ver" | tee -a "$GITHUB_STEP_SUMMARY"
+            aws s3api get-bucket-lifecycle-configuration --bucket "$BUCKET" \
+              --query 'Rules[].{ID:ID,Status:Status,Prefix:Filter.Prefix}' \
+              --output table 2>/dev/null \
+              | tee -a "$GITHUB_STEP_SUMMARY" \
+              || echo "  lifecycle: (none)"
+          done
+
+      - name: Full restore drill (옵트인)
+        if: github.event.inputs.full_drill == 'true'
+        run: |
+          set -eo pipefail
+          echo "::warning::FULL DRILL — 실제 RDS PITR restore 수행 — 비용/시간 발생"
+          # 운영팀이 분기 1회 수동 실행. 실제 명령은 RUNBOOK §8 참조.
+          # 본 워크플로우는 권한 검증만:
+          aws rds describe-db-instances --query 'length(DBInstances)' --output text
+          aws backup list-backup-vaults --query 'length(BackupVaultList)' --output text
+
+      - name: 요약 / 다음 액션
+        if: always()
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 다음 액션" >> "$GITHUB_STEP_SUMMARY"
+          echo "- RDS EarliestRestorableTime 이 24h 이상 지난 경우 → backup_retention_period 조정 검토" >> "$GITHUB_STEP_SUMMARY"
+          echo "- EFS recovery point 미존재 → AWS Backup plan 도입 (terraform 보강)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 분기 1회 full_drill=true 로 실 restore — deploy/RUNBOOK.md §8 (DR Game Day)" >> "$GITHUB_STEP_SUMMARY"

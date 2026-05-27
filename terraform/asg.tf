@@ -85,9 +85,9 @@ resource "aws_autoscaling_group" "iconia_server" {
 # scale-in cooldown 5분 (var.asg_scale_in_cooldown_seconds).
 # -----------------------------------------------------------------------------
 resource "aws_autoscaling_policy" "cpu_target" {
-  name                   = "${local.name_prefix}-asg-cpu-target"
-  autoscaling_group_name = aws_autoscaling_group.iconia_server.name
-  policy_type            = "TargetTrackingScaling"
+  name                      = "${local.name_prefix}-asg-cpu-target"
+  autoscaling_group_name    = aws_autoscaling_group.iconia_server.name
+  policy_type               = "TargetTrackingScaling"
   estimated_instance_warmup = 180
 
   target_tracking_configuration {

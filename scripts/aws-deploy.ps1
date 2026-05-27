@@ -52,6 +52,12 @@
 .PARAMETER RepoRoot
   ICONIA 모노레포 루트. 비우면 .env / 6.CI 상위 자동 추정.
 
+.PARAMETER Canary
+  Canary 배포 비율(%) — 0..100 사이. V1.0 라운드는 스텁(미구현) — 값이 0 이 아니면
+  명시적으로 안내 메시지 + exit 0 (release 차단 X). V1.x 라운드에 ALB weighted
+  target group + 5% → 25% → 100% ramp-up 으로 구현 예정. 그동안은
+  atomic swap + 자동 롤백(EC2 호스트 ec2-pull-and-restart.sh) 으로 충분.
+
 .EXAMPLE
   Copy-Item .env.example .env       # DEPLOY_TARGET=aws 로 수정 + 값 채움
   pwsh -File scripts/aws-deploy.ps1 -Service all
@@ -80,7 +86,9 @@ param(
   [switch] $Reseed,
   [switch] $NoSeed,
   [switch] $EssentialOnly,
-  [string] $RepoRoot
+  [string] $RepoRoot,
+  [ValidateRange(0, 100)]
+  [int] $Canary = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -144,7 +152,18 @@ Write-Host "  service   : $Service"
 Write-Host "  region    : $region"
 Write-Host "  applyInfra: $ApplyInfra   dryRun: $DryRun"
 Write-Host "  seed      : Seed=$Seed Reseed=$Reseed NoSeed=$NoSeed EssentialOnly=$EssentialOnly"
+Write-Host "  canary    : $Canary% (V1.0 라운드 = 스텁, V1.x 에 ALB weighted TG 로 구현)"
 Write-Host "  repoRoot  : $RepoRoot"
+
+# Canary stub — V1.0 라운드에는 미구현. 0 이 아닌 값이면 명시적으로 안내 후 종료
+# (release 자체는 차단하지 않음 — 운영자가 -Canary 없이 재실행하면 된다).
+if ($Canary -gt 0) {
+  Write-Warning "[canary] -Canary $Canary% 는 V1.0 라운드에서 미구현 (스텁)."
+  Write-Warning "[canary] 현행 배포는 EC2 호스트의 atomic swap + 자동 롤백으로 무중단."
+  Write-Warning "[canary] V1.x 라운드 도입 예정: ALB weighted target group + 5%→25%→100% ramp + 자동 promote/rollback."
+  Write-Warning "[canary] 본 옵션 없이 재실행하시려면 -Canary 없이 다시 호출하세요. 종료(exit 0)."
+  exit 0
+}
 if ($seedOnlyMode) {
   Write-Host "  *** SEED-ONLY MODE — 인프라/빌드/배포 skip, 시드만 실행 ***" -ForegroundColor Yellow
 }

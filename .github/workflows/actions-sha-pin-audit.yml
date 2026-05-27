@@ -1,0 +1,70 @@
+###############################################################################
+# actions-sha-pin-audit.yml — GitHub Actions 의존성 핀 audit (V1.0 라운드 #23).
+#
+# `uses: actions/checkout@v4` 와 같은 floating tag 사용을 검출해 SHA pin 으로
+# 승격해야 할 항목을 보고한다. supply-chain 공격(예: 2024 tj-actions 사고)
+# 대응의 기본 단계.
+#
+# V1.0 라운드 정책:
+#   - 본 워크플로우는 fail-stop 이 아니다 (정보 보고만). V1.1 에서 강제 게이트로 승격.
+#   - aws-actions/configure-aws-credentials@v4 처럼 1st-party 메이저-only 는 OK.
+#   - tj-actions/* 처럼 3rd-party 는 반드시 SHA pin 권장.
+#
+# 회귀 0: 본 워크플로우는 deploy.yml 의 needs 가 아니다.
+###############################################################################
+name: actions-sha-pin-audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit floating tags
+        run: |
+          set -eo pipefail
+          # 1st-party actions/* + aws-actions/* + sigstore/* + softprops/* 는 메이저 OK.
+          # 그 외 3rd-party 가 @v* / @main / @master 로 핀된 경우 경고.
+          fail=0
+          report=$(mktemp)
+          grep -rEn 'uses:[[:space:]]+[^[:space:]]+@[^[:space:]]+' .github/workflows | \
+            sed -E 's/^([^:]+):([0-9]+):.*uses:[[:space:]]+([^[:space:]]+)@([^[:space:]"]+).*/\1:\2 \3@\4/' | \
+            while read -r line; do
+              loc="$(echo "$line" | awk '{print $1}')"
+              ref="$(echo "$line" | awk '{print $2}')"
+              owner="$(echo "$ref" | cut -d/ -f1)"
+              tag="$(echo "$ref" | cut -d@ -f2)"
+              case "$owner" in
+                actions|aws-actions|github|sigstore|softprops|hashicorp|anchore|aquasecurity)
+                  # 1st/2nd party — 메이저 OK.
+                  ;;
+                *)
+                  # 3rd-party — SHA(40자) 아닌 경우 보고.
+                  if ! echo "$tag" | grep -qE '^[0-9a-f]{40}$'; then
+                    echo "WARN: $loc — 3rd-party action $ref (@$tag) — SHA pin 권장" | tee -a "$report"
+                  fi
+                  ;;
+              esac
+            done
+
+          echo "## actions SHA pin audit 결과" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "$report" ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::3rd-party action 이 SHA 로 핀되지 않음 — V1.1 에서 강제 차단 예정"
+          else
+            echo "✅ 모든 3rd-party action 이 SHA 로 핀됨 (또는 3rd-party 사용 없음)" >> "$GITHUB_STEP_SUMMARY"
+          fi
