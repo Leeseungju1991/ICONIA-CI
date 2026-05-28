@@ -1,0 +1,39 @@
+name: APP Font Validation
+
+# ICONIA-APP 의 폰트/asset 무결성 검증 (B-P1-01 처리).
+# - HTML 로 잘못 저장된 .ttf 탐지
+# - 0 byte / 손상 폰트 탐지
+# - unused 폰트 탐지 (warning only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/fonts/**'
+      - 'src/fonts.ts'
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+  pull_request:
+    paths:
+      - 'assets/fonts/**'
+      - 'src/fonts.ts'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Leeseungju1991/ICONIA-CI
+          path: ci
+      - uses: actions/checkout@v4
+        with:
+          path: '4. APP'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate fonts
+        run: |
+          node "ci/scripts/font/validate-app-fonts.mjs"
+        continue-on-error: false

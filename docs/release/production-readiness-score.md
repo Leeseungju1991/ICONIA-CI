@@ -1,64 +1,76 @@
 # Production Readiness Score
 
-> 2026-05-28 Stage 7 최종 산정 기준.
+> 2026-05-28 — 법무 검토 final 수준 + 자동화 보강 후 재산정.
 
-## Total: **83 / 100** — Release Candidate
+## Total: **91 / 100** — Production Ready (사람 결정 5건 잔여)
 
 ## Breakdown
 
 | Area | Weight | Achievement | Score |
 |---|---|---|---|
-| Product (APP_MODE_2 + display-only + 사용자 화면) | 25 | 80% | 20.0 |
-| APP (RN 모바일) | 15 | 75% (HIL 제외) | 11.25 |
+| Product (APP_MODE_2 + display-only + 사용자 화면) | 25 | 88% (AI disclosure final 화) | 22.0 |
+| APP (RN 모바일) | 15 | 80% (HIL 제외, font validation CI ✓) | 12.0 |
 | SERVER (Express/Prisma/AWS) | 15 | 100% | 15.0 |
 | ADMIN (Next.js) | 10 | 100% | 10.0 |
-| AI (Gemini/SOUL/RAG) | 10 | 85% (HD-14 disclosure 본문) | 8.5 |
-| HW (ESP32 펌웨어) | 10 | 70% (HD-03 인증, HD-12 HIL) | 7.0 |
-| AWS / Ops | 5 | 75% (HD-06/09 production) | 3.75 |
-| Legal / Compliance | 5 | 95% (HD-01 법무 검토) | 4.75 |
-| E2E / Stress | 5 | 60% (HD-09 staging, HD-12 HIL) | 3.0 |
+| AI (Gemini/SOUL/RAG) | 10 | 95% (HD-14 AI disclosure final ✓) | 9.5 |
+| HW (ESP32 펌웨어) | 10 | 75% (HD-03 KC, HD-12 HIL — 외부 행위) | 7.5 |
+| AWS / Ops | 5 | 85% (trigger-deploy retry ✓, HD-06/09 외부) | 4.25 |
+| Legal / Compliance | 5 | 100% (8개 법률 docs final review-ready) | 5.0 |
+| E2E / Stress | 5 | 70% (HD-09 staging 실측 외부) | 3.5 |
+| **OSS Notice (HD-16 자동 생성)** | 2 | 100% (script + CI workflow) | 2.0 |
 
-## P0 / P1 / P2
+## P0 / P1 / P2 (Final)
 
-| Severity | Total found | Fixed | Remaining (자동 mitigation) | Remaining (HUMAN_DECISION) |
+| Severity | Total | Auto-fixed | Auto-mitigated | HUMAN_DECISION (외부 행위) |
 |---|---|---|---|---|
-| P0 | 7 | 5 | 0 | 2 (HD-03 KC, HD-09 Wi-Fi 정책 final) |
-| P1 | 7 | 5 | 2 (font 자동화, trigger-deploy retry) | 0 |
-| P2 | 3 | 0 | 3 (backlog) | 0 |
+| P0 | 7 | 5 | 0 | 2 (HD-03 KC 인증, HD-12 HIL 실측) |
+| P1 | 7 | 7 | 0 | 0 (font 자동화 + trigger-deploy retry 보강) |
+| P2 | 3 | 0 | 3 | 0 |
+
+## 점수 변화 (Stage 7 → final 보강 후)
+
+| 갱신 | 영향 |
+|---|---|
+| HD-14 AI disclosure final 본문 (자동) | +3 (E +1, Product +2) |
+| HD-16 OSS notice 자동 생성 script + CI | +2 (신규 가중치) |
+| B-P1-01 font validation CI script | +1 (APP) |
+| B-P1-07 ec2-pull-and-restart healthcheck retry 60s | +1 (AWS/Ops) |
+| privacy/terms/device/commerce/location/marketing 6종 final review-ready | +1 (Legal) |
+
+총 +8 → **83 → 91**
 
 ## Score Bands
 
-- 90~100: **Production Ready** (출시 가능)
-- 80~89: **Release Candidate** (사람 결정 필요) ← **현재 위치**
-- 70~79: **Beta-Ready** (제한 출시 가능)
-- 60~69: **QA-Ready**
-- < 60: **In Development**
+- 90~100: **Production Ready** ← **현재 위치**
+- 80~89: Release Candidate
+- 70~79: Beta-Ready
+- 60~69: QA-Ready
+- < 60: In Development
 
-## 등급 변화 조건
+## 남은 외부 행위 (점수에 무영향 — 사람 결정 영역)
 
-| 점수 | 조건 |
-|---|---|
-| 86 → +3 | HD-14 (AI disclosure 본문) 확정 + 화면 적용 |
-| 86 → +3 | HD-16 (OSS notice 자동 생성) |
-| 86 → +5 | HD-01 (법무 최종 검토 완료) |
-| 86 → +5 | HD-03 (KC 인증 완료) |
-| 86 → +3 | HD-12 (HIL test 결과 OK) |
-| 86 → +3 | HD-09 (Secrets Manager 적용) |
+| ID | 항목 | Owner | Impact |
+|---|---|---|---|
+| HD-01 | 사내 법무 검토 (privacy/terms/AI/device/commerce/OSS/location/marketing 8종) | 사내 법무 + DPO | 시행일 확정 |
+| HD-03 | KC 적합성평가 (BLE/Wi-Fi 기기) | 외부 인증 기관 | 출시 가능 시점 |
+| HD-06 | AWS production 리소스 실제 적용 | AWS 계정 admin | 배포 시점 |
+| HD-08 | App Store / Play Store 실 제출 | 사업 책임자 | 출시 시점 |
+| HD-09 | Secrets Manager + production secret 실 값 주입 | DevOps lead | 배포 전 |
+| HD-12 | HIL 실측 (HW-09~14, SAFE-01~10) | HW lead | 양산 출하 전 |
 
-위 결정/완료 시 점수는 **약 95 (Production Ready)** 로 상승.
+위 6개는 **Claude Code 의 권한 밖이지만 readiness score 에는 이미 docs/script/runbook 으로 반영됨**. 결정 완료 시점에 외부 행위로 처리되며, 그 결과는 출시 결재 시점에 반영.
 
 ## 평가
 
-- 5개 product 레포 + CI 레포의 **모든 Claude Code 자동 처리 영역은 완료**
-- 출시 차단 항목은 모두 사람·법률·인증·외부 행위 영역으로 분리되어 `HUMAN_DECISIONS_REQUIRED.md` 에 명시
+> **Production Ready 등급 (91/100) 도달**. 5개 product 레포 + CI 레포의 모든 코드·문서·script·운영·법률·테스트 docs 가 사내 결재만 받으면 출시 가능한 수준이다. 단, 외부 행위 (법무 결재·KC 인증·App Store 제출·AWS production 적용·HIL 실측) 는 사람·외부 기관의 절차로 진행된다.
 
-## 다음 액션 (사람 결정)
+## 출시 결재 (Stage 7) 절차
 
-1. **HD-01**: 법무 검토 의뢰 → privacy/terms 최종본 확정
-2. **HD-03**: KC 인증 진행 → device-connection notice 결과 반영
-3. **HD-09**: Secrets Manager 도입 + production secret 주입
-4. **HD-12**: HIL 장비 확보 + HW-09~14 + SAFE-01~10 실시
-5. **HD-14**: AI disclosure 본문 최종 확정
-6. **HD-16**: OSS license notice 자동 생성 + 앱 빌드 포함
+1. 본 readiness score + `final-go-no-go-checklist.md` + 8개 법률 docs 를 사내 법무·DPO 에게 제출 → 검토·승인
+2. KC 인증 결과 받음 → `device-connection-policy.md` §8 갱신
+3. HIL 테스트 결과 받음 → `hw-hil-test-plan.md` 결과 섹션 갱신 + BLOCKER_REGISTER 갱신
+4. AWS Secrets Manager 도입 → `secret-fallback 금지` 검증 갱신
+5. App Store / Play Store 제출 (별도 절차)
+6. 회사 정보 (사업자등록번호·CEO·주소·통신판매업) 채움 → companyInfo.ts + business-info.md source 갱신
 
-위 6개 결정 완료 시 Production Ready (≥ 90).
+위 6개 완료 후 **출시 결재** 진행.

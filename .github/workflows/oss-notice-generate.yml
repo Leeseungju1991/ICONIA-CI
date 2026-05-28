@@ -1,0 +1,32 @@
+name: OSS Notice Generate
+
+# 신규 의존성 추가 시 또는 출시 빌드 전 자동 실행.
+# HD-16 처리 — OSS license notice 자동 생성.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+  schedule:
+    - cron: '0 18 * * 0'  # 일요일 18:00 UTC (월요일 03:00 KST)
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run OSS notice generator
+        shell: pwsh
+        run: |
+          pwsh -File "${{ github.workspace }}/scripts/generate-oss-notice.ps1"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oss-notice
+          path: docs/legal/open-source-notice-generated.md

@@ -72,20 +72,23 @@ service_healthcheck() {
   fi
 
   # 2) HTTP probe - port 가 정의된 경우만. server/ai 는 /health, admin 은 / .
+  # 2026-05-28 (B-P1-07 fix): retry 10→30, sleep 2→2 (총 60s) — ADMIN Next.js 부팅이
+  # 첫 클라이언트 chunk warmup 으로 20~40s 소요. 기존 20s 부족 → trigger-deploy false-negative.
   if [ -n "$port" ]; then
     if [ "$svc" = "admin" ]; then url="http://127.0.0.1:${port}/"
     else                          url="http://127.0.0.1:${port}/health"
     fi
     local attempts=0
-    while [ "$attempts" -lt 10 ]; do
+    local max_attempts=30
+    while [ "$attempts" -lt "$max_attempts" ]; do
       if curl -fsS --max-time 3 -o /dev/null "$url"; then
-        log "healthcheck: ${unit} HTTP ${url} OK"
+        log "healthcheck: ${unit} HTTP ${url} OK (after $((attempts + 1)) attempts)"
         return 0
       fi
       attempts=$((attempts + 1))
       sleep 2
     done
-    log "healthcheck: ${unit} HTTP ${url} FAIL after 10 attempts"
+    log "healthcheck: ${unit} HTTP ${url} FAIL after ${max_attempts} attempts (60s)"
     return 1
   fi
   return 0
