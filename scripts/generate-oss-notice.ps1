@@ -48,17 +48,24 @@ foreach ($name in $repos.Keys) {
 
   Push-Location $repoPath
   try {
-    # npx license-checker — production deps only
-    $json = & npx --yes license-checker --production --json 2>&1
-    if ($LASTEXITCODE -ne 0) {
-      Write-Warning "[$name] license-checker failed — skipping"
+    # npx license-checker — production deps only. stderr 격리 (warning 이 stdout 에 섞이지 않게).
+    $outFile = Join-Path $outDir "licenses-$name.json"
+    $stderrLog = Join-Path $env:TEMP "license-checker-$name.err"
+    # Start-Process 로 stdout/stderr 분리
+    # Windows: npx 는 .cmd 라서 cmd.exe 경유.
+    $p = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "npx --yes license-checker --production --json") `
+      -RedirectStandardOutput $outFile -RedirectStandardError $stderrLog -NoNewWindow -Wait -PassThru
+    if ($p.ExitCode -ne 0) {
+      Write-Warning "[$name] license-checker exit $($p.ExitCode) — skipping"
       continue
     }
-    $outFile = Join-Path $outDir "licenses-$name.json"
-    $json | Out-File -FilePath $outFile -Encoding UTF8
     Write-Host "[$name] saved → $outFile"
-    $parsed = $json | ConvertFrom-Json
-    $allLicenses[$name] = $parsed
+    try {
+      $parsed = Get-Content -Path $outFile -Raw | ConvertFrom-Json
+      $allLicenses[$name] = $parsed
+    } catch {
+      Write-Warning "[$name] parse failed — keeping JSON only"
+    }
   } finally {
     Pop-Location
   }
@@ -94,8 +101,8 @@ foreach ($repo in $allLicenses.Keys) {
   foreach ($p in $pkgs) {
     $key = $p.Name  # e.g. "express@4.18.2"
     $info = $p.Value
-    $license = if ($info.licenses) { $info.licenses } else { 'UNKNOWN' }
-    $repository = if ($info.repository) { $info.repository } else { '' }
+    $license = if ($info.PSObject.Properties['licenses']) { $info.licenses } else { 'UNKNOWN' }
+    $repository = if ($info.PSObject.Properties['repository']) { $info.repository } else { '' }
     $parts = $key -split '@'
     $name = if ($parts.Length -ge 2) { ($parts | Select-Object -SkipLast 1) -join '@' } else { $key }
     $version = if ($parts.Length -ge 2) { $parts[-1] } else { '' }

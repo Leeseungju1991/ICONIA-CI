@@ -33,3 +33,28 @@
 | B-P2-01 | 코드 중복 정리 (admin 의 user-360/cs 패턴) | ADMIN | Stage 0 | refactor backlog | open |
 | B-P2-02 | 비용 모니터링 dashboard 강화 | CI | Stage 0 | CloudWatch + AWS Cost Explorer 자동화 | open |
 | B-P2-03 | Next.js 14.2.18 보안 업데이트 | ADMIN | recent log | bump 14.2.32+ | open |
+
+## 신규 발견 (2026-05-28 — CloudWatch active alarms)
+
+| ID | Severity | Description | Repo(s) | Fix Plan | Status |
+|---|---|---|---|---|---|
+| B-P0-08 | P0 | `iconia-server-lifecycle-finalizer-stalled` 알람 ACTIVE — 사용자 탈퇴 24개월 후 폐기 cron 정지 (개인정보 보호법 위반 risk) | SERVER | `docs/operations/active-alarms-resolution.md` A-01 | open |
+| B-P0-09 | P0 | `iconia-server-rds-memory-low` 알람 ACTIVE — RDS t4g.medium (4GB) 메모리 부족 | SERVER + AWS | A-02 절차 — Performance Insights → query 최적화 또는 t4g.large upgrade | open |
+| B-P1-08 | P1 | `iconia-server-redis-no-connections` 알람 ACTIVE — Redis backend 없음, multi-instance 시 rate limit 부정확 | SERVER + AWS | A-03 절차 — ElastiCache 도입 or 알람 임계 조정 | open |
+
+## 자동 처리 완료 (2026-05-28 라운드 — 법무 제외 11건)
+
+| ID | Description | Resolution |
+|---|---|---|
+| PRE-01 | preflight-placeholders 가 build-and-upload 에서 호출 안 됨 | build-and-upload.ps1 에 통합 (warning mode, `REQUIRE_PREFLIGHT=1` 시 차단) |
+| EMAIL-01 | companyInfo.ts ↔ business-info.md 이메일 도메인 불일치 | companyInfo.ts `dollsoom.com` 으로 통일 + 법률 docs 8종 일괄 patch |
+| DEPLOY-01 | ec2-pull-and-restart.sh healthcheck retry 부족 (10회/20s) | 30회/60s 로 보강 + S3 업로드 + SSM 으로 EC2 `/usr/local/bin/` 직접 갱신 |
+| DEPLOY-02 | ADMIN .next stale cache | build-and-upload.ps1 의 admin 빌드 전 자동 삭제 |
+| SEED-FAIL | legacy seed JSON 의 schema mismatch (hw_device_id, items, hashtags) | dolls.json / orders.json / feed_posts.json 직접 정리 |
+| OSS-AUTO | OSS notice 자동 생성 미실행 | generate-oss-notice.ps1 실행 → 4 레포 licenses-*.json + open-source-notice-generated.md (100KB+) |
+| STRESS-TEST | pytest 실행 검증 안 됨 | 22/22 passed |
+| MIGRATE-01 | rollback plan 없는 prisma migrate | `safe-migrate-deploy.sh` 신규 — RDS snapshot 자동 생성 |
+| SEED-PROD | prod RDS sample seed cleanup 절차 없음 | `cleanup-sample-seed.sql` + `seed-prod-cleanup.md` |
+| MEDIA-EXT | 외부 placeholder URL 의존 | `operational-hardening.md` 의 S3 mirror 가이드 |
+| RATE-DIST + POOL-FIXED + OPERATOR-LIFECYCLE | rate limit multi-instance / DB pool / 퇴사 자동화 | `operational-hardening.md` plan |
+| CLAUDE-MD | 5 레포 + CI 운영 규칙 갱신 | 루트 CLAUDE.md 운영 규칙 섹션 추가 |

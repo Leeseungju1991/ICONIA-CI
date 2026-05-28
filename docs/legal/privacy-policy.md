@@ -157,9 +157,9 @@
 | 사업자등록번호 | (사업자 등록 완료 후 갱신) |
 | 본사 주소 | (사업자 등록 완료 후 갱신) |
 | 대표 전화 | (사업자 등록 완료 후 갱신) |
-| 고객지원 이메일 | support@soomkorea.com |
+| 고객지원 이메일 | support@dollsoom.com |
 | 개인정보 보호책임자 | (지정 완료 후 갱신) |
-| 개인정보 보호 이메일 | privacy@soomkorea.com |
+| 개인정보 보호 이메일 | privacy@dollsoom.com |
 
 ## 11. 정책 변경
 

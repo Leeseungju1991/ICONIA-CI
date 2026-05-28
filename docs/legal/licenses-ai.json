@@ -1,0 +1,2060 @@
+{
+  "@aws-crypto/crc32@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\crc32",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\crc32\\LICENSE"
+  },
+  "@aws-crypto/crc32c@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\crc32c",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\crc32c\\LICENSE"
+  },
+  "@aws-crypto/sha1-browser@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha1-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha1-browser\\LICENSE"
+  },
+  "@aws-crypto/sha256-browser@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha256-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha256-browser\\LICENSE"
+  },
+  "@aws-crypto/sha256-js@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha256-js",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\sha256-js\\LICENSE"
+  },
+  "@aws-crypto/supports-web-crypto@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\supports-web-crypto",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\supports-web-crypto\\LICENSE"
+  },
+  "@aws-crypto/util@5.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-crypto-helpers",
+    "publisher": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\LICENSE"
+  },
+  "@aws-sdk/client-bedrock-agent-runtime@3.1045.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-bedrock-agent-runtime",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-bedrock-agent-runtime\\LICENSE"
+  },
+  "@aws-sdk/client-bedrock-agent@3.1045.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-bedrock-agent",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-bedrock-agent\\LICENSE"
+  },
+  "@aws-sdk/client-s3@3.1045.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-s3",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-s3\\LICENSE"
+  },
+  "@aws-sdk/client-ssm@3.1045.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-ssm",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\client-ssm\\LICENSE"
+  },
+  "@aws-sdk/core@3.974.8": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\core",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\core\\LICENSE"
+  },
+  "@aws-sdk/crc64-nvme@3.972.7": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\crc64-nvme",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\crc64-nvme\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-env@3.972.34": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-env",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-env\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-http@3.972.36": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-http",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-http\\README.md"
+  },
+  "@aws-sdk/credential-provider-ini@3.972.38": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-ini",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-ini\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-login@3.972.38": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-login",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-login\\README.md"
+  },
+  "@aws-sdk/credential-provider-node@3.972.39": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-node\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-process@3.972.34": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-process",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-process\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-sso@3.972.38": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-sso",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-sso\\LICENSE"
+  },
+  "@aws-sdk/credential-provider-web-identity@3.972.38": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-web-identity",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\credential-provider-web-identity\\LICENSE"
+  },
+  "@aws-sdk/middleware-bucket-endpoint@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-bucket-endpoint",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-bucket-endpoint\\LICENSE"
+  },
+  "@aws-sdk/middleware-expect-continue@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-expect-continue",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-expect-continue\\LICENSE"
+  },
+  "@aws-sdk/middleware-flexible-checksums@3.974.16": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-flexible-checksums",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-flexible-checksums\\LICENSE"
+  },
+  "@aws-sdk/middleware-host-header@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-host-header",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-host-header\\LICENSE"
+  },
+  "@aws-sdk/middleware-location-constraint@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-location-constraint",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-location-constraint\\LICENSE"
+  },
+  "@aws-sdk/middleware-logger@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-logger",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-logger\\LICENSE"
+  },
+  "@aws-sdk/middleware-recursion-detection@3.972.11": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-recursion-detection",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-recursion-detection\\LICENSE"
+  },
+  "@aws-sdk/middleware-sdk-s3@3.972.37": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-sdk-s3",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-sdk-s3\\LICENSE"
+  },
+  "@aws-sdk/middleware-ssec@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-ssec",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-ssec\\LICENSE"
+  },
+  "@aws-sdk/middleware-user-agent@3.972.38": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-user-agent",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\middleware-user-agent\\LICENSE"
+  },
+  "@aws-sdk/nested-clients@3.997.6": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\nested-clients",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\nested-clients\\README.md"
+  },
+  "@aws-sdk/region-config-resolver@3.972.13": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\region-config-resolver",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\region-config-resolver\\LICENSE"
+  },
+  "@aws-sdk/signature-v4-multi-region@3.996.25": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\signature-v4-multi-region",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\signature-v4-multi-region\\LICENSE"
+  },
+  "@aws-sdk/token-providers@3.1041.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\token-providers",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\token-providers\\LICENSE"
+  },
+  "@aws-sdk/types@3.973.8": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\types",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\types\\LICENSE"
+  },
+  "@aws-sdk/util-arn-parser@3.972.3": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-arn-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-arn-parser\\LICENSE"
+  },
+  "@aws-sdk/util-endpoints@3.996.8": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-endpoints",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-endpoints\\LICENSE"
+  },
+  "@aws-sdk/util-locate-window@3.965.5": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-locate-window",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-locate-window\\LICENSE"
+  },
+  "@aws-sdk/util-user-agent-browser@3.972.10": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-user-agent-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-user-agent-browser\\LICENSE"
+  },
+  "@aws-sdk/util-user-agent-node@3.973.24": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-user-agent-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\util-user-agent-node\\LICENSE"
+  },
+  "@aws-sdk/xml-builder@3.972.22": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/aws/aws-sdk-js-v3",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\xml-builder",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-sdk\\xml-builder\\LICENSE"
+  },
+  "@aws/lambda-invoke-store@0.2.4": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/awslabs/aws-lambda-invoke-store",
+    "publisher": "Amazon Web Services",
+    "url": "http://aws.amazon.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws\\lambda-invoke-store",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws\\lambda-invoke-store\\LICENSE"
+  },
+  "@google/generative-ai@0.21.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/google/generative-ai-js",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@google\\generative-ai",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@google\\generative-ai\\LICENSE"
+  },
+  "@mixmark-io/domino@2.2.0": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/mixmark-io/domino",
+    "publisher": "Felix Gnass",
+    "email": "fgnass@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@mixmark-io\\domino",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@mixmark-io\\domino\\LICENSE"
+  },
+  "@nodable/entities@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodable/val-parsers",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@nodable\\entities",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@nodable\\entities\\README.md"
+  },
+  "@smithy/chunked-blob-reader-native@4.2.3": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\chunked-blob-reader-native",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\chunked-blob-reader-native\\LICENSE"
+  },
+  "@smithy/chunked-blob-reader@5.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\chunked-blob-reader",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\chunked-blob-reader\\LICENSE"
+  },
+  "@smithy/config-resolver@4.4.17": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\config-resolver",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\config-resolver\\LICENSE"
+  },
+  "@smithy/core@3.23.17": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS Smithy Team",
+    "url": "https://smithy.io",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\core",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\core\\LICENSE"
+  },
+  "@smithy/credential-provider-imds@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\credential-provider-imds",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\credential-provider-imds\\LICENSE"
+  },
+  "@smithy/eventstream-codec@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-codec",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-codec\\LICENSE"
+  },
+  "@smithy/eventstream-serde-browser@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-browser\\LICENSE"
+  },
+  "@smithy/eventstream-serde-config-resolver@4.3.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-config-resolver",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-config-resolver\\LICENSE"
+  },
+  "@smithy/eventstream-serde-node@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-node\\LICENSE"
+  },
+  "@smithy/eventstream-serde-universal@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-universal",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\eventstream-serde-universal\\LICENSE"
+  },
+  "@smithy/fetch-http-handler@5.3.17": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\fetch-http-handler",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\fetch-http-handler\\LICENSE"
+  },
+  "@smithy/hash-blob-browser@4.2.15": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-blob-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-blob-browser\\LICENSE"
+  },
+  "@smithy/hash-node@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-node\\LICENSE"
+  },
+  "@smithy/hash-stream-node@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-stream-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\hash-stream-node\\LICENSE"
+  },
+  "@smithy/invalid-dependency@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\invalid-dependency",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\invalid-dependency\\LICENSE"
+  },
+  "@smithy/is-array-buffer@2.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/awslabs/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\is-array-buffer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\is-array-buffer\\LICENSE"
+  },
+  "@smithy/is-array-buffer@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\is-array-buffer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\is-array-buffer\\LICENSE"
+  },
+  "@smithy/md5-js@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\md5-js",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\md5-js\\LICENSE"
+  },
+  "@smithy/middleware-content-length@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-content-length",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-content-length\\LICENSE"
+  },
+  "@smithy/middleware-endpoint@4.4.32": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-endpoint",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-endpoint\\LICENSE"
+  },
+  "@smithy/middleware-retry@4.5.7": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-retry",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-retry\\LICENSE"
+  },
+  "@smithy/middleware-serde@4.2.20": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-serde",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-serde\\LICENSE"
+  },
+  "@smithy/middleware-stack@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-stack",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\middleware-stack\\LICENSE"
+  },
+  "@smithy/node-config-provider@4.3.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\node-config-provider",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\node-config-provider\\LICENSE"
+  },
+  "@smithy/node-http-handler@4.6.1": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\node-http-handler",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\node-http-handler\\LICENSE"
+  },
+  "@smithy/property-provider@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\property-provider",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\property-provider\\LICENSE"
+  },
+  "@smithy/protocol-http@5.3.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS Smithy Team",
+    "url": "https://smithy.io",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\protocol-http",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\protocol-http\\LICENSE"
+  },
+  "@smithy/querystring-builder@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\querystring-builder",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\querystring-builder\\LICENSE"
+  },
+  "@smithy/querystring-parser@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\querystring-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\querystring-parser\\LICENSE"
+  },
+  "@smithy/service-error-classification@4.3.1": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\service-error-classification",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\service-error-classification\\LICENSE"
+  },
+  "@smithy/shared-ini-file-loader@4.4.9": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\shared-ini-file-loader",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\shared-ini-file-loader\\LICENSE"
+  },
+  "@smithy/signature-v4@5.3.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\signature-v4",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\signature-v4\\LICENSE"
+  },
+  "@smithy/smithy-client@4.12.13": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\smithy-client",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\smithy-client\\LICENSE"
+  },
+  "@smithy/types@4.14.1": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS Smithy Team",
+    "url": "https://smithy.io",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\types",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\types\\LICENSE"
+  },
+  "@smithy/url-parser@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\url-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\url-parser\\LICENSE"
+  },
+  "@smithy/util-base64@4.3.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-base64",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-base64\\LICENSE"
+  },
+  "@smithy/util-body-length-browser@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-body-length-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-body-length-browser\\LICENSE"
+  },
+  "@smithy/util-body-length-node@4.2.3": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-body-length-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-body-length-node\\LICENSE"
+  },
+  "@smithy/util-buffer-from@2.2.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/awslabs/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\util-buffer-from",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\util-buffer-from\\LICENSE"
+  },
+  "@smithy/util-buffer-from@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-buffer-from",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-buffer-from\\LICENSE"
+  },
+  "@smithy/util-config-provider@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-config-provider",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-config-provider\\LICENSE"
+  },
+  "@smithy/util-defaults-mode-browser@4.3.49": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-defaults-mode-browser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-defaults-mode-browser\\LICENSE"
+  },
+  "@smithy/util-defaults-mode-node@4.2.54": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-defaults-mode-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-defaults-mode-node\\LICENSE"
+  },
+  "@smithy/util-endpoints@3.4.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-endpoints",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-endpoints\\LICENSE"
+  },
+  "@smithy/util-hex-encoding@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-hex-encoding",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-hex-encoding\\LICENSE"
+  },
+  "@smithy/util-middleware@4.2.14": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-middleware",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-middleware\\LICENSE"
+  },
+  "@smithy/util-retry@4.3.8": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-retry",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-retry\\LICENSE"
+  },
+  "@smithy/util-stream@4.5.25": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-stream",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-stream\\LICENSE"
+  },
+  "@smithy/util-uri-escape@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-uri-escape",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-uri-escape\\LICENSE"
+  },
+  "@smithy/util-utf8@2.3.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/awslabs/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\util-utf8",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@aws-crypto\\util\\node_modules\\@smithy\\util-utf8\\LICENSE"
+  },
+  "@smithy/util-utf8@4.2.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-utf8",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-utf8\\LICENSE"
+  },
+  "@smithy/util-waiter@4.3.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-waiter",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\util-waiter\\LICENSE"
+  },
+  "@smithy/uuid@1.1.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/smithy-lang/smithy-typescript",
+    "publisher": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\uuid",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@smithy\\uuid\\LICENSE"
+  },
+  "@types/node-fetch@2.6.13": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@types\\node-fetch",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@types\\node-fetch\\LICENSE"
+  },
+  "@types/node@18.19.130": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@types\\node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\@types\\node\\LICENSE"
+  },
+  "abort-controller@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mysticatea/abort-controller",
+    "publisher": "Toru Nagashima",
+    "url": "https://github.com/mysticatea",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\abort-controller",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\abort-controller\\LICENSE"
+  },
+  "accepts@1.3.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/accepts",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\accepts",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\accepts\\LICENSE"
+  },
+  "agentkeepalive@4.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/node-modules/agentkeepalive",
+    "publisher": "fengmk2",
+    "email": "fengmk2@gmail.com",
+    "url": "https://github.com/fengmk2",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\agentkeepalive",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\agentkeepalive\\LICENSE"
+  },
+  "ansi-regex@5.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/ansi-regex",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ansi-regex",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ansi-regex\\license"
+  },
+  "ansi-styles@4.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/ansi-styles",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\ansi-styles",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\ansi-styles\\license"
+  },
+  "array-flatten@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/blakeembrey/array-flatten",
+    "publisher": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\array-flatten",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\array-flatten\\LICENSE"
+  },
+  "asynckit@0.4.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/alexindigo/asynckit",
+    "publisher": "Alex Indigo",
+    "email": "iam@alexindigo.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\asynckit",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\asynckit\\LICENSE"
+  },
+  "axios@1.16.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/axios/axios",
+    "publisher": "Matt Zabriskie",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\axios",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\axios\\LICENSE"
+  },
+  "body-parser@1.20.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/body-parser",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\body-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\body-parser\\LICENSE"
+  },
+  "boolbase@1.0.0": {
+    "licenses": "ISC",
+    "repository": "https://github.com/fb55/boolbase",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\boolbase",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\boolbase\\README.md"
+  },
+  "bowser@2.14.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/bowser-js/bowser",
+    "publisher": "Dustin Diaz",
+    "email": "dustin@dustindiaz.com",
+    "url": "http://dustindiaz.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\bowser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\bowser\\LICENSE"
+  },
+  "bytes@3.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/bytes.js",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\bytes",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\bytes\\LICENSE"
+  },
+  "call-bind-apply-helpers@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/call-bind-apply-helpers",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\call-bind-apply-helpers",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\call-bind-apply-helpers\\LICENSE"
+  },
+  "call-bound@1.0.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/call-bound",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\call-bound",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\call-bound\\LICENSE"
+  },
+  "cheerio-select@2.1.0": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/cheeriojs/cheerio-select",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cheerio-select",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cheerio-select\\LICENSE"
+  },
+  "cheerio@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/cheeriojs/cheerio",
+    "publisher": "Matt Mueller",
+    "email": "mattmuelle@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cheerio",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cheerio\\LICENSE"
+  },
+  "cliui@8.0.1": {
+    "licenses": "ISC",
+    "repository": "https://github.com/yargs/cliui",
+    "publisher": "Ben Coe",
+    "email": "ben@npmjs.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cliui",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cliui\\LICENSE.txt"
+  },
+  "color-convert@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Qix-/color-convert",
+    "publisher": "Heather Arthur",
+    "email": "fayearthur@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\color-convert",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\color-convert\\LICENSE"
+  },
+  "color-name@1.1.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/colorjs/color-name",
+    "publisher": "DY",
+    "email": "dfcreative@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\color-name",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\node_modules\\color-name\\LICENSE"
+  },
+  "colorette@2.0.20": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jorgebucaran/colorette",
+    "publisher": "Jorge Bucaran",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\colorette",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\colorette\\LICENSE.md"
+  },
+  "combined-stream@1.0.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/felixge/node-combined-stream",
+    "publisher": "Felix Geisendörfer",
+    "email": "felix@debuggable.com",
+    "url": "http://debuggable.com/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\combined-stream",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\combined-stream\\License"
+  },
+  "content-disposition@0.5.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/content-disposition",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\content-disposition",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\content-disposition\\LICENSE"
+  },
+  "content-type@1.0.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/content-type",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\content-type",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\content-type\\LICENSE"
+  },
+  "cookie-signature@1.0.7": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/node-cookie-signature",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@learnboost.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cookie-signature",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cookie-signature\\Readme.md"
+  },
+  "cookie@0.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/cookie",
+    "publisher": "Roman Shtylman",
+    "email": "shtylman@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cookie",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cookie\\LICENSE"
+  },
+  "cors@2.8.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/cors",
+    "publisher": "Troy Goode",
+    "email": "troygoode@gmail.com",
+    "url": "https://github.com/troygoode/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cors",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\cors\\LICENSE"
+  },
+  "css-select@5.2.2": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/css-select",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\css-select",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\css-select\\LICENSE"
+  },
+  "css-what@6.2.2": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/css-what",
+    "publisher": "Felix Böhm",
+    "email": "me@feedic.com",
+    "url": "http://feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\css-what",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\css-what\\LICENSE"
+  },
+  "debug@2.6.9": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/debug",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\debug",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\debug\\LICENSE"
+  },
+  "delayed-stream@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/felixge/node-delayed-stream",
+    "publisher": "Felix Geisendörfer",
+    "email": "felix@debuggable.com",
+    "url": "http://debuggable.com/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\delayed-stream",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\delayed-stream\\License"
+  },
+  "depd@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/dougwilson/nodejs-depd",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\depd",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\depd\\LICENSE"
+  },
+  "destroy@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/destroy",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\destroy",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\destroy\\LICENSE"
+  },
+  "dom-serializer@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/cheeriojs/dom-serializer",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dom-serializer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dom-serializer\\LICENSE"
+  },
+  "domelementtype@2.3.0": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/domelementtype",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domelementtype",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domelementtype\\LICENSE"
+  },
+  "domhandler@5.0.3": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/domhandler",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domhandler",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domhandler\\LICENSE"
+  },
+  "domutils@3.2.2": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/domutils",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domutils",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\domutils\\LICENSE"
+  },
+  "dotenv@16.6.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/motdotla/dotenv",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dotenv",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dotenv\\LICENSE"
+  },
+  "dunder-proto@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/es-shims/dunder-proto",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dunder-proto",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\dunder-proto\\LICENSE"
+  },
+  "ee-first@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonathanong/ee-first",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ee-first",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ee-first\\LICENSE"
+  },
+  "emoji-regex@8.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mathiasbynens/emoji-regex",
+    "publisher": "Mathias Bynens",
+    "url": "https://mathiasbynens.be/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\emoji-regex",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\emoji-regex\\LICENSE-MIT.txt"
+  },
+  "emoji-regex@9.2.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mathiasbynens/emoji-regex",
+    "publisher": "Mathias Bynens",
+    "url": "https://mathiasbynens.be/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-tokenizer\\node_modules\\emoji-regex",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-tokenizer\\node_modules\\emoji-regex\\LICENSE-MIT.txt"
+  },
+  "encodeurl@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/encodeurl",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encodeurl",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encodeurl\\LICENSE"
+  },
+  "encoding-sniffer@0.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/fb55/encoding-sniffer",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encoding-sniffer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encoding-sniffer\\LICENSE"
+  },
+  "entities@4.5.0": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/entities",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\entities",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\entities\\LICENSE"
+  },
+  "entities@6.0.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/entities",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5\\node_modules\\entities",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5\\node_modules\\entities\\LICENSE"
+  },
+  "entities@7.0.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/entities",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\htmlparser2\\node_modules\\entities",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\htmlparser2\\node_modules\\entities\\LICENSE"
+  },
+  "es-define-property@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-define-property",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-define-property",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-define-property\\LICENSE"
+  },
+  "es-errors@1.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-errors",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-errors",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-errors\\LICENSE"
+  },
+  "es-object-atoms@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-object-atoms",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-object-atoms",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-object-atoms\\LICENSE"
+  },
+  "es-set-tostringtag@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/es-shims/es-set-tostringtag",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-set-tostringtag",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\es-set-tostringtag\\LICENSE"
+  },
+  "escalade@3.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lukeed/escalade",
+    "publisher": "Luke Edwards",
+    "email": "luke.edwards05@gmail.com",
+    "url": "https://lukeed.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\escalade",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\escalade\\license"
+  },
+  "escape-html@1.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/component/escape-html",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\escape-html",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\escape-html\\LICENSE"
+  },
+  "etag@1.8.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/etag",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\etag",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\etag\\LICENSE"
+  },
+  "event-target-shim@5.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mysticatea/event-target-shim",
+    "publisher": "Toru Nagashima",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\event-target-shim",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\event-target-shim\\LICENSE"
+  },
+  "express@4.22.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/express",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\express",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\express\\LICENSE"
+  },
+  "fast-xml-builder@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NaturalIntelligence/fast-xml-builder",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fast-xml-builder",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fast-xml-builder\\LICENSE"
+  },
+  "fast-xml-parser@5.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NaturalIntelligence/fast-xml-parser",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fast-xml-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fast-xml-parser\\LICENSE"
+  },
+  "finalhandler@1.3.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/finalhandler",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\finalhandler",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\finalhandler\\LICENSE"
+  },
+  "follow-redirects@1.16.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/follow-redirects/follow-redirects",
+    "publisher": "Ruben Verborgh",
+    "email": "ruben@verborgh.org",
+    "url": "https://ruben.verborgh.org/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\follow-redirects",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\follow-redirects\\LICENSE"
+  },
+  "form-data-encoder@1.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/octet-stream/form-data-encoder",
+    "publisher": "Nick K.",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\form-data-encoder",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\form-data-encoder\\license"
+  },
+  "form-data@4.0.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/form-data/form-data",
+    "publisher": "Felix Geisendörfer",
+    "email": "felix@debuggable.com",
+    "url": "http://debuggable.com/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\form-data",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\form-data\\License"
+  },
+  "formdata-node@4.4.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/octet-stream/form-data",
+    "publisher": "Nick K.",
+    "email": "io@octetstream.me",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\formdata-node",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\formdata-node\\license"
+  },
+  "forwarded@0.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/forwarded",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\forwarded",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\forwarded\\LICENSE"
+  },
+  "fresh@0.5.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/fresh",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fresh",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\fresh\\LICENSE"
+  },
+  "function-bind@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Raynos/function-bind",
+    "publisher": "Raynos",
+    "email": "raynos2@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\function-bind",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\function-bind\\LICENSE"
+  },
+  "get-caller-file@2.0.5": {
+    "licenses": "ISC",
+    "repository": "https://github.com/stefanpenner/get-caller-file",
+    "publisher": "Stefan Penner",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-caller-file",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-caller-file\\LICENSE.md"
+  },
+  "get-intrinsic@1.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/get-intrinsic",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-intrinsic",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-intrinsic\\LICENSE"
+  },
+  "get-proto@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/get-proto",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-proto",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\get-proto\\LICENSE"
+  },
+  "gopd@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/gopd",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\gopd",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\gopd\\LICENSE"
+  },
+  "gpt-tokenizer@3.4.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/niieani/gpt-tokenizer",
+    "publisher": "Bazyli Brzoska",
+    "email": "npm@invent.life",
+    "url": "https://github.com/niieani",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\gpt-tokenizer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\gpt-tokenizer\\LICENSE"
+  },
+  "has-symbols@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/has-symbols",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "url": "http://ljharb.codes",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\has-symbols",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\has-symbols\\LICENSE"
+  },
+  "has-tostringtag@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/has-tostringtag",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "url": "http://ljharb.codes",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\has-tostringtag",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\has-tostringtag\\LICENSE"
+  },
+  "hasown@2.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/hasOwn",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\hasown",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\hasown\\LICENSE"
+  },
+  "htmlparser2@10.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/fb55/htmlparser2",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\htmlparser2",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\htmlparser2\\LICENSE"
+  },
+  "http-errors@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/http-errors",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\http-errors",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\http-errors\\LICENSE"
+  },
+  "humanize-ms@1.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/node-modules/humanize-ms",
+    "publisher": "dead-horse",
+    "email": "dead_horse@qq.com",
+    "url": "http://deadhorse.me",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\humanize-ms",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\humanize-ms\\LICENSE"
+  },
+  "iconia-ai@1.0.0": {
+    "licenses": "UNLICENSED",
+    "private": true,
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\README.md"
+  },
+  "iconv-lite@0.4.24": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ashtuchkin/iconv-lite",
+    "publisher": "Alexander Shtuchkin",
+    "email": "ashtuchkin@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\iconv-lite",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\iconv-lite\\LICENSE"
+  },
+  "iconv-lite@0.6.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ashtuchkin/iconv-lite",
+    "publisher": "Alexander Shtuchkin",
+    "email": "ashtuchkin@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encoding-sniffer\\node_modules\\iconv-lite",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\encoding-sniffer\\node_modules\\iconv-lite\\LICENSE"
+  },
+  "inherits@2.0.4": {
+    "licenses": "ISC",
+    "repository": "https://github.com/isaacs/inherits",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\inherits",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\inherits\\LICENSE"
+  },
+  "ipaddr.js@1.9.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/whitequark/ipaddr.js",
+    "publisher": "whitequark",
+    "email": "whitequark@whitequark.org",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ipaddr.js",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ipaddr.js\\LICENSE"
+  },
+  "is-fullwidth-code-point@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/is-fullwidth-code-point",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\is-fullwidth-code-point",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\is-fullwidth-code-point\\license"
+  },
+  "json-colorizer@3.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/joeattardi/json-colorizer",
+    "publisher": "Joe Attardi",
+    "email": "jattardi@gmail.com",
+    "url": "http://joeattardi.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\json-colorizer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\json-colorizer\\LICENSE"
+  },
+  "math-intrinsics@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/es-shims/math-intrinsics",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\math-intrinsics",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\math-intrinsics\\LICENSE"
+  },
+  "media-typer@0.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/media-typer",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\media-typer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\media-typer\\LICENSE"
+  },
+  "merge-descriptors@1.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/merge-descriptors",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\merge-descriptors",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\merge-descriptors\\LICENSE"
+  },
+  "methods@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/methods",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\methods",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\methods\\LICENSE"
+  },
+  "mime-db@1.52.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/mime-db",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime-db",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime-db\\LICENSE"
+  },
+  "mime-types@2.1.35": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/mime-types",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime-types",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime-types\\LICENSE"
+  },
+  "mime@1.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/broofa/node-mime",
+    "publisher": "Robert Kieffer",
+    "email": "robert@broofa.com",
+    "url": "http://github.com/broofa",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\mime\\LICENSE"
+  },
+  "ms@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/zeit/ms",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ms",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\ms\\license.md"
+  },
+  "ms@2.1.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/vercel/ms",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\send\\node_modules\\ms",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\send\\node_modules\\ms\\license.md"
+  },
+  "negotiator@0.6.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/negotiator",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\negotiator",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\negotiator\\LICENSE"
+  },
+  "node-domexception@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jimmywarting/node-domexception",
+    "publisher": "Jimmy Wärting",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-domexception",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-domexception\\LICENSE"
+  },
+  "node-ensure@0.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/bauerca/node-ensure",
+    "publisher": "Carl A. Bauer",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-ensure",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-ensure\\README.md"
+  },
+  "node-fetch@2.7.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/bitinn/node-fetch",
+    "publisher": "David Frank",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-fetch",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\node-fetch\\LICENSE.md"
+  },
+  "nth-check@2.1.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/fb55/nth-check",
+    "publisher": "Felix Boehm",
+    "email": "me@feedic.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\nth-check",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\nth-check\\LICENSE"
+  },
+  "object-assign@4.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/object-assign",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\object-assign",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\object-assign\\license"
+  },
+  "object-inspect@1.13.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/object-inspect",
+    "publisher": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\object-inspect",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\object-inspect\\LICENSE"
+  },
+  "on-finished@2.4.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/on-finished",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\on-finished",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\on-finished\\LICENSE"
+  },
+  "openai@4.104.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/openai/openai-node",
+    "publisher": "OpenAI",
+    "email": "support@openai.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\openai",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\openai\\LICENSE"
+  },
+  "parse5-htmlparser2-tree-adapter@7.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inikulin/parse5",
+    "publisher": "Ivan Nikulin",
+    "email": "ifaaan@gmail.com",
+    "url": "https://github.com/inikulin",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5-htmlparser2-tree-adapter",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5-htmlparser2-tree-adapter\\LICENSE"
+  },
+  "parse5-parser-stream@7.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inikulin/parse5",
+    "publisher": "Ivan Nikulin",
+    "email": "ifaaan@gmail.com",
+    "url": "https://github.com/inikulin",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5-parser-stream",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5-parser-stream\\LICENSE"
+  },
+  "parse5@7.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inikulin/parse5",
+    "publisher": "Ivan Nikulin",
+    "email": "ifaaan@gmail.com",
+    "url": "https://github.com/inikulin",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parse5\\LICENSE"
+  },
+  "parseurl@1.3.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/parseurl",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parseurl",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\parseurl\\LICENSE"
+  },
+  "path-expression-matcher@1.5.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NaturalIntelligence/path-expression-matcher",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\path-expression-matcher",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\path-expression-matcher\\LICENSE"
+  },
+  "path-to-regexp@0.1.13": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/path-to-regexp",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\path-to-regexp",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\path-to-regexp\\LICENSE"
+  },
+  "pdf-parse@1.1.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mehmet-kozan/pdf-parse",
+    "publisher": "Mehmet Kozan",
+    "email": "mehmet.kozan@live.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\pdf-parse",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\pdf-parse\\LICENSE"
+  },
+  "proxy-addr@2.0.7": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/proxy-addr",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\proxy-addr",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\proxy-addr\\LICENSE"
+  },
+  "proxy-from-env@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Rob--W/proxy-from-env",
+    "publisher": "Rob Wu",
+    "email": "rob@robwu.nl",
+    "url": "https://robwu.nl/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\proxy-from-env",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\proxy-from-env\\LICENSE"
+  },
+  "qs@6.14.2": {
+    "licenses": "BSD-3-Clause",
+    "repository": "https://github.com/ljharb/qs",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\qs",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\qs\\LICENSE.md"
+  },
+  "qs@6.15.1": {
+    "licenses": "BSD-3-Clause",
+    "repository": "https://github.com/ljharb/qs",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\body-parser\\node_modules\\qs",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\body-parser\\node_modules\\qs\\LICENSE.md"
+  },
+  "range-parser@1.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/range-parser",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\range-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\range-parser\\LICENSE"
+  },
+  "raw-body@2.5.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/raw-body",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\raw-body",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\raw-body\\LICENSE"
+  },
+  "require-directory@2.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/troygoode/node-require-directory",
+    "publisher": "Troy Goode",
+    "email": "troygoode@gmail.com",
+    "url": "http://github.com/troygoode/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\require-directory",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\require-directory\\LICENSE"
+  },
+  "safe-buffer@5.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/feross/safe-buffer",
+    "publisher": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "https://feross.org",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\safe-buffer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\safe-buffer\\LICENSE"
+  },
+  "safer-buffer@2.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ChALkeR/safer-buffer",
+    "publisher": "Nikita Skovoroda",
+    "email": "chalkerx@gmail.com",
+    "url": "https://github.com/ChALkeR",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\safer-buffer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\safer-buffer\\LICENSE"
+  },
+  "send@0.19.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/send",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\send",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\send\\LICENSE"
+  },
+  "serve-static@1.16.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/serve-static",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\serve-static",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\serve-static\\LICENSE"
+  },
+  "setprototypeof@1.2.0": {
+    "licenses": "ISC",
+    "repository": "https://github.com/wesleytodd/setprototypeof",
+    "publisher": "Wes Todd",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\setprototypeof",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\setprototypeof\\LICENSE"
+  },
+  "side-channel-list@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-list",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-list",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-list\\LICENSE"
+  },
+  "side-channel-map@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-map",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-map",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-map\\LICENSE"
+  },
+  "side-channel-weakmap@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-weakmap",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-weakmap",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel-weakmap\\LICENSE"
+  },
+  "side-channel@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\side-channel\\LICENSE"
+  },
+  "statuses@2.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/statuses",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\statuses",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\statuses\\LICENSE"
+  },
+  "string-width@4.2.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/string-width",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\string-width",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\string-width\\license"
+  },
+  "strip-ansi@6.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/strip-ansi",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\strip-ansi",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\strip-ansi\\license"
+  },
+  "strnum@2.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NaturalIntelligence/strnum",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.work/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\strnum",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\strnum\\LICENSE"
+  },
+  "toidentifier@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/component/toidentifier",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\toidentifier",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\toidentifier\\LICENSE"
+  },
+  "tr46@0.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Sebmaster/tr46.js",
+    "publisher": "Sebastian Mayr",
+    "email": "npm@smayr.name",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\tr46"
+  },
+  "tslib@2.8.1": {
+    "licenses": "0BSD",
+    "repository": "https://github.com/Microsoft/tslib",
+    "publisher": "Microsoft Corp.",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\tslib",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\tslib\\LICENSE.txt"
+  },
+  "turndown@7.2.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mixmark-io/turndown",
+    "publisher": "Dom Christie",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\turndown",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\turndown\\LICENSE"
+  },
+  "type-is@1.6.18": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/type-is",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\type-is",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\type-is\\LICENSE"
+  },
+  "undici-types@5.26.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/undici",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\undici-types",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\undici-types\\README.md"
+  },
+  "undici@7.25.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/undici",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\undici",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\undici\\LICENSE"
+  },
+  "unpipe@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/unpipe",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\unpipe",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\unpipe\\LICENSE"
+  },
+  "utils-merge@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jaredhanson/utils-merge",
+    "publisher": "Jared Hanson",
+    "email": "jaredhanson@gmail.com",
+    "url": "http://www.jaredhanson.net/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\utils-merge",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\utils-merge\\LICENSE"
+  },
+  "uuid@11.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/uuidjs/uuid",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\uuid",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\uuid\\LICENSE.md"
+  },
+  "vary@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/vary",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\vary",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\vary\\LICENSE"
+  },
+  "vectra@0.12.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Stevenic/vectra",
+    "publisher": "Steven Ickman",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\vectra",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\vectra\\LICENSE"
+  },
+  "web-streams-polyfill@4.0.0-beta.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/MattiasBuelens/web-streams-polyfill",
+    "publisher": "Mattias Buelens",
+    "email": "mattias@buelens.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\web-streams-polyfill",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\web-streams-polyfill\\LICENSE"
+  },
+  "webidl-conversions@3.0.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/jsdom/webidl-conversions",
+    "publisher": "Domenic Denicola",
+    "email": "d@domenic.me",
+    "url": "https://domenic.me/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\webidl-conversions",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\webidl-conversions\\LICENSE.md"
+  },
+  "whatwg-encoding@3.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jsdom/whatwg-encoding",
+    "publisher": "Domenic Denicola",
+    "email": "d@domenic.me",
+    "url": "https://domenic.me/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-encoding",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-encoding\\LICENSE.txt"
+  },
+  "whatwg-mimetype@4.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jsdom/whatwg-mimetype",
+    "publisher": "Domenic Denicola",
+    "email": "d@domenic.me",
+    "url": "https://domenic.me/",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-mimetype",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-mimetype\\LICENSE.txt"
+  },
+  "whatwg-url@5.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jsdom/whatwg-url",
+    "publisher": "Sebastian Mayr",
+    "email": "github@smayr.name",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-url",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\whatwg-url\\LICENSE.txt"
+  },
+  "wink-bm25-text-search@3.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-bm25-text-search",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-bm25-text-search",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-bm25-text-search\\LICENSE"
+  },
+  "wink-distance@2.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-distance",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-distance",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-distance\\LICENSE"
+  },
+  "wink-eng-lite-web-model@1.8.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-eng-lite-web-model",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-eng-lite-web-model",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-eng-lite-web-model\\LICENSE"
+  },
+  "wink-helpers@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-helpers",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-helpers",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-helpers\\LICENSE"
+  },
+  "wink-jaro-distance@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-jaro-distance",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-jaro-distance",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-jaro-distance\\LICENSE"
+  },
+  "wink-nlp-utils@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-nlp-utils",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-nlp-utils",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-nlp-utils\\LICENSE"
+  },
+  "wink-nlp@1.14.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-nlp",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-bm25-text-search\\node_modules\\wink-nlp",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-bm25-text-search\\node_modules\\wink-nlp\\LICENSE"
+  },
+  "wink-nlp@2.4.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-nlp",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-nlp",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-nlp\\LICENSE"
+  },
+  "wink-porter2-stemmer@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-porter2-stemmer",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-porter2-stemmer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-porter2-stemmer\\LICENSE"
+  },
+  "wink-tokenizer@5.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/winkjs/wink-tokenizer",
+    "publisher": "Sanjaya Kumar Saxena",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-tokenizer",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wink-tokenizer\\LICENSE"
+  },
+  "wrap-ansi@7.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/wrap-ansi",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "https://sindresorhus.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\wrap-ansi\\license"
+  },
+  "xml-naming@0.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NaturalIntelligence/xml-naming",
+    "publisher": "Amit Gupta",
+    "url": "https://solothought.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\xml-naming",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\xml-naming\\README.md"
+  },
+  "y18n@5.0.8": {
+    "licenses": "ISC",
+    "repository": "https://github.com/yargs/y18n",
+    "publisher": "Ben Coe",
+    "email": "bencoe@gmail.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\y18n",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\y18n\\LICENSE"
+  },
+  "yargs-parser@21.1.1": {
+    "licenses": "ISC",
+    "repository": "https://github.com/yargs/yargs-parser",
+    "publisher": "Ben Coe",
+    "email": "ben@npmjs.com",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\yargs-parser",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\yargs-parser\\LICENSE.txt"
+  },
+  "yargs@17.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/yargs/yargs",
+    "path": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\yargs",
+    "licenseFile": "C:\\Users\\user\\Music\\ICONIA\\3. AI\\node_modules\\yargs\\LICENSE"
+  }
+}
+

@@ -92,7 +92,7 @@ pip-licenses --format=json > docs/legal/licenses-<repo>.json
 
 LGPL-2.1 라이브러리 (Arduino core) 의 §6 (재링크 가능성 보장) 의무에 따라:
 
-1. 사용자가 (주)숨코리아 AS 채널 (support@soomkorea.com) 로 LGPL 재링크 자료를 요청
+1. 사용자가 (주)숨코리아 AS 채널 (support@dollsoom.com) 로 LGPL 재링크 자료를 요청
 2. 회사는 30일 이내 LGPL 부분의 object file + 빌드 instruction 을 제공
 3. 사용자는 본인 빌드 환경에서 회사 펌웨어와 동일한 형태로 재빌드 가능
 4. 회사 자체 코드는 binary 형태로 제공 (재빌드 가능 — LGPL 부분만 교체 가능)

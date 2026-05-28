@@ -246,6 +246,34 @@ function Publish-Bootstrap {
 Test-AwsCli
 Test-Tar
 
+# 2026-05-28 (PRE-01 fix) — preflight 통합. 기본은 warning, $env:REQUIRE_PREFLIGHT=1 일 때 fail.
+# release tag 배포는 release-preflight.yml 가 별도 강제.
+$preflightSh = Join-Path $ciRoot 'scripts/preflight-placeholders.sh'
+if (Test-Path -LiteralPath $preflightSh) {
+  Write-Host "`n[preflight] placeholder/legal guard scan..."
+  $preflightExit = 0
+  try {
+    & bash $preflightSh $iconiaRoot 2>&1 | Tee-Object -Variable preflightOut | Out-Null
+    $preflightExit = $LASTEXITCODE
+  } catch {
+    Write-Warning "[preflight] bash 실행 실패 — 검사 skip (Windows 환경)"
+    $preflightExit = 0
+  }
+  if ($preflightExit -ne 0) {
+    $count = ($preflightOut | Select-String -Pattern '^\[FAIL').Count
+    if ($env:REQUIRE_PREFLIGHT -eq '1') {
+      throw "[preflight] FAIL — $count 건 placeholder 잔존. release tag 배포는 차단됨. `$env:REQUIRE_PREFLIGHT=0 로 일시 우회 가능."
+    } else {
+      Write-Warning "[preflight] WARN — $count 건 placeholder 잔존. dev/staging 배포는 진행 (release tag 시점에는 차단됨)."
+      Write-Warning "  → 강제 차단 원하시면: `$env:REQUIRE_PREFLIGHT=1; build-and-upload.ps1 ..."
+    }
+  } else {
+    Write-Host "[preflight] OK — placeholder 없음."
+  }
+} else {
+  Write-Warning "[preflight] 스크립트 누락: $preflightSh — 검사 skip."
+}
+
 $services = switch ($Service) {
   'all'        { @('_bootstrap','server','ai','admin') }
   '_bootstrap' { @('_bootstrap') }
@@ -257,6 +285,17 @@ foreach ($svc in $services) {
     Publish-Bootstrap
     continue
   }
+
+  # 2026-05-28 (DEPLOY-02 fix) — admin 빌드 전 .next 캐시 강제 삭제.
+  # Next.js incremental build 가 stale chunk 를 가져가 옛 코드로 배포되는 사고 차단.
+  if ($svc -eq 'admin') {
+    $nextDir = Join-Path $paths['admin'] '.next'
+    if (Test-Path -LiteralPath $nextDir) {
+      Write-Host "[admin] .next/ 캐시 삭제 (stale chunk 차단)"
+      Remove-Item -Recurse -Force -LiteralPath $nextDir -ErrorAction SilentlyContinue
+    }
+  }
+
   $r = New-ServiceTarball -Svc $svc
   Send-ToS3 -Svc $svc -Tarball $r.Tarball
 }
