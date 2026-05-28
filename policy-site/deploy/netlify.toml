@@ -1,0 +1,41 @@
+# Netlify 배포 — zero-config, 무료 tier.
+#
+# 사용:
+#   1. https://app.netlify.com → New site from Git → 본 레포 선택
+#   2. Base directory: 6. CI/policy-site
+#   3. Build command: (비움)
+#   4. Publish directory: 6. CI/policy-site
+#   5. Deploy → custom domain 연결 (policy.dollsoom.com 등)
+
+[build]
+  # 정적 사이트 — 빌드 단계 없음
+  publish = "."
+  command = ""
+
+# SPA 라우팅 — 모든 경로를 index.html 로 fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 보안 헤더
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+
+# Markdown 캐시 — 5분
+[[headers]]
+  for = "/content/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300"
+
+# Assets 캐시 — 1일 (assets 갱신 시 파일명 변경 권장)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

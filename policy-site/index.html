@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <meta name="description" content="(주)숨코리아 — ICONIA 서비스의 이용약관·개인정보처리방침·AI 이용 안내 등 정책 고지 페이지." />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:title" content="(주)숨코리아 정책 안내" />
+  <meta property="og:description" content="ICONIA 서비스의 이용약관·개인정보처리방침 등 사용자 고지 사항." />
+  <meta property="og:type" content="website" />
+  <title>(주)숨코리아 — 정책 안내</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%236366f1'/%3E%3Ctext x='50' y='62' font-family='-apple-system,sans-serif' font-size='42' font-weight='700' fill='white' text-anchor='middle'%3EI%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <!-- marked.js (CDN, MIT) — markdown → HTML 변환 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+
+<a href="#main" class="skip-link">본문으로 건너뛰기</a>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="#/" class="brand" aria-label="(주)숨코리아 홈">
+      <span class="brand-mark" aria-hidden="true">I</span>
+      <span class="brand-text">
+        <strong>(주)숨코리아</strong>
+        <small>Soom Korea Inc. — 정책 안내</small>
+      </span>
+    </a>
+    <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="정책 메뉴">
+      <a href="#/" data-doc="home">홈</a>
+      <a href="#/terms" data-doc="terms">이용약관</a>
+      <a href="#/privacy" data-doc="privacy">개인정보처리방침</a>
+      <a href="#/ai-disclosure" data-doc="ai-disclosure">AI 이용 안내</a>
+      <a href="#/device" data-doc="device">기기 연결 안내</a>
+      <a href="#/commerce" data-doc="commerce">커머스 안내</a>
+      <a href="#/marketing" data-doc="marketing">마케팅 수신</a>
+      <a href="#/location" data-doc="location">위치정보</a>
+      <a href="#/open-source" data-doc="open-source">오픈소스</a>
+      <a href="#/contact" data-doc="contact">문의</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- 홈 -->
+  <section class="hero" data-route="home">
+    <div class="container">
+      <p class="eyebrow">(주)숨코리아 / Soom Korea Inc.</p>
+      <h1>ICONIA 서비스 정책 안내</h1>
+      <p class="lead">
+        ICONIA 모바일 앱 · IoT 인형 · AI 페르소나 응답 등 서비스 이용과 관련된 약관 · 개인정보 처리 · AI 안내 ·
+        기기 연결 · 커머스 표시 등 모든 정책을 한 곳에서 확인하실 수 있습니다.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#/privacy">개인정보 처리방침</a>
+        <a class="btn btn-outline" href="#/terms">이용약관</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="container policy-grid" data-route="home">
+    <a class="card" href="#/terms">
+      <h3>이용약관</h3>
+      <p>ICONIA 서비스 이용 시 권리·의무·책임 사항.</p>
+    </a>
+    <a class="card" href="#/privacy">
+      <h3>개인정보 처리방침</h3>
+      <p>수집·이용·보관·파기·이용자 권리.</p>
+    </a>
+    <a class="card" href="#/ai-disclosure">
+      <h3>AI 이용 안내</h3>
+      <p>Gemini API 기반 AI 페르소나 응답의 한계와 안전 안내.</p>
+    </a>
+    <a class="card" href="#/device">
+      <h3>기기 연결·데이터 안내</h3>
+      <p>ICONIA 인형 BLE·Wi-Fi 연결과 디바이스 데이터 정책.</p>
+    </a>
+    <a class="card" href="#/commerce">
+      <h3>커머스 안내 (display-only)</h3>
+      <p>앱 내 결제·주문 미제공 — 안내 목적의 상품 표시.</p>
+    </a>
+    <a class="card" href="#/marketing">
+      <h3>마케팅 정보 수신</h3>
+      <p>이메일·푸시 광고 수신 동의·철회.</p>
+    </a>
+    <a class="card" href="#/location">
+      <h3>위치정보 정책</h3>
+      <p>현재 위치정보 미수집 — 향후 도입 시 적용.</p>
+    </a>
+    <a class="card" href="#/open-source">
+      <h3>오픈소스 라이선스</h3>
+      <p>사용 중인 오픈소스 라이브러리 고지.</p>
+    </a>
+    <a class="card" href="#/contact">
+      <h3>회사 정보 / 문의</h3>
+      <p>고객지원·개인정보 보호 관련 문의처.</p>
+    </a>
+  </section>
+
+  <!-- 정책 본문 (동적 로드) -->
+  <article class="doc container" data-route="doc" hidden>
+    <nav class="breadcrumb" aria-label="경로">
+      <a href="#/">홈</a> <span>›</span> <span id="doc-title-bc">정책</span>
+    </nav>
+    <div class="doc-status-bar" id="doc-status-bar">
+      <strong>본 문서는 초안입니다.</strong>
+      출시 전 사내 법무·개인정보보호책임자·관련 인증 전문가 검토·승인 후 최종 시행됩니다.
+    </div>
+    <div class="markdown-body" id="doc-body">불러오는 중…</div>
+  </article>
+
+  <!-- 문의 -->
+  <article class="doc container" data-route="contact" hidden>
+    <nav class="breadcrumb"><a href="#/">홈</a> <span>›</span> <span>회사 정보 / 문의</span></nav>
+    <h1>회사 정보 / 문의</h1>
+
+    <h2>회사 정보</h2>
+    <dl class="info-list">
+      <dt>회사명</dt><dd>(주)숨코리아 / Soom Korea Inc.</dd>
+      <dt>서비스명</dt><dd>ICONIA</dd>
+      <dt>대표자</dt><dd>(사업자 등록 완료 후 갱신)</dd>
+      <dt>사업자등록번호</dt><dd>(사업자 등록 완료 후 갱신)</dd>
+      <dt>통신판매업 신고</dt><dd>(현재 앱 내 결제 미제공 — 향후 결제 도입 시 별도 신고)</dd>
+      <dt>본사 주소</dt><dd>(사업자 등록 완료 후 갱신)</dd>
+      <dt>대표 전화</dt><dd>(사업자 등록 완료 후 갱신)</dd>
+    </dl>
+
+    <h2>고객지원</h2>
+    <dl class="info-list">
+      <dt>고객지원 이메일</dt><dd><a href="mailto:support@dollsoom.com">support@dollsoom.com</a></dd>
+      <dt>운영 시간</dt><dd>평일 10:00 ~ 18:00 (KST, 주말·공휴일 제외)</dd>
+    </dl>
+
+    <h2>개인정보 보호 문의</h2>
+    <dl class="info-list">
+      <dt>개인정보 보호책임자</dt><dd>(지정 완료 후 갱신)</dd>
+      <dt>개인정보 보호 이메일</dt><dd><a href="mailto:privacy@dollsoom.com">privacy@dollsoom.com</a></dd>
+      <dt>신고·이의신청</dt><dd><a href="mailto:appeals@dollsoom.com">appeals@dollsoom.com</a></dd>
+    </dl>
+
+    <h2>외부 분쟁 조정</h2>
+    <p>
+      개인정보 침해 신고나 상담이 필요하신 경우 아래 기관에 문의하실 수 있습니다.
+    </p>
+    <ul>
+      <li>개인정보 침해신고센터 — 국번없이 <strong>118</strong> (privacy.kisa.or.kr)</li>
+      <li>개인정보 분쟁조정위원회 — <strong>1833-6972</strong> (kopico.go.kr)</li>
+      <li>대검찰청 사이버수사과 — <strong>1301</strong></li>
+      <li>경찰청 사이버수사국 — 국번없이 <strong>182</strong> (ecrm.cyber.go.kr)</li>
+    </ul>
+
+    <p class="note">
+      본 페이지에 표시된 회사 정보는 사업자 등록 완료 시점에 정본 source (`6. CI/docs/legal/business-info.md`) 갱신으로
+      자동 반영됩니다.
+    </p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-col">
+      <strong>(주)숨코리아 / Soom Korea Inc.</strong>
+      <p>ICONIA 서비스 운영사</p>
+    </div>
+    <div class="footer-col">
+      <strong>정책</strong>
+      <ul>
+        <li><a href="#/terms">이용약관</a></li>
+        <li><a href="#/privacy">개인정보 처리방침</a></li>
+        <li><a href="#/ai-disclosure">AI 이용 안내</a></li>
+        <li><a href="#/device">기기 연결 안내</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <strong>기타</strong>
+      <ul>
+        <li><a href="#/commerce">커머스 안내</a></li>
+        <li><a href="#/marketing">마케팅 수신</a></li>
+        <li><a href="#/location">위치정보</a></li>
+        <li><a href="#/open-source">오픈소스</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <strong>문의</strong>
+      <ul>
+        <li><a href="mailto:support@dollsoom.com">support@dollsoom.com</a></li>
+        <li><a href="mailto:privacy@dollsoom.com">privacy@dollsoom.com</a></li>
+        <li><a href="#/contact">전체 문의처</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <small>© <span id="copy-year">2026</span> (주)숨코리아 / Soom Korea Inc. All rights reserved.</small>
+    <small>본 정책은 초안이며 출시 전 법무 검토 후 최종 시행됩니다.</small>
+  </div>
+</footer>
+
+</body>
+</html>
