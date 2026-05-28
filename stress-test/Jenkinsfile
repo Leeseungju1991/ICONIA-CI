@@ -1,0 +1,104 @@
+// ICONIA E2E Wide Stress Test — Jenkins pipeline
+//
+// 파라미터:
+//   PATTERN: steady|spike|soak|stress|chaos|...
+//   DURATION_S: 300 (default)
+//   RPS: 100 (default)
+//
+// Credentials (Jenkins 측 등록 필요):
+//   - STRESS_JWT_TOKEN
+//   - STAGING_SERVER_BASE / STAGING_ADMIN_BASE / STAGING_AI_BASE
+//   - STRESS_GEMINI_API_KEY
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'PATTERN',
+               choices: ['steady', 'spike', 'soak', 'stress', 'chaos', 'burst',
+                         'retry-storm', 'queue-saturation', 'websocket-fanout',
+                         'ai-concurrency', 'admin-concurrent', 'data-consistency',
+                         'failure-recovery', 'memory-leak', 'long-run'],
+               description: 'Load pattern')
+        string(name: 'DURATION_S', defaultValue: '300', description: 'Duration in seconds')
+        string(name: 'RPS', defaultValue: '100', description: 'Target RPS')
+    }
+
+    environment {
+        STRESS_TARGET = 'staging'
+        STRESS_PATTERN = "${params.PATTERN}"
+        STRESS_DURATION_S = "${params.DURATION_S}"
+        STRESS_RPS_TARGET = "${params.RPS}"
+        GEMINI_MAX_TOKENS_PER_RUN = '500000'
+
+        STAGING_SERVER_BASE = credentials('STAGING_SERVER_BASE')
+        STAGING_ADMIN_BASE = credentials('STAGING_ADMIN_BASE')
+        STAGING_AI_BASE = credentials('STAGING_AI_BASE')
+        STRESS_JWT_TOKEN = credentials('STRESS_JWT_TOKEN')
+        GEMINI_API_KEY = credentials('STRESS_GEMINI_API_KEY')
+    }
+
+    options {
+        timeout(time: 90, unit: 'MINUTES')
+        timestamps()
+    }
+
+    stages {
+        stage('Setup') {
+            steps {
+                dir('stress-test') {
+                    sh 'python3 -m venv venv'
+                    sh '. venv/bin/activate && pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir('stress-test') {
+                    sh '. venv/bin/activate && pytest tests/ -v --tb=short --junit-xml=test-results.xml'
+                }
+            }
+            post {
+                always {
+                    junit 'stress-test/test-results.xml'
+                }
+            }
+        }
+
+        stage('Safety Check') {
+            steps {
+                script {
+                    if (env.STAGING_SERVER_BASE?.toLowerCase()?.contains('prod') &&
+                        !env.STAGING_SERVER_BASE?.toLowerCase()?.contains('staging')) {
+                        error "STAGING_SERVER_BASE looks like production. Aborting."
+                    }
+                }
+            }
+        }
+
+        stage('Run Stress Test') {
+            steps {
+                dir('stress-test') {
+                    sh '. venv/bin/activate && python scripts/orchestrate-load.py'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'stress-test/reports/output/**',
+                             allowEmptyArchive: true,
+                             fingerprint: true
+            publishHTML(target: [
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'stress-test/reports/output',
+                reportFiles: '**/report.html',
+                reportName: 'Stress Test Report'
+            ])
+        }
+    }
+}

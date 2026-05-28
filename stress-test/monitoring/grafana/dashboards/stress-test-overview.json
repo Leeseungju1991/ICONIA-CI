@@ -1,0 +1,100 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "title": "ICONIA Stress Test Overview",
+  "tags": ["iconia", "stress"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate (rps) by target",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(stress_request_total[1m])) by (target)", "legendFormat": "{{target}}"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Request latency (p95)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(stress_request_latency_seconds_bucket[1m])) by (le, target))", "legendFormat": "p95 {{target}}"},
+        {"expr": "histogram_quantile(0.99, sum(rate(stress_request_latency_seconds_bucket[1m])) by (le, target))", "legendFormat": "p99 {{target}}"}
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Errors (status 4xx/5xx)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(stress_request_total{status=~\"4..\"}[1m])) by (status)", "legendFormat": "4xx {{status}}"},
+        {"expr": "sum(rate(stress_request_total{status=~\"5..\"}[1m])) by (status)", "legendFormat": "5xx {{status}}"}
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Throttle / Timeout / Retry",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(stress_throttle_429_total[1m]))", "legendFormat": "429"},
+        {"expr": "sum(rate(stress_timeout_total[1m]))", "legendFormat": "timeout"},
+        {"expr": "sum(rate(stress_retry_total[1m]))", "legendFormat": "retry"}
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Gemini metrics",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "sum(rate(stress_gemini_request_total[1m])) by (status)", "legendFormat": "{{status}}"},
+        {"expr": "sum(rate(stress_gemini_tokens_total[1m])) by (direction)", "legendFormat": "tokens {{direction}}"}
+      ]
+    },
+    {
+      "id": 6,
+      "title": "APP / ADMIN sync delay",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(stress_app_sync_delay_seconds_bucket[1m])) by (le))", "legendFormat": "app p95"},
+        {"expr": "histogram_quantile(0.95, sum(rate(stress_admin_sync_delay_seconds_bucket[1m])) by (le))", "legendFormat": "admin p95"}
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Chaos injection",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 24, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "sum(stress_chaos_injected_total) by (kind)", "legendFormat": "{{kind}}"}
+      ]
+    },
+    {
+      "id": 8,
+      "title": "APP missing / duplicate",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 24, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "stress_app_missing_event_total", "legendFormat": "missing"},
+        {"expr": "stress_app_duplicate_event_total", "legendFormat": "duplicate"}
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
