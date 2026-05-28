@@ -94,6 +94,6 @@ cp docs/legal/marketing-consent.md    policy-site/content/marketing.md
 - 모바일 nav `aria-expanded`
 - 색 대비 WCAG AA
 
-## 법적 고지
+## 정책 갱신
 
-본 사이트의 모든 정책은 **초안** 상태이며, 출시 전 사내 법무·개인정보보호책임자·관련 인증 전문가 검토·승인 후 최종 시행됩니다. 모든 페이지 상단에 노출되는 노란색 status bar 가 본 사실을 명시합니다.
+정책 본문 변경 시 정본 (`6. CI/docs/legal/*.md`) → `content/*.md` 동기화 → 배포.
