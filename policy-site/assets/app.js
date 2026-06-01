@@ -14,7 +14,6 @@
     'commerce':        { file: 'content/commerce.md',        title: '커머스 안내 (display-only)' },
     'marketing':       { file: 'content/marketing.md',       title: '마케팅 정보 수신 동의' },
     'location':        { file: 'content/location.md',        title: '위치정보 정책' },
-    'open-source':     { file: 'content/open-source.md',     title: '오픈소스 라이선스' },
   };
 
   // 캐시

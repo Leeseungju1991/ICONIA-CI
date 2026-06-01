@@ -260,7 +260,7 @@ if (Test-Path -LiteralPath $preflightSh) {
     $preflightExit = 0
   }
   if ($preflightExit -ne 0) {
-    $count = ($preflightOut | Select-String -Pattern '^\[FAIL').Count
+    $count = @($preflightOut | Select-String -Pattern '^\[FAIL').Count
     if ($env:REQUIRE_PREFLIGHT -eq '1') {
       throw "[preflight] FAIL — $count 건 placeholder 잔존. release tag 배포는 차단됨. `$env:REQUIRE_PREFLIGHT=0 로 일시 우회 가능."
     } else {

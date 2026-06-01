@@ -216,13 +216,32 @@ inject_database_url() {
   : "${RDS_DATABASE:?RDS_DATABASE 미설정 (/etc/iconia.env)}"
   : "${RDS_USERNAME:?RDS_USERNAME 미설정 (/etc/iconia.env)}"
 
+  # ICONIA_ENV 가 "production" 인데 실제 secret 이름이 "prod" 인 환경 호환.
+  # iconia/${ICONIA_ENV}/db/master_password 를 먼저 시도, 실패 시 production↔prod alias 재시도.
   local secret_id="iconia/${ICONIA_ENV}/db/master_password"
+  local alt_env=""
+  case "${ICONIA_ENV}" in
+    production) alt_env="prod" ;;
+    prod)       alt_env="production" ;;
+  esac
   log "secrets: fetch ${secret_id}"
   local secret_json
   secret_json=$(aws secretsmanager get-secret-value \
     --secret-id "${secret_id}" --region "${AWS_REGION}" \
-    --query SecretString --output text 2>/dev/null) \
-    || fail "Secrets Manager ${secret_id} 조회 실패 - IAM 정책/시크릿 존재 여부 점검"
+    --query SecretString --output text 2>/dev/null) || secret_json=""
+  if [ -z "$secret_json" ] && [ -n "$alt_env" ]; then
+    local alt_secret_id="iconia/${alt_env}/db/master_password"
+    log "secrets: ${secret_id} not found, trying ${alt_secret_id}"
+    secret_json=$(aws secretsmanager get-secret-value \
+      --secret-id "${alt_secret_id}" --region "${AWS_REGION}" \
+      --query SecretString --output text 2>/dev/null) || secret_json=""
+    if [ -n "$secret_json" ]; then
+      secret_id="$alt_secret_id"
+    fi
+  fi
+  if [ -z "$secret_json" ]; then
+    fail "Secrets Manager ${secret_id} 조회 실패 - IAM 정책/시크릿 존재 여부 점검"
+  fi
 
   local pwd
   pwd=$(printf '%s' "$secret_json" | jq -er .password) \
