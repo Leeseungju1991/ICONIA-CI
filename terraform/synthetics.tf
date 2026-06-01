@@ -197,7 +197,9 @@ resource "aws_synthetics_canary" "heartbeat" {
 
   run_config {
     timeout_in_seconds = 60
-    memory_in_mb       = 1000
+    # CloudWatch Synthetics 는 memory_in_mb 가 64 배수만 허용 (AWS API 강제).
+    # 1000 은 비배수 → terraform validate 실패. 1024 가 1GB 정합 + 64 배수.
+    memory_in_mb = 1024
   }
 
   success_retention_period = 14

@@ -23,7 +23,24 @@ locals {
   admin_subdomain = var.env == "prod" ? "admin" : "${var.env}-admin"
 }
 
-# api.<root> → ALB alias.
+# api/ai/admin alias — enable_cloudfront=true 시 CF distribution 으로, 아니면 ALB 직결.
+# 두 경로의 alias.name/zone_id 만 다르고 record 자체는 동일하므로 locals 로 alias target 결정.
+locals {
+  # CloudFront alias zone_id 는 모든 distribution 공통: Z2FDTNDATAQYW2 (AWS 문서).
+  cloudfront_zone_id = "Z2FDTNDATAQYW2"
+
+  route53_alias_targets = local.cloudfront_enabled ? {
+    api   = { name = aws_cloudfront_distribution.iconia["api"].domain_name, zone_id = local.cloudfront_zone_id }
+    ai    = { name = aws_cloudfront_distribution.iconia["ai"].domain_name, zone_id = local.cloudfront_zone_id }
+    admin = { name = aws_cloudfront_distribution.iconia["admin"].domain_name, zone_id = local.cloudfront_zone_id }
+    } : {
+    api   = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
+    ai    = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
+    admin = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
+  }
+}
+
+# api.<root> → CF distribution(enable_cloudfront=true) 또는 ALB alias.
 resource "aws_route53_record" "api" {
   count   = var.create_route53_records && local.zone_id != "" && var.root_domain != "" ? 1 : 0
   zone_id = local.zone_id
@@ -31,13 +48,13 @@ resource "aws_route53_record" "api" {
   type    = "A"
 
   alias {
-    name                   = aws_lb.iconia.dns_name
-    zone_id                = aws_lb.iconia.zone_id
-    evaluate_target_health = true
+    name                   = local.route53_alias_targets["api"].name
+    zone_id                = local.route53_alias_targets["api"].zone_id
+    evaluate_target_health = !local.cloudfront_enabled # CF alias 는 health check 미지원
   }
 }
 
-# ai.<root> → 동일 ALB alias (ALB host-header 라우팅 또는 단일 target group).
+# ai.<root> → CF distribution 또는 ALB alias.
 resource "aws_route53_record" "ai" {
   count   = var.create_route53_records && local.zone_id != "" && var.root_domain != "" ? 1 : 0
   zone_id = local.zone_id
@@ -45,13 +62,13 @@ resource "aws_route53_record" "ai" {
   type    = "A"
 
   alias {
-    name                   = aws_lb.iconia.dns_name
-    zone_id                = aws_lb.iconia.zone_id
-    evaluate_target_health = true
+    name                   = local.route53_alias_targets["ai"].name
+    zone_id                = local.route53_alias_targets["ai"].zone_id
+    evaluate_target_health = !local.cloudfront_enabled
   }
 }
 
-# admin.<root> → 동일 ALB alias.
+# admin.<root> → CF distribution 또는 ALB alias.
 resource "aws_route53_record" "admin" {
   count   = var.create_route53_records && local.zone_id != "" && var.root_domain != "" ? 1 : 0
   zone_id = local.zone_id
@@ -59,9 +76,9 @@ resource "aws_route53_record" "admin" {
   type    = "A"
 
   alias {
-    name                   = aws_lb.iconia.dns_name
-    zone_id                = aws_lb.iconia.zone_id
-    evaluate_target_health = true
+    name                   = local.route53_alias_targets["admin"].name
+    zone_id                = local.route53_alias_targets["admin"].zone_id
+    evaluate_target_health = !local.cloudfront_enabled
   }
 }
 

@@ -113,9 +113,36 @@ variable "asg_scale_in_cooldown_seconds" {
 }
 
 variable "acm_certificate_arn" {
-  description = "ALB HTTPS listener 가 사용할 ACM 인증서 ARN (ap-northeast-2 리전). 비우면 ACM lookup 또는 listener 비활성."
+  description = "ALB HTTPS listener 가 사용할 ACM 인증서 ARN (ap-northeast-2 리전). 비우면 ACM lookup 또는 listener 비활성. enable_acm_auto=true 시 acm.tf 가 자동 발급한 인증서가 우선."
   type        = string
   default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# ACM 자동 발급 + CloudFront (사용자 결정 2026-06-02 — 3 서브도메인 각각 CF + ACM 자동).
+# -----------------------------------------------------------------------------
+variable "enable_acm_auto" {
+  description = "true 이면 acm.tf 가 ALB(ap-northeast-2)/CloudFront(us-east-1) ACM 인증서를 SAN `*.<root_domain>` + `<root_domain>` 로 자동 발급하고 Route53 DNS validation 까지 처리. 인증서 만료 자동 갱신. root_domain 미설정 또는 hosted_zone_id 비어있으면 무시 (manual 모드 유지)."
+  type        = bool
+  default     = false
+}
+
+variable "enable_cloudfront" {
+  description = "true 이면 cloudfront.tf 가 api/ai/admin 3개 서브도메인 각각에 CloudFront distribution 을 만들고 Route53 alias 를 ALB 직결 대신 CF 로 전환. ACM 인증서는 enable_acm_auto=true 가 us-east-1 인증서를 자동 발급해 함께 묶임."
+  type        = bool
+  default     = false
+}
+
+variable "cloudfront_min_protocol_version" {
+  description = "CloudFront viewer TLS 최소 버전. 기본 TLSv1.2_2021. 호환성 강제 시 TLSv1.2_2018 권장 안 함 (보안 약화)."
+  type        = string
+  default     = "TLSv1.2_2021"
+}
+
+variable "cloudfront_price_class" {
+  description = "CloudFront price class. 'PriceClass_100' (NA+EU only, 최저), 'PriceClass_200' (NA+EU+SEA/한국 권장), 'PriceClass_All' (전 세계)."
+  type        = string
+  default     = "PriceClass_200"
 }
 
 variable "alb_idle_timeout_seconds" {
