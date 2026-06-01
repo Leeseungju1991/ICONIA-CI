@@ -20,7 +20,7 @@ fi
 
 # Safety
 if grep -qE "^STRESS_TARGET=production" .env; then
-  echo "❌ STRESS_TARGET=production is FORBIDDEN. Use staging/local."
+  echo "❌ STRESS_TARGET=production is FORBIDDEN. Use staging."
   exit 2
 fi
 

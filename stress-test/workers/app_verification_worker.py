@@ -80,6 +80,5 @@ class AppVerificationWorker:
 
     @classmethod
     def from_env(cls) -> "AppVerificationWorker":
-        target = os.getenv("STRESS_TARGET", "staging").lower()
-        base = (os.getenv("LOCAL_SERVER_BASE") if target == "local" else os.getenv("STAGING_SERVER_BASE")) or ""
+        base = os.getenv("STAGING_SERVER_BASE", "")
         return cls(AppVerificationConfig(server_base=base, jwt_token=os.getenv("STRESS_JWT_TOKEN") or None))

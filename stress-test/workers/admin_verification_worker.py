@@ -86,13 +86,6 @@ class AdminVerificationWorker:
 
     @classmethod
     def from_env(cls) -> "AdminVerificationWorker":
-        target = os.getenv("STRESS_TARGET", "staging").lower()
-        if target == "local":
-            return cls(AdminVerificationConfig(
-                admin_base=os.getenv("LOCAL_ADMIN_BASE", ""),
-                server_base=os.getenv("LOCAL_SERVER_BASE", ""),
-                jwt_token=os.getenv("STRESS_JWT_TOKEN") or None,
-            ))
         return cls(AdminVerificationConfig(
             admin_base=os.getenv("STAGING_ADMIN_BASE", ""),
             server_base=os.getenv("STAGING_SERVER_BASE", ""),

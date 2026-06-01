@@ -13,8 +13,8 @@ ICONIA 는 6개 레포로 구성된다.
 | 5 | ADMIN | Next.js 관리 콘솔 | **본 레포가 AWS EC2 로 배포** |
 | 6 | **CI** | **인프라(Terraform) · 배포 파이프라인 · 운영 정본 — 본 레포** | — |
 
-설계 목표: **`localhost 동작 확인 → 아주 간단한 수정 → AWS 실배포 즉시 출시`**.
-전환은 `.env` 의 **`DEPLOY_TARGET` 한 줄 (`local` / `aws`)** 로 한다.
+설계 목표: **`아주 간단한 수정 → AWS 실배포 즉시 출시`**.
+ICONIA 는 AWS 단일 타겟이다 — 모든 서비스(SERVER/AI/ADMIN)와 APP(Expo)이 AWS 실환경을 가리킨다.
 
 ---
 
@@ -100,7 +100,6 @@ ICONIA 는 6개 레포로 구성된다.
 - EC2 한 호스트 위에 SERVER · AI · ADMIN 세 서비스가 systemd 로 떠 있고 nginx 가 앞단에서 TLS 종단과 라우팅을 담당한다.
 - 데이터는 RDS(PostgreSQL) · ElastiCache(Redis) · EFS(페르소나) · S3(이미지/펌웨어/배포 산출물) 로 분리되고 모두 암호화 + 백업이 적용된다.
 - 배포 실패 시 5단계 가드(체크섬·atomic swap·테스트 게이트·헬스체크 30초·자동 롤백) 가 다운타임 1초 이내로 직전 버전을 복원한다.
-- 로컬에서는 `pwsh scripts/local-up.ps1` 한 번으로 PostgreSQL 16 컨테이너 + SERVER + AI + ADMIN (+APP) 이 한꺼번에 뜬다.
 
 > preflight 의 약관/사업자정보 강제 검사는 docs/README ignore 와 별개로 `docs/legal/`,
 > `src/config/legal.{ts,js,tsx}`, `src/legal/`, `app.config.{ts,js}`, `README.md` 만
@@ -137,7 +136,6 @@ ICONIA 는 6개 레포로 구성된다.
 - 배포 runbook (`deploy/RUNBOOK.md`, `deploy/aws/multi-az-failover-runbook.md`)
 
 ### 3.4 빌드·배포 스크립트 (`scripts/`)
-- 로컬 전체 기동/종료 (`local-up.ps1` / `local-up.sh` / `local-down.ps1` / `local-down.sh`) — PG16 + SERVER + AI + ADMIN (+APP)
 - AWS 완전 자동 배포 (`aws-deploy.ps1`) — terraform → 빌드 → SSM → 스모크 → (선택)Seed 단일 진입점. switch: `-ApplyInfra` / `-DryRun` / `-Seed` / `-Reseed` / `-NoSeed` / `-EssentialOnly` — 첫 배포 시 `/v1/admin/seed/status` 의 `last_seeded_at == null` 자동 감지로 mock 데이터 1회 자동 시드 (운영 데이터 보호: 무인자 일반 배포는 시드 안 함)
 - 빌드 + S3 업로드 (`build-and-upload.ps1` / `.sh`) — robocopy/rsync + npm + next build + prisma generate + tar + SHA256
 - SSM RunShellScript 트리거 (`trigger-deploy.ps1` / `.sh`)
@@ -147,13 +145,12 @@ ICONIA 는 6개 레포로 구성된다.
 - 6레포 placeholder 검사 게이트 (`preflight-placeholders.{sh,ps1}`) — 도메인/시크릿 14패턴 + (주)숨코리아 약관/사업자정보 4패턴 (`docs/legal/`, `src/config/legal.*`, `src/legal/`, `app.config.*`, `README.md` 강제 스캔)
 - seed-data 검증 (`preflight-seed-data.ps1`) — cross-repo `ICONIA-SERVER/prisma/seed-data/*.json` valid + 필수 카테고리(users / characters / rooms / legal-agreements / notices) 존재 + 비핵심 카테고리 sampling 점검
 - SERVER ↔ AI soul catalog lockstep 검증 (`check-soul-catalog-sync.js`)
-- HW 로컬 프록시 Caddy (`Caddyfile.hw-proxy`, `start-hw-proxy.ps1`)
 
 ### 3.5 GitHub Actions 파이프라인 (`.github/workflows/`)
 - `release-preflight` — 6레포 placeholder 검사 + (주)숨코리아 약관/사업자정보 LEGAL guard (미채운 PLACEHOLDER · 약관 placeholder 가 prod 로 새는 사고 차단 — 정본 `docs/legal/business-info.md`)
 - `test-gate` — SERVER/AI/ADMIN 단위·lint·typecheck + CI 자체 검증
 - `deploy` — 빌드 → S3 업로드 → SSM 무중단 배포 → Route53 외부 스모크 (5단계 게이트)
-- `cross-repo-e2e` — Server local-up + Admin smoke + App jest + Server full test + AI test 직렬
+- `cross-repo-e2e` — Server boot smoke + Admin smoke + App jest + Server full test + AI test 직렬
 - `api-contract-lint` — `ADMIN/docs/api_contract.md` 의 `❌ 미구현` baseline ratchet
 - **V1.0 라운드 추가**:
   - `sbom` — syft 로 SPDX + CycloneDX SBOM (push/tag 시 산출물, tag 시 GitHub Release 첨부)
@@ -215,7 +212,6 @@ ICONIA 는 6개 레포로 구성된다.
 | Budget 알람 세분화 | `budgets.tf` 월간 USD + Gemini cost hourly/daily 정의. **사용자당 비용 추적 알람**은 미정의 | SERVER 의 `perUserCostService` 가 emit 할 메트릭이 정의되면 그에 맞춰 알람 추가 가능. |
 | SLO 보드 widget 추가 | `cloudwatch_dashboard.tf` 의 `iconia_slo` 6 widget. **사용자당 비용 추세 / Cost Anomaly Detection** widget 추가 가능 | 메트릭 emit 라운드와 정합. |
 | Sentry / Push / Slack 알람 채널 | `deploy/aws/` 운영 정본에 가이드. 알람 SNS → Slack webhook 연결은 manual | webhook URL 만 secret 으로 주입하면 됨. |
-| HW 로컬 프록시 (개발 편의) | `Caddyfile.hw-proxy`, `start-hw-proxy.ps1` 보유 | TLS 자체 서명 인증서 자동 갱신·신뢰 등록은 별도 OS 정책. |
 | (주)숨코리아 약관/사업자정보 placeholder guard | `scripts/preflight-placeholders.{sh,ps1}` 의 LEGAL 패턴 4종 (`__TBD__` / `__PLACEHOLDER__` / `XXX-XX-XXXXX` / `Soom Korea Inc. (placeholder)`) + `docs/legal/business-info.md` 정본 + `aws-deploy.ps1` 의 출시 전 placeholder 갱신 단계 | 운영팀 갱신 절차는 `docs/legal/business-info.md` §4 — 실 사업자등록번호 / 통신판매업 신고번호 / DPO 확정 후 release tag. |
 | AWS 첫 배포 mock 데이터 자동 시드 | `aws-deploy.ps1 -ApplyInfra` 가 `/v1/admin/seed/status` 의 `last_seeded_at` 으로 첫 배포 감지 → SSM Run Command 로 EC2 위 `npm run seed:aws` 1회 실행. `-Seed`/`-Reseed`/`-NoSeed`/`-EssentialOnly` switch + cross-repo `preflight-seed-data.ps1` 가드 + RUNBOOK §2-A 시드 의사결정 매트릭스 | SERVER 의 `prisma/seed.js` + `npm run seed:aws` 진입점 + `/v1/admin/seed/status` endpoint, APP 의 `prisma/seed-data/*.json` mock export 가 cross-repo 의존성 — 본 레포는 트리거/가드만 담당. |
 | Canary 10% 트래픽 분배 (ALB weighted TG) | `terraform/canary.tf` (canary TG + listener rule with `lifecycle.ignore_changes`) + `aws-deploy.ps1 -Canary <pct>` / `-PromoteCanary` / `-RollbackCanary` switch + RUNBOOK §3.5 흐름 다이어그램 | 자동 promote/rollback (CloudWatch alarm 기반) 은 다음 라운드 — `HTTPCode_Target_5XX_Count` > 1% 또는 `TargetResponseTime` p95 > primary × 2.0 임계 정의 후 SNS → Lambda 가 weight=0 으로 즉시 회수. |
@@ -229,7 +225,7 @@ ICONIA 는 6개 레포로 구성된다.
 | RDS Aurora Global Database | 다중 리전 운영 결정 + 비용 모델 확정 필요. 현재 Aurora Serverless v2 단일 리전. |
 | Sentry tracesSampleRate 단계적 ramp-up | Sentry plan 한도·운영 결정 영역. |
 | 펌웨어 OTA 트랙 (`1. HW` 빌드 산출물) | 본 레포 범위 밖. `1. HW` 의 ESP-IDF 빌드 시스템과 firmware S3 버킷 lifecycle 정책만 본 레포가 제공. |
-| Expo EAS Build / Submit (`4. APP`) | EAS 자체 인프라 + Apple/Google 계정 영역. 본 레포는 환경변수 (LOCAL_LAN_IP, API base URL) 만 전파. |
+| Expo EAS Build / Submit (`4. APP`) | EAS 자체 인프라 + Apple/Google 계정 영역. 본 레포는 환경변수 (AWS API base URL) 만 전파. |
 | 운영 시크릿(Secrets Manager 의 db/JWT/HMAC/KEK 실값) | 운영팀이 직접 입력 — IaC 는 "secret 컨테이너" 만 생성, 실값은 `seed-db-password.ps1` 또는 콘솔. |
 | AWS 계정 결제·서비스 한도 직접 상향 | AWS Support Case · 비즈니스 계약 영역. |
 | Kubernetes (EKS) | EC2 + ASG + ALB 로 N=2+ 운영 가능. K8s 는 fleet 1만대 이상 / multi-tenancy 시 V1.x. |

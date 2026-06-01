@@ -42,14 +42,6 @@ class AWSLoadConfig:
 
     @classmethod
     def from_env(cls) -> "AWSLoadConfig":
-        target = os.getenv("STRESS_TARGET", "staging").lower()
-        if target == "local":
-            return cls(
-                server_base=os.getenv("LOCAL_SERVER_BASE", "http://localhost:8080"),
-                admin_base=os.getenv("LOCAL_ADMIN_BASE", "http://localhost:3000"),
-                ai_base=os.getenv("LOCAL_AI_BASE", "http://localhost:8081"),
-                jwt_token=os.getenv("STRESS_JWT_TOKEN") or None,
-            )
         return cls(
             server_base=os.getenv("STAGING_SERVER_BASE", ""),
             admin_base=os.getenv("STAGING_ADMIN_BASE", ""),

@@ -2,7 +2,7 @@
 # cross-repo-e2e.yml — Phase 12 #4.
 #
 # 다음 단계로 5개 sibling 리포의 핵심 흐름을 1개 runner 에서 직렬 검증한다:
-#   (a) Server local-up (mock AI)
+#   (a) Server boot smoke (mock AI, ephemeral test port)
 #   (b) Admin smoke (login + dashboard 진입)
 #   (c) App jest (헤드리스)
 #   (d) Server full test
@@ -90,17 +90,16 @@ jobs:
         with: { node-version: '20' }
 
       # -----------------------------------------------------------------------
-      # (a) Server local-up (mock AI)
+      # (a) Server boot smoke (mock AI)
       #    - DB 미부팅 환경에서 부팅 가능한 in-memory 모드 (DATABASE_URL 미설정).
       #    - PERSONA_AI_BASE_URL 미설정 → personaClient 가 mock 로 동작.
-      #    - server 가 PORT=8080 으로 listen, 헬스 체크 1회만 확인.
+      #    - server 가 ephemeral test 포트(8080)로 listen, 헬스 체크 1회만 확인.
       # -----------------------------------------------------------------------
-      - name: (a) Server local-up + health check
+      - name: (a) Server boot smoke + health check
         if: steps.srv.outcome == 'success'
         working-directory: server
         env:
           NODE_ENV: test
-          DEPLOY_TARGET: local
           PORT: '8080'
           DEVICE_API_KEY: e2e-device-key
           OPS_REPORT_SCHEDULER_DISABLED: '1'

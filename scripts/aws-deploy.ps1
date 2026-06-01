@@ -4,12 +4,12 @@
 
 .DESCRIPTION
   "AWS 실배포 즉시 출시" 경로의 단일 진입점.
-  로컬에서 동작 확인을 마친 뒤, 이 스크립트 한 번이면 인프라 정합 확인부터
-  검증까지 끝난다. GitHub Actions(deploy.yml)가 표준 경로이고, 본 스크립트는
-  운영자 로컬(Windows PowerShell)에서 동일 흐름을 수동 실행하는 폴백이다.
+  이 스크립트 한 번이면 인프라 정합 확인부터 검증까지 끝난다.
+  GitHub Actions(deploy.yml)가 표준 경로이고, 본 스크립트는
+  운영자 워크스테이션(Windows PowerShell)에서 동일 흐름을 수동 실행하는 폴백이다.
 
   단계:
-    1. .env 로드 + DEPLOY_TARGET=aws 확인
+    1. .env 로드
     2. preflight — 6 레포 placeholder 검사 + (주)숨코리아 약관/사업자정보 LEGAL guard
        + seed-data preflight (cross-repo ICONIA-SERVER/prisma/seed-data/*.json)
     3. (-ApplyInfra) terraform init/plan/apply — 인프라 정합
@@ -72,7 +72,7 @@
   -Canary / -PromoteCanary 와 동시 사용 금지.
 
 .EXAMPLE
-  Copy-Item .env.example .env       # DEPLOY_TARGET=aws 로 수정 + 값 채움
+  Copy-Item .env.example .env       # AWS 값 채움
   pwsh -File scripts/aws-deploy.ps1 -Service all
 
 .EXAMPLE
@@ -131,12 +131,6 @@ $dotenv = Import-DotEnv (Join-Path $ciRoot '.env')
 function Cfg { param([string]$K,[string]$D='')
   if ($dotenv.ContainsKey($K) -and $dotenv[$K]) { return $dotenv[$K] }
   $v = [Environment]::GetEnvironmentVariable($K); if ($v) { return $v }; return $D
-}
-
-# ----- 단일 토글 확인 -----
-$target = Cfg 'DEPLOY_TARGET' 'aws'
-if ($target -ne 'aws') {
-  Write-Warning ".env 의 DEPLOY_TARGET 이 '$target' 입니다. AWS 배포를 계속하려면 'aws' 권장."
 }
 
 $region = Cfg 'AWS_REGION' 'ap-northeast-2'

@@ -4,7 +4,7 @@
 |---|---|
 | 상태 | **Accepted (1차 정본)** |
 | 날짜 | 2026-05-27 |
-| 적용 범위 | 테스트 환경 한정 (`DEPLOY_TARGET=local` 또는 `staging`). 운영(`prod`) 금지. |
+| 적용 범위 | 테스트 환경 한정 (`staging`). 운영(`prod`) 금지. |
 | 관련 문서 | `deploy/aws/multi-az-failover-runbook.md`, `deploy/RUNBOOK.md` |
 
 본 문서는 ICONIA V1.0 출시 직전 운영팀이 수행해야 하는 **장애 주입(chaos) 시나리오**의 정본이다.
