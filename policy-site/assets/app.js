@@ -11,7 +11,7 @@
     'privacy':         { file: 'content/privacy.md',         title: '개인정보 처리방침' },
     'ai-disclosure':   { file: 'content/ai-disclosure.md',   title: 'AI 이용 안내' },
     'device':          { file: 'content/device.md',          title: '기기 연결·데이터 안내' },
-    'commerce':        { file: 'content/commerce.md',        title: '커머스 안내 (display-only)' },
+    'commerce':        { file: 'content/commerce.md',        title: '커머스 안내' },
     'marketing':       { file: 'content/marketing.md',       title: '마케팅 정보 수신 동의' },
     'location':        { file: 'content/location.md',        title: '위치정보 정책' },
   };
