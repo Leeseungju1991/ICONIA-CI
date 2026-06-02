@@ -24,7 +24,19 @@
 # -----------------------------------------------------------------------------
 locals {
   # log group 이름 → retention(일). cloudwatch-agent-config.json 정본과 동기.
-  log_groups = {
+  # V1.0 출시: prod 는 server/ai 90일, admin 30일, audit 730일(2년).
+  # PIPA(개인정보보호법) audit 표준이 2년 + 시스템 로그 90일 권장이라 정합.
+  # dev/staging 은 비용 절감 위해 기존 값 유지.
+  log_groups_prod = {
+    server       = { name = "/iconia/${var.env}/server", retention = 90 }
+    ai           = { name = "/iconia/${var.env}/ai", retention = 90 }
+    admin        = { name = "/iconia/${var.env}/admin", retention = 30 }
+    nginx_access = { name = "/iconia/${var.env}/nginx-access", retention = 90 }
+    nginx_error  = { name = "/iconia/${var.env}/nginx-error", retention = 90 }
+    deploy       = { name = "/iconia/${var.env}/deploy", retention = 180 }
+    audit        = { name = "/iconia/${var.env}/audit", retention = 730 }
+  }
+  log_groups_nonprod = {
     server       = { name = "/iconia/${var.env}/server", retention = 30 }
     ai           = { name = "/iconia/${var.env}/ai", retention = 30 }
     admin        = { name = "/iconia/${var.env}/admin", retention = 14 }
@@ -33,6 +45,7 @@ locals {
     deploy       = { name = "/iconia/${var.env}/deploy", retention = 90 }
     audit        = { name = "/iconia/${var.env}/audit", retention = 365 }
   }
+  log_groups = var.env == "prod" ? local.log_groups_prod : local.log_groups_nonprod
 }
 
 resource "aws_cloudwatch_log_group" "iconia" {
@@ -387,4 +400,152 @@ output "cloudwatch_dashboard_name" {
 output "log_group_names" {
   description = "IaC 가 소유하는 CloudWatch 로그그룹 이름 목록."
   value       = var.create_log_groups ? [for k, v in aws_cloudwatch_log_group.iconia : v.name] : []
+}
+
+# -----------------------------------------------------------------------------
+# 7) 장기 로그 아카이브 S3 버킷 — CloudWatch retention 만료 후에도 PIPA 감사 기간(2년+)
+#    동안 audit log 를 안전하게 보관. 본 버킷은 운영자가 콘솔 또는 EventBridge 로
+#    CloudWatch Logs export task 를 schedule (24h 단위 권장).
+#
+#    var.enable_log_archive=true 일 때만 생성. audit 로그 prefix /audit/ 는 5년 보관 후
+#    만료, server/ai prefix /apps/ 는 1년 보관.
+# -----------------------------------------------------------------------------
+variable "enable_log_archive" {
+  description = "CloudWatch Logs 장기 아카이브 S3 버킷 생성. PIPA 감사 기간(audit 5년 / apps 1년) 정합."
+  type        = bool
+  default     = false
+}
+
+resource "aws_s3_bucket" "log_archive" {
+  count         = var.enable_log_archive ? 1 : 0
+  bucket        = "${local.name_prefix}-log-archive-${local.account_id}"
+  force_destroy = false # 감사 로그 보존 — destroy 차단.
+  tags          = merge(var.tags, { component = "observability", purpose = "log-archive" })
+}
+
+resource "aws_s3_bucket_public_access_block" "log_archive" {
+  count                   = var.enable_log_archive ? 1 : 0
+  bucket                  = aws_s3_bucket.log_archive[0].id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "log_archive" {
+  count  = var.enable_log_archive ? 1 : 0
+  bucket = aws_s3_bucket.log_archive[0].id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "log_archive" {
+  count  = var.enable_log_archive ? 1 : 0
+  bucket = aws_s3_bucket.log_archive[0].id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "log_archive" {
+  count  = var.enable_log_archive ? 1 : 0
+  bucket = aws_s3_bucket.log_archive[0].id
+
+  # audit prefix — 5년(1825일) 보관. PIPA 표준.
+  rule {
+    id     = "audit-5y-then-expire"
+    status = "Enabled"
+    filter { prefix = "audit/" }
+    transition {
+      days          = 90
+      storage_class = "GLACIER_IR"
+    }
+    transition {
+      days          = 365
+      storage_class = "DEEP_ARCHIVE"
+    }
+    expiration { days = 1825 }
+    noncurrent_version_expiration { noncurrent_days = 30 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+
+  # apps prefix (server/ai/admin/nginx/deploy) — 1년(365일) 보관.
+  rule {
+    id     = "apps-1y-then-expire"
+    status = "Enabled"
+    filter { prefix = "apps/" }
+    transition {
+      days          = 30
+      storage_class = "GLACIER_IR"
+    }
+    expiration { days = 365 }
+    noncurrent_version_expiration { noncurrent_days = 7 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+}
+
+# CloudWatch Logs export task 가 본 버킷에 PutObject 할 수 있도록 bucket policy.
+data "aws_iam_policy_document" "log_archive" {
+  count = var.enable_log_archive ? 1 : 0
+
+  statement {
+    sid     = "AllowLogsExport"
+    effect  = "Allow"
+    actions = ["s3:GetBucketAcl"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${local.region}.amazonaws.com"]
+    }
+    resources = [aws_s3_bucket.log_archive[0].arn]
+  }
+
+  statement {
+    sid     = "AllowLogsExportPut"
+    effect  = "Allow"
+    actions = ["s3:PutObject"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${local.region}.amazonaws.com"]
+    }
+    resources = ["${aws_s3_bucket.log_archive[0].arn}/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+
+  statement {
+    sid     = "DenyInsecureTransport"
+    effect  = "Deny"
+    actions = ["s3:*"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    resources = [
+      aws_s3_bucket.log_archive[0].arn,
+      "${aws_s3_bucket.log_archive[0].arn}/*",
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "log_archive" {
+  count  = var.enable_log_archive ? 1 : 0
+  bucket = aws_s3_bucket.log_archive[0].id
+  policy = data.aws_iam_policy_document.log_archive[0].json
+}
+
+output "log_archive_bucket_name" {
+  description = "장기 로그 아카이브 S3 버킷 이름. CloudWatch Logs export task target 으로 사용."
+  value       = var.enable_log_archive ? aws_s3_bucket.log_archive[0].bucket : ""
 }
