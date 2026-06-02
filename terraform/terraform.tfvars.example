@@ -97,6 +97,29 @@ efs_throughput_mode = "elastic"   # bursting / provisioned / elastic.
 event_store_backend     = "fs"
 analysis_claim_lease_ms = 300000     # 5분. 인스턴스 죽으면 다른 인스턴스가 이 시간 이후 재claim.
 
+# ----- Security baseline (security.tf) — V1.0 prod 권장 ON -----
+# 비용 영향이 있어 모든 토글 기본값 false. 양산 출시 시 본 블록 활성.
+#
+# 1) VPC Flow Logs — 침해 사고 타임라인 재구성에 필수. CloudWatch Logs ingest 비용.
+# 2) CloudTrail   — IAM/콘솔/API 변경 추적 + log file validation. S3 ingest + Glacier 이관.
+# 3) GuardDuty    — 위협 탐지(EC2/IAM/S3 이상). 30일 trial 후 GB 과금.
+# 4) AWS Config   — 리소스 변경 이력. 운영 부담 큼 → prod 외 false 권장.
+#
+# 권장 매트릭스:
+#                              dev    staging   prod
+#   enable_vpc_flow_logs       false  true      true
+#   enable_cloudtrail          false  true      true
+#   enable_guardduty           false  false     true
+#   enable_aws_config          false  false     true
+#
+# CloudTrail 조직 trail 이 별도로 있다면 enable_cloudtrail=false 로 두고 중복 회피.
+enable_vpc_flow_logs       = false
+flow_logs_retention_days   = 30
+enable_cloudtrail          = false
+cloudtrail_retention_days  = 365     # PIPA 권장 1~3년.
+enable_guardduty           = false
+enable_aws_config          = false
+
 # ----- Tags -----
 tags = {
   project = "iconia"
