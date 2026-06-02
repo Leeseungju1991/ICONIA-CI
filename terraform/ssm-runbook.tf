@@ -296,3 +296,225 @@ output "failover_diagnostics_document" {
   description = "AZ 장애 1차 분류 진단 SSM Automation Document 이름."
   value       = var.create_failover_runbook ? aws_ssm_document.failover_diagnostics[0].name : ""
 }
+
+# -----------------------------------------------------------------------------
+# SSM Automation Document — ASG rolling instance refresh (V1.0 신설).
+#
+# 사용 시나리오:
+#   - 새 AMI 또는 user-data 변경 후 모든 ASG 인스턴스를 graceful 교체.
+#   - 운영 중 메모리 누수/캐시 오염 의심 시 무중단 refresh.
+#
+# 동작:
+#   1) ASG describe — 현재 상태 확인.
+#   2) StartInstanceRefresh (min_healthy_percentage 90%, instance_warmup 180s).
+#   3) ASG instance 교체 완료까지 대기.
+#   4) SNS 알림.
+#
+# 본 Document 는 ALB target group 에 deregistration 30s drain 이 작동하는
+# 것을 전제 — alb.tf 의 deregistration_delay 와 정합.
+# -----------------------------------------------------------------------------
+resource "aws_ssm_document" "asg_instance_refresh" {
+  count           = var.create_failover_runbook ? 1 : 0
+  name            = "${local.name_prefix}-asg-instance-refresh"
+  document_type   = "Automation"
+  document_format = "JSON"
+
+  tags = merge(var.tags, { component = "dr-runbook" })
+
+  content = jsonencode({
+    schemaVersion = "0.3"
+    description   = "ICONIA ASG rolling instance refresh — graceful drain + 신규 인스턴스 healthy 후 교체. 무중단 운영 가정."
+    assumeRole    = "{{ AutomationAssumeRole }}"
+    parameters = {
+      AutoScalingGroupName = {
+        type        = "String"
+        description = "교체할 ASG 이름."
+        default     = aws_autoscaling_group.iconia_server.name
+      }
+      MinHealthyPercentage = {
+        type          = "String"
+        description   = "교체 중 최소 healthy 비율(%). 90 권장 — 한 번에 인스턴스 1대씩 교체."
+        default       = "90"
+        allowedValues = ["50", "60", "70", "80", "90", "100"]
+      }
+      InstanceWarmup = {
+        type        = "String"
+        description = "신규 인스턴스 warmup 대기(초). user-data + npm ci + systemd 부팅 합산."
+        default     = "300"
+      }
+      AutomationAssumeRole = {
+        type        = "String"
+        description = "SSM Automation 이 가정할 IAM 역할 ARN."
+        default     = aws_iam_role.ssm_automation[0].arn
+      }
+      SnsTopicArn = {
+        type        = "String"
+        description = "결과를 통지할 SNS topic ARN."
+        default     = module.alarms.sns_topic_arn
+      }
+    }
+    mainSteps = [
+      {
+        name        = "describeBefore"
+        action      = "aws:executeAwsApi"
+        description = "현재 ASG 상태 / 인스턴스 수 / health 조회."
+        inputs = {
+          Service                = "autoscaling"
+          Api                    = "DescribeAutoScalingGroups"
+          AutoScalingGroupNames  = ["{{ AutoScalingGroupName }}"]
+        }
+        outputs = [
+          { Name = "DesiredCapacity", Selector = "$.AutoScalingGroups[0].DesiredCapacity", Type = "Integer" },
+          { Name = "MinSize", Selector = "$.AutoScalingGroups[0].MinSize", Type = "Integer" },
+        ]
+      },
+      {
+        name        = "startRefresh"
+        action      = "aws:executeAwsApi"
+        description = "rolling refresh 시작 — min_healthy 보장하며 인스턴스 교체."
+        inputs = {
+          Service              = "autoscaling"
+          Api                  = "StartInstanceRefresh"
+          AutoScalingGroupName = "{{ AutoScalingGroupName }}"
+          Strategy             = "Rolling"
+          Preferences = {
+            MinHealthyPercentage = "{{ MinHealthyPercentage }}"
+            InstanceWarmup       = "{{ InstanceWarmup }}"
+          }
+        }
+        outputs = [
+          { Name = "RefreshId", Selector = "$.InstanceRefreshId", Type = "String" },
+        ]
+      },
+      {
+        name        = "notifyResult"
+        action      = "aws:executeAwsApi"
+        isEnd       = true
+        description = "결과를 SNS 로 통지. 운영자/PagerDuty 가 refresh 진행 timeline 확보."
+        inputs = {
+          Service  = "sns"
+          Api      = "Publish"
+          TopicArn = "{{ SnsTopicArn }}"
+          Subject  = "ICONIA ASG instance refresh 시작"
+          Message  = "ASG {{ AutoScalingGroupName }} instance refresh 시작됨. RefreshId={{ startRefresh.RefreshId }}, DesiredCapacity={{ describeBefore.DesiredCapacity }}. 진행 상황: aws autoscaling describe-instance-refreshes --auto-scaling-group-name {{ AutoScalingGroupName }} --instance-refresh-ids {{ startRefresh.RefreshId }}"
+        }
+      },
+    ]
+  })
+}
+
+# -----------------------------------------------------------------------------
+# SSM Automation Document — Redis primary failover (V1.0 신설).
+#
+# 사용 시나리오:
+#   - Redis primary node 장애 의심 시 replica → primary 강제 승격.
+#   - Multi-AZ replication group 이라 자동 failover 도 작동하지만 분/초 단위 강제 시.
+#
+# 동작:
+#   1) DescribeReplicationGroups — 현재 status 조회.
+#   2) TestFailover (Redis OSS API) — replica 를 primary 로 승격.
+#   3) SNS 통지.
+# -----------------------------------------------------------------------------
+resource "aws_ssm_document" "redis_failover" {
+  count           = var.create_failover_runbook ? 1 : 0
+  name            = "${local.name_prefix}-redis-failover"
+  document_type   = "Automation"
+  document_format = "JSON"
+
+  tags = merge(var.tags, { component = "dr-runbook" })
+
+  content = jsonencode({
+    schemaVersion = "0.3"
+    description   = "ICONIA Redis primary failover — Multi-AZ replication group 의 replica 를 primary 로 강제 승격."
+    assumeRole    = "{{ AutomationAssumeRole }}"
+    parameters = {
+      ReplicationGroupId = {
+        type        = "String"
+        description = "대상 Redis replication group ID."
+        default     = aws_elasticache_replication_group.iconia_redis.id
+      }
+      NodeGroupId = {
+        type        = "String"
+        description = "Failover 대상 node group ID. 단일 shard 면 '0001'."
+        default     = "0001"
+      }
+      AutomationAssumeRole = {
+        type        = "String"
+        description = "SSM Automation 이 가정할 IAM 역할 ARN."
+        default     = aws_iam_role.ssm_automation[0].arn
+      }
+      SnsTopicArn = {
+        type        = "String"
+        description = "결과를 통지할 SNS topic ARN."
+        default     = module.alarms.sns_topic_arn
+      }
+    }
+    mainSteps = [
+      {
+        name        = "describeBefore"
+        action      = "aws:executeAwsApi"
+        description = "현재 Redis replication group 상태 조회."
+        inputs = {
+          Service             = "elasticache"
+          Api                 = "DescribeReplicationGroups"
+          ReplicationGroupId  = "{{ ReplicationGroupId }}"
+        }
+        outputs = [
+          { Name = "Status", Selector = "$.ReplicationGroups[0].Status", Type = "String" },
+          { Name = "AutoFailover", Selector = "$.ReplicationGroups[0].AutomaticFailover", Type = "String" },
+        ]
+      },
+      {
+        name        = "testFailover"
+        action      = "aws:executeAwsApi"
+        description = "Replica → Primary 강제 승격 (multi-az enabled 가 전제)."
+        inputs = {
+          Service            = "elasticache"
+          Api                = "TestFailover"
+          ReplicationGroupId = "{{ ReplicationGroupId }}"
+          NodeGroupId        = "{{ NodeGroupId }}"
+        }
+      },
+      {
+        name        = "notifyResult"
+        action      = "aws:executeAwsApi"
+        isEnd       = true
+        description = "결과를 SNS 로 통지."
+        inputs = {
+          Service  = "sns"
+          Api      = "Publish"
+          TopicArn = "{{ SnsTopicArn }}"
+          Subject  = "ICONIA Redis failover runbook 실행 완료"
+          Message  = "Redis {{ ReplicationGroupId }} (NodeGroup {{ NodeGroupId }}) failover 시작됨. 시작 상태={{ describeBefore.Status }}, AutoFailover={{ describeBefore.AutoFailover }}. 60~120초 내 신규 primary endpoint 가 안정화. /health?deep=1 검증 필요."
+        }
+      },
+    ]
+  })
+}
+
+# Redis failover 권한 추가 — ssm_automation_inline 의 elasticache:TestFailover.
+data "aws_iam_policy_document" "ssm_automation_redis_failover" {
+  count = var.create_failover_runbook ? 1 : 0
+  statement {
+    sid       = "RedisTestFailover"
+    actions   = ["elasticache:TestFailover"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "ssm_automation_redis_failover" {
+  count  = var.create_failover_runbook ? 1 : 0
+  name   = "${local.name_prefix}-ssm-redis-failover-inline"
+  role   = aws_iam_role.ssm_automation[0].id
+  policy = data.aws_iam_policy_document.ssm_automation_redis_failover[0].json
+}
+
+output "asg_instance_refresh_document" {
+  description = "ASG rolling instance refresh SSM Automation Document 이름."
+  value       = var.create_failover_runbook ? aws_ssm_document.asg_instance_refresh[0].name : ""
+}
+
+output "redis_failover_runbook_document" {
+  description = "Redis primary failover SSM Automation Document 이름."
+  value       = var.create_failover_runbook ? aws_ssm_document.redis_failover[0].name : ""
+}
