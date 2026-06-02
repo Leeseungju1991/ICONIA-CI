@@ -65,13 +65,17 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids              = [aws_security_group.rds.id]
   multi_az                            = var.rds_multi_az # Free Plan 비가용. terraform.tfvars 에 rds_multi_az=true 로 전환.
   publicly_accessible                 = false
-  backup_retention_period             = 1     # Free Plan: 최대 1일. Paid 전환 시 (var.env == "prod" ? 30 : 7).
-  deletion_protection                 = false # Free Plan / PoC. Paid prod 에서는 (var.env == "prod") 로 복원.
-  skip_final_snapshot                 = true  # Free Plan / PoC. Paid prod 에서는 (var.env != "prod") 로 복원.
+  backup_retention_period             = var.rds_backup_retention_days     # Free Plan 기본 1, Paid 전환 시 7~35 권장.
+  backup_window                       = "17:00-18:00"                     # UTC = KST 02:00-03:00.
+  maintenance_window                  = "sun:18:00-sun:19:00"             # UTC = KST 일 03:00-04:00.
+  deletion_protection                 = var.rds_deletion_protection       # Free Plan / PoC false. V1.0 prod 에서는 true 권장.
+  skip_final_snapshot                 = !var.rds_deletion_protection      # deletion_protection 과 정합 (둘 다 prod 에서 보호).
+  final_snapshot_identifier           = var.rds_deletion_protection ? "${local.name_prefix}-db-final-${formatdate("YYYYMMDD", timestamp())}" : null
   copy_tags_to_snapshot               = true
   apply_immediately                   = false
   iam_database_authentication_enabled = true
-  performance_insights_enabled        = false # db.t3.micro 미지원. Paid 전환 시 (var.env == "prod") 로 복원.
+  performance_insights_enabled        = var.rds_performance_insights # db.t3.micro 미지원. Paid 전환 시 true.
+  performance_insights_retention_period = var.rds_performance_insights ? 7 : null # 7일 무료.
   enabled_cloudwatch_logs_exports     = ["postgresql"]
 
   tags = merge(var.tags, { Name = "${local.name_prefix}-db" })

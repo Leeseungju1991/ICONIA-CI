@@ -243,6 +243,28 @@ variable "rds_multi_az" {
   default     = false
 }
 
+variable "rds_backup_retention_days" {
+  description = "RDS 자동 백업 보존 기간(일) — PITR window. Free Plan 1, V1.0 prod 권장 7~35 (PIPA + RPO 정합)."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.rds_backup_retention_days >= 0 && var.rds_backup_retention_days <= 35
+    error_message = "rds_backup_retention_days must be between 0 and 35."
+  }
+}
+
+variable "rds_deletion_protection" {
+  description = "RDS deletion protection + skip_final_snapshot 정합. V1.0 prod 는 반드시 true. PoC/dev false."
+  type        = bool
+  default     = false
+}
+
+variable "rds_performance_insights" {
+  description = "RDS Performance Insights 활성. db.t3.micro 미지원 — Paid 인스턴스(db.t4g.medium+) 에서 true."
+  type        = bool
+  default     = false
+}
+
 # -----------------------------------------------------------------------------
 # S3.
 # -----------------------------------------------------------------------------
