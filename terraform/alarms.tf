@@ -285,3 +285,133 @@ resource "aws_cloudwatch_metric_alarm" "iconia_device_silent_24h_high" {
   ok_actions          = [module.alarms.sns_topic_arn]
   tags                = merge(var.tags, { purpose = "device-silence-guard" })
 }
+
+###############################################################################
+# V1.0 SLO 알람 — 인프라 리소스 포화 / 외부 시점 회귀 3종.
+#
+# 4) API p99 latency > 5000ms — p95 보다 긴 임계로 tail latency 폭주 감지.
+# 5) RDS DatabaseConnections > 80 — db.t4g.medium 한계 87 의 90%.
+# 6) Redis CacheHitRate < 80% — 캐시 효율 저하 (분산 일관성 / 동기화 회귀).
+###############################################################################
+
+# 4) API p99 latency > 5000ms (10분).
+resource "aws_cloudwatch_metric_alarm" "slo_api_latency_p99" {
+  alarm_name          = "iconia-server-slo-latency-p99-5s"
+  alarm_description   = "[SLO] ALB target p99 latency > 5000ms (10분 연속). tail latency 폭주 — 일부 사용자 응답 지연 회귀."
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "TargetResponseTime"
+  extended_statistic  = "p99"
+  period              = 300
+  evaluation_periods  = 2   # 5분 × 2 = 10분.
+  threshold           = 5.0 # 초 단위.
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true" })
+
+  dimensions = { LoadBalancer = aws_lb.iconia.arn_suffix }
+}
+
+# 5) RDS connection pool exhaustion 임박 — DatabaseConnections > var.rds_max_connections_threshold.
+variable "rds_max_connections_threshold" {
+  description = "RDS DatabaseConnections 임계. db.t4g.medium(max ≈ 87) 의 90% 기본."
+  type        = number
+  default     = 80
+}
+
+resource "aws_cloudwatch_metric_alarm" "slo_rds_connections_high" {
+  count               = length(aws_db_instance.postgres) > 0 ? 1 : 0
+  alarm_name          = "iconia-rds-connections-high"
+  alarm_description   = "[SLO] RDS DatabaseConnections > ${var.rds_max_connections_threshold} (5분 평균). connection pool exhaustion 임박 — RDS Proxy 활성 또는 인스턴스 upgrade 필요."
+  namespace           = "AWS/RDS"
+  metric_name         = "DatabaseConnections"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 2
+  threshold           = var.rds_max_connections_threshold
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true", resource = "rds" })
+
+  dimensions = { DBInstanceIdentifier = aws_db_instance.postgres[0].identifier }
+}
+
+# 6) Redis CacheHitRate < 80% — cache miss 폭주 (warmup 외 시간대).
+#    ElastiCache 표준 metric 은 CacheHits/CacheMisses 의 합. metric_math 로 비율 계산.
+variable "redis_cache_hit_ratio_min" {
+  description = "Redis cache hit ratio 최소값(%). 미만 시 알람."
+  type        = number
+  default     = 80
+}
+
+resource "aws_cloudwatch_metric_alarm" "slo_redis_cache_hit_low" {
+  alarm_name          = "iconia-redis-cache-hit-low"
+  alarm_description   = "[SLO] Redis CacheHitRatio < ${var.redis_cache_hit_ratio_min}% (10분 연속). 캐시 효율 저하 — quota/idempotency store key churn 의심."
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 2
+  threshold           = var.redis_cache_hit_ratio_min
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true", resource = "redis" })
+
+  metric_query {
+    id          = "ratio"
+    expression  = "100 * (hits / IF((hits + misses) > 0, (hits + misses), 1))"
+    label       = "cache_hit_ratio_percent"
+    return_data = true
+  }
+
+  metric_query {
+    id          = "hits"
+    return_data = false
+    metric {
+      namespace   = "AWS/ElastiCache"
+      metric_name = "CacheHits"
+      stat        = "Sum"
+      period      = 300
+      dimensions  = { ReplicationGroupId = aws_elasticache_replication_group.iconia_redis.id }
+    }
+  }
+
+  metric_query {
+    id          = "misses"
+    return_data = false
+    metric {
+      namespace   = "AWS/ElastiCache"
+      metric_name = "CacheMisses"
+      stat        = "Sum"
+      period      = 300
+      dimensions  = { ReplicationGroupId = aws_elasticache_replication_group.iconia_redis.id }
+    }
+  }
+}
+
+# 7) RDS Storage Free Space < 20% — disk full 임박.
+variable "rds_free_storage_threshold_bytes" {
+  description = "RDS FreeStorageSpace 임계 byte. 기본 10GB (db_allocated_storage_gb 50 의 20%)."
+  type        = number
+  default     = 10737418240 # 10 GB.
+}
+
+resource "aws_cloudwatch_metric_alarm" "slo_rds_storage_low" {
+  count               = length(aws_db_instance.postgres) > 0 ? 1 : 0
+  alarm_name          = "iconia-rds-storage-low"
+  alarm_description   = "[SLO] RDS FreeStorageSpace < ${var.rds_free_storage_threshold_bytes} byte (1h 평균). disk full 임박 — auto-scaling 또는 수동 확장 필요."
+  namespace           = "AWS/RDS"
+  metric_name         = "FreeStorageSpace"
+  statistic           = "Average"
+  period              = 3600 # 1시간.
+  evaluation_periods  = 1
+  threshold           = var.rds_free_storage_threshold_bytes
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+  tags                = merge(var.tags, { slo = "true", resource = "rds" })
+
+  dimensions = { DBInstanceIdentifier = aws_db_instance.postgres[0].identifier }
+}
