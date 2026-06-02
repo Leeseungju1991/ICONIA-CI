@@ -57,7 +57,7 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
   name        = "/AmazonCloudWatch-iconia-${var.env}"
   description = "ICONIA CloudWatch Agent fetch-config 정본 (terraform 관리). EC2 가 amazon-cloudwatch-agent-ctl -a fetch-config -c ssm:<name> 로 적용."
   type        = "String"
-  tier        = "Advanced"  # CW Agent config JSON > 4KB. Advanced 는 파라미터당 $0.05/월.
+  tier        = "Advanced" # CW Agent config JSON > 4KB. Advanced 는 파라미터당 $0.05/월.
 
   # cloudwatch-agent-config.json 의 ${env} 토큰을 실제 env 로 치환.
   # JSON 은 deploy/aws/cloudwatch-agent-config.json 이 정본 — 본 리소스는 그것을

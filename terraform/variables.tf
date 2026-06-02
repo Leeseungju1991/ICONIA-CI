@@ -237,6 +237,12 @@ variable "enable_rds_proxy" {
   default     = true
 }
 
+variable "rds_multi_az" {
+  description = "RDS instance Multi-AZ standby 활성화. 운영 안정성 강화 시 true. Free Plan 비대상 (db.t3.micro 등). Paid 전환 시 true 권장."
+  type        = bool
+  default     = false
+}
+
 # -----------------------------------------------------------------------------
 # S3.
 # -----------------------------------------------------------------------------

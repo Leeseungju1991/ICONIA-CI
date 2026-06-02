@@ -29,14 +29,30 @@ locals {
   # CloudFront alias zone_id 는 모든 distribution 공통: Z2FDTNDATAQYW2 (AWS 문서).
   cloudfront_zone_id = "Z2FDTNDATAQYW2"
 
-  route53_alias_targets = local.cloudfront_enabled ? {
-    api   = { name = aws_cloudfront_distribution.iconia["api"].domain_name, zone_id = local.cloudfront_zone_id }
-    ai    = { name = aws_cloudfront_distribution.iconia["ai"].domain_name, zone_id = local.cloudfront_zone_id }
-    admin = { name = aws_cloudfront_distribution.iconia["admin"].domain_name, zone_id = local.cloudfront_zone_id }
-    } : {
-    api   = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
-    ai    = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
-    admin = { name = aws_lb.iconia.dns_name, zone_id = aws_lb.iconia.zone_id }
+  # admin 은 운영 CF (aws_cloudfront_distribution.admin) 가 항상 존재.
+  # api/ai 는 var.enable_cloudfront 토글로 추가 분배(iconia[*]) 가 켜질 때만 CF 로.
+  route53_alias_targets = {
+    api = local.cloudfront_enabled ? {
+      name    = aws_cloudfront_distribution.iconia["api"].domain_name
+      zone_id = local.cloudfront_zone_id
+      } : {
+      name    = aws_lb.iconia.dns_name
+      zone_id = aws_lb.iconia.zone_id
+    }
+    ai = local.cloudfront_enabled ? {
+      name    = aws_cloudfront_distribution.iconia["ai"].domain_name
+      zone_id = local.cloudfront_zone_id
+      } : {
+      name    = aws_lb.iconia.dns_name
+      zone_id = aws_lb.iconia.zone_id
+    }
+    # admin 은 운영 CF 가 alias 없이 default cert 로 가동 중. 도메인 적용 단계가 오면
+    # cloudfront.tf 의 admin distribution 에 aliases 추가 + ACM cert 교체 후
+    # 아래 alias target 을 CF domain_name 으로 전환 (별도 라운드).
+    admin = {
+      name    = aws_lb.iconia.dns_name
+      zone_id = aws_lb.iconia.zone_id
+    }
   }
 }
 
@@ -68,7 +84,7 @@ resource "aws_route53_record" "ai" {
   }
 }
 
-# admin.<root> → CF distribution 또는 ALB alias.
+# admin.<root> → ALB alias (현재). 운영 admin CF 에 alias/ACM 추가 후 CF 로 전환 예정.
 resource "aws_route53_record" "admin" {
   count   = var.create_route53_records && local.zone_id != "" && var.root_domain != "" ? 1 : 0
   zone_id = local.zone_id
@@ -78,7 +94,7 @@ resource "aws_route53_record" "admin" {
   alias {
     name                   = local.route53_alias_targets["admin"].name
     zone_id                = local.route53_alias_targets["admin"].zone_id
-    evaluate_target_health = !local.cloudfront_enabled
+    evaluate_target_health = true # ALB alias 는 health check 지원
   }
 }
 

@@ -16,6 +16,15 @@ hosted_zone_id = ""
 # Route53 A record 생성 여부. EC2 EIP 가 준비된 뒤 true 유지.
 create_route53_records = true
 
+# ─── 도메인/CloudFront 운영 적용 절차 ──────────────────────────────────────
+# 1) 도메인 구입 (Route53 신규 또는 외부 — 외부면 hosted zone 생성 후 NS 위임)
+# 2) terraform.tfvars: root_domain = "iconia.example.com" + hosted_zone_id = "Z..."
+# 3) terraform apply       # Route53 zone + A record(ALB alias) 생성
+# 4) enable_acm_auto = true # ACM 인증서 자동 발급 (ap-northeast-2 + us-east-1)
+# 5) terraform apply       # ALB 443 listener 에 ACM 적용
+# 6) enable_cloudfront = true # api/ai 추가 CF 분배 활성 (admin/policy 는 이미 운영중)
+# 7) terraform apply       # Route53 alias 가 CF distribution domain 으로 자동 전환
+
 # ----- Network -----
 # 신규 VPC 생성 모드 (기본). false 면 기존 vpc_id / *_subnet_ids 사용.
 create_network        = true
@@ -29,8 +38,21 @@ private_subnet_cidrs  = ["10.42.11.0/24", "10.42.12.0/24"]
 # public_subnet_ids  = ["subnet-aaa", "subnet-bbb"]
 # private_subnet_ids = ["subnet-ccc", "subnet-ddd"]
 
-# ----- EC2 -----
-ec2_instance_type        = "t3.large"      # prod 권장 m6i.large 이상. 비용/성능 결정.
+# ----- EC2 / ASG -----
+# Free Plan / PoC 권장 (현재 default 와 일치):
+#   ec2_instance_type    = "t3.medium"
+#   asg_min_size         = 2
+#   asg_max_size         = 6
+#   asg_desired_capacity = 2
+# 운영 트래픽 본격 전환 시 권장:
+#   ec2_instance_type    = "m6i.large"     # 또는 c6i.large (CPU 집약)
+#   asg_min_size         = 2               # Multi-AZ 가용성 위해 최소 2 유지
+#   asg_max_size         = 10              # 피크 트래픽 대비
+#   asg_desired_capacity = 3               # target tracking 이 위로 끌어올림
+ec2_instance_type        = "t3.medium"
+asg_min_size             = 2
+asg_max_size             = 6
+asg_desired_capacity     = 2
 ec2_root_volume_size_gb  = 30
 ec2_ami_id               = ""              # 비우면 최신 Ubuntu 22.04 자동 조회.
 ec2_key_pair_name        = ""              # 비우면 SSM Session Manager 만 (권장).
@@ -53,6 +75,10 @@ db_instance_class       = "db.t4g.medium"     # instance 모드 한정.
 db_allocated_storage_gb = 50
 db_name                 = "iconia"
 db_username             = "iconia_admin"
+# Multi-AZ standby — 운영 안정성 강화 시 true. Free Plan 비대상 (비용 ≈ 2× instance + storage).
+# Paid prod 전환 시 true 권장. instance 모드만 적용 (Aurora 는 cluster Multi-AZ 별도).
+rds_multi_az            = false
+enable_rds_proxy        = true                # Free Plan 비가용. Paid 전환 후 true.
 # db_password 는 절대 평문 커밋 금지. -var 또는 terraform.tfvars (gitignore) 로 주입.
 # 1) terraform apply -var 'db_password=<값>'
 # 2) 또는 Secrets Manager 에서 fetch 후 환경변수 TF_VAR_db_password 로 전달.
