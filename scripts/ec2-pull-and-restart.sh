@@ -74,20 +74,36 @@ service_healthcheck() {
   # 2) HTTP probe - port 가 정의된 경우만. server/ai 는 /health, admin 은 / .
   # 2026-05-28 (B-P1-07 fix): retry 10→30, sleep 2→2 (총 60s) — ADMIN Next.js 부팅이
   # 첫 클라이언트 chunk warmup 으로 20~40s 소요. 기존 20s 부족 → trigger-deploy false-negative.
+  # V1.0 — body 응답 검증 추가: status 200 이지만 빈 응답을 반환하는 nginx half-proxy
+  # 회귀 차단. server/ai 의 /health 는 JSON 1byte 이상이어야 healthy.
   if [ -n "$port" ]; then
     if [ "$svc" = "admin" ]; then url="http://127.0.0.1:${port}/"
     else                          url="http://127.0.0.1:${port}/health"
     fi
     local attempts=0
     local max_attempts=30
+    local body_tmp
+    body_tmp=$(mktemp -t iconia-health.XXXX)
     while [ "$attempts" -lt "$max_attempts" ]; do
-      if curl -fsS --max-time 3 -o /dev/null "$url"; then
-        log "healthcheck: ${unit} HTTP ${url} OK (after $((attempts + 1)) attempts)"
-        return 0
+      # -w 로 status 만 분리, body 는 임시 파일. status 200~399 + body 1byte 이상.
+      local status
+      if status=$(curl -fsS --max-time 3 -o "$body_tmp" -w '%{http_code}' "$url" 2>/dev/null); then
+        local body_bytes
+        body_bytes=$(wc -c < "$body_tmp" 2>/dev/null || echo 0)
+        # admin (Next.js root) 은 HTML 1KB+ 정상 — 500B 이상 요구. server/ai 는 JSON 1B+.
+        local min_bytes=1
+        [ "$svc" = "admin" ] && min_bytes=500
+        if [ "$body_bytes" -ge "$min_bytes" ]; then
+          rm -f "$body_tmp"
+          log "healthcheck: ${unit} HTTP ${url} OK status=${status} body=${body_bytes}B (after $((attempts + 1)) attempts)"
+          return 0
+        fi
+        log "healthcheck: ${unit} status=${status} but body=${body_bytes}B < ${min_bytes}B — empty proxy 의심, 재시도"
       fi
       attempts=$((attempts + 1))
       sleep 2
     done
+    rm -f "$body_tmp"
     log "healthcheck: ${unit} HTTP ${url} FAIL after ${max_attempts} attempts (60s)"
     return 1
   fi
