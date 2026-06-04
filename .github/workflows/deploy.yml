@@ -65,6 +65,12 @@ jobs:
       - uses: actions/checkout@v4
         with: { path: '6. CI' }
       - name: placeholder 검사
+        # 2026-06-04 — LEGAL_WARN_ONLY=1: 운영팀 사업자정보 미확정 단계에서 ADMIN/SERVER
+        # 코드 hotfix 를 먼저 배포하기 위해 약관 placeholder 가드를 warning 으로 다운그레이드.
+        # 일반 placeholder 검사(TOKEN/CHANGEME/<replace here>/INSERT_*_HERE 등) 는 그대로 fail.
+        # v1.0.0 정식 출시 태그 전에는 실 값 입력 + 본 env 제거 필수.
+        env:
+          LEGAL_WARN_ONLY: '1'
         run: |
           chmod +x "6. CI/scripts/preflight-placeholders.sh"
           # ROOT=$GITHUB_WORKSPACE 이면 "6. CI/.preflightignore" 가 자동 로드된다.

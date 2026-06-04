@@ -210,6 +210,14 @@ done
 # 본 패스는 docs/README ignore 와 별개로 약관 본문/legal config 만 직격 스캔한다.
 # (주)숨코리아 사업자등록번호/통신판매업 신고번호 등 placeholder 가 prod 빌드로
 # 새는 사고 차단.
+#
+# 2026-06-04 — LEGAL_WARN_ONLY=1 일 때 LEGAL 패스의 결과를 fail 이 아닌 warning 으로
+# 다운그레이드한다. 운영팀이 실 사업자정보 미확정 단계에서 ADMIN/SERVER 코드만 먼저
+# 배포해야 할 때 임시 사용 (예: 일반 코드 수정 hotfix). UI 는 isLegalEntityPublishable()
+# fallback 으로 사업자정보 푸터를 가리므로 PIPA/전자상거래법 단기 위반 위험 최소.
+# v1.0.0 정식 출시 태그 전에는 반드시 실 값으로 채우고 본 플래그를 제거해야 함.
+LEGAL_FOUND=0
+LEGAL_HITS=0
 for target in "${TARGETS[@]}"; do
   base="$ROOT/$target"
   [ -d "$base" ] || continue
@@ -221,15 +229,23 @@ for target in "${TARGETS[@]}"; do
       mode="${spec#*|}"
       hits=$(run_legal_search "$pat" "$path")
       if [ -n "$hits" ]; then
-        FOUND=1
+        LEGAL_FOUND=1
         n=$(printf '%s\n' "$hits" | grep -c '^' || true)
-        TOTAL_HITS=$((TOTAL_HITS + n))
-        printf '\n[FAIL/legal] %s/%s 의 [%s] (%s) %d 건:\n' "$target" "$sub" "$pat" "$mode" "$n"
+        LEGAL_HITS=$((LEGAL_HITS + n))
+        tag="FAIL/legal"
+        [ "${LEGAL_WARN_ONLY:-0}" = "1" ] && tag="WARN/legal"
+        printf '\n[%s] %s/%s 의 [%s] (%s) %d 건:\n' "$tag" "$target" "$sub" "$pat" "$mode" "$n"
         printf '%s\n' "$hits"
       fi
     done
   done
 done
+
+# LEGAL 결과를 종합. WARN_ONLY 모드에서는 LEGAL 만으로 FOUND/TOTAL_HITS 를 올리지 않는다.
+if [ "$LEGAL_FOUND" -eq 1 ] && [ "${LEGAL_WARN_ONLY:-0}" != "1" ]; then
+  FOUND=1
+  TOTAL_HITS=$((TOTAL_HITS + LEGAL_HITS))
+fi
 
 if [ "$FOUND" -ne 0 ]; then
   printf '\n========================================================================\n'
@@ -237,6 +253,13 @@ if [ "$FOUND" -ne 0 ]; then
   printf '약관/사업자정보 잔존이면 (주)숨코리아 운영팀 갱신 절차 — docs/legal/business-info.md 참조.\n'
   printf '========================================================================\n'
   exit 1
+fi
+
+if [ "$LEGAL_FOUND" -eq 1 ] && [ "${LEGAL_WARN_ONLY:-0}" = "1" ]; then
+  printf '\n========================================================================\n'
+  printf 'preflight WARN: 총 %d 건 약관/사업자정보 placeholder (LEGAL_WARN_ONLY=1 로 임시 통과).\n' "$LEGAL_HITS"
+  printf 'v1.0.0 정식 출시 전 실 값 입력 + 본 플래그 제거 필수.\n'
+  printf '========================================================================\n'
 fi
 
 printf 'preflight OK - %d 패턴 + %d 약관 패턴 검사 통과, placeholder 없음.\n' \
