@@ -359,9 +359,9 @@ resource "aws_ssm_document" "asg_instance_refresh" {
         action      = "aws:executeAwsApi"
         description = "현재 ASG 상태 / 인스턴스 수 / health 조회."
         inputs = {
-          Service                = "autoscaling"
-          Api                    = "DescribeAutoScalingGroups"
-          AutoScalingGroupNames  = ["{{ AutoScalingGroupName }}"]
+          Service               = "autoscaling"
+          Api                   = "DescribeAutoScalingGroups"
+          AutoScalingGroupNames = ["{{ AutoScalingGroupName }}"]
         }
         outputs = [
           { Name = "DesiredCapacity", Selector = "$.AutoScalingGroups[0].DesiredCapacity", Type = "Integer" },
@@ -455,9 +455,9 @@ resource "aws_ssm_document" "redis_failover" {
         action      = "aws:executeAwsApi"
         description = "현재 Redis replication group 상태 조회."
         inputs = {
-          Service             = "elasticache"
-          Api                 = "DescribeReplicationGroups"
-          ReplicationGroupId  = "{{ ReplicationGroupId }}"
+          Service            = "elasticache"
+          Api                = "DescribeReplicationGroups"
+          ReplicationGroupId = "{{ ReplicationGroupId }}"
         }
         outputs = [
           { Name = "Status", Selector = "$.ReplicationGroups[0].Status", Type = "String" },
