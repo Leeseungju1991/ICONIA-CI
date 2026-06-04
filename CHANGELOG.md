@@ -8,9 +8,9 @@
 
 - `scripts/preflight-placeholders.sh` — `LEGAL_WARN_ONLY=1` env 플래그 추가.
   설정 시 약관/사업자정보 placeholder 검사 결과를 fail 이 아닌 warning 으로
-  다운그레이드한다. 일반 placeholder 검사(TOKEN/CHANGEME/<replace here>/
-  INSERT_*_HERE 등) 는 그대로 fail. 운영팀 사업자정보 미확정 단계에서 ADMIN/
-  SERVER 코드 hotfix 만 먼저 배포해야 할 때 임시 사용.
+  다운그레이드한다. 일반 placeholder 검사 (TOKEN / CHANGEME / INSERT_*_HERE
+  등) 는 그대로 fail. 운영팀 사업자정보 미확정 단계에서 ADMIN/SERVER 코드
+  hotfix 만 먼저 배포해야 할 때 임시 사용.
 - `.github/workflows/deploy.yml` — preflight job 의 placeholder 검사 step 에
   `env.LEGAL_WARN_ONLY: '1'` 추가. v1.0.0 정식 출시 태그 전에는 실 사업자정보
   입력 + 본 env 제거 필수 (출시 정합 정책상 강제).
