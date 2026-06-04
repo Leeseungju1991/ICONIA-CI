@@ -66,9 +66,16 @@ jobs:
           scripts/check-soul-catalog-sync.test.sh
 
       - name: Terraform fmt + validate
+        # 2026-06-04 — fix: 워크스페이스에 이미 'terraform/' 디렉토리가 있어 unzip 이
+        # 동명 파일 추출 시 prompt 가 떠 NULL 응답으로 binary 가 설치되지 않던 문제.
+        # /tmp 로 분리 추출 + -o 강제 overwrite + workspace 로 복귀해 fmt/validate.
         run: |
-          curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o tf.zip
-          unzip -q tf.zip && sudo mv terraform /usr/local/bin/
+          set -euo pipefail
+          mkdir -p /tmp/tf_install
+          ( cd /tmp/tf_install \
+              && curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o tf.zip \
+              && unzip -qo tf.zip \
+              && sudo mv terraform /usr/local/bin/ )
           terraform -chdir=terraform fmt -check -recursive
           terraform -chdir=terraform init -backend=false -input=false
           terraform -chdir=terraform validate
