@@ -91,8 +91,12 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # SERVER 테스트 — sibling 레포 존재 시.
+  # 2026-06-05 — workflow_call 시 inputs.service 가 'admin'/'ai' 면 본 잡 스킵.
+  # push/PR(직접 트리거) 와 service=all/server 는 기존대로 실행.
+  # 스킵된 잡은 workflow conclusion 에 영향 안 줌(success+skipped 만 있으면 OK).
   # ---------------------------------------------------------------------------
   server-tests:
+    if: ${{ (inputs.service || 'all') == 'all' || (inputs.service || 'all') == 'server' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -123,8 +127,10 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # AI 테스트.
+  # 2026-06-05 — workflow_call 시 inputs.service 가 'admin'/'server' 면 본 잡 스킵.
   # ---------------------------------------------------------------------------
   ai-tests:
+    if: ${{ (inputs.service || 'all') == 'all' || (inputs.service || 'all') == 'ai' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -154,8 +160,10 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # ADMIN 테스트 — lint + typecheck + vitest + build 검증.
+  # 2026-06-05 — workflow_call 시 inputs.service 가 'server'/'ai' 면 본 잡 스킵.
   # ---------------------------------------------------------------------------
   admin-tests:
+    if: ${{ (inputs.service || 'all') == 'all' || (inputs.service || 'all') == 'admin' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
