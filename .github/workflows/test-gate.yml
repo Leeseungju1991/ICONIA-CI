@@ -26,6 +26,15 @@ on:
         required: false
         type: string
         default: main
+      # 2026-06-05 — 서비스 스코프 인자. deploy.yml 의 service 입력(all/server/ai/admin)
+      # 을 받아 gate-summary 가 관련 서비스만 강제 통과 요구. 'all' / unset 이면
+      # 기존 정책(서버/AI/어드민 모두 강제). 'admin' 이면 admin-tests 만 강제 — 사전
+      # 부채를 가진 server/ai 테스트가 어드민 핫픽스 배포를 막지 않도록 분리.
+      service:
+        description: '게이트 강제 대상 서비스 (all/server/ai/admin). 기본 all.'
+        required: false
+        type: string
+        default: all
     secrets:
       ICONIA_REPO_TOKEN:
         description: 'sibling private repo checkout 용 토큰.'
@@ -185,15 +194,58 @@ jobs:
     if: always()
     steps:
       - name: 게이트 결과 집계
+        env:
+          SERVICE_SCOPE: ${{ inputs.service || 'all' }}
+          R_CI: ${{ needs.ci-self-check.result }}
+          R_SERVER: ${{ needs.server-tests.result }}
+          R_AI: ${{ needs.ai-tests.result }}
+          R_ADMIN: ${{ needs.admin-tests.result }}
         run: |
-          echo "ci-self-check : ${{ needs.ci-self-check.result }}"   >> "$GITHUB_STEP_SUMMARY"
-          echo "server-tests  : ${{ needs.server-tests.result }}"    >> "$GITHUB_STEP_SUMMARY"
-          echo "ai-tests      : ${{ needs.ai-tests.result }}"        >> "$GITHUB_STEP_SUMMARY"
-          echo "admin-tests   : ${{ needs.admin-tests.result }}"     >> "$GITHUB_STEP_SUMMARY"
-          # ci-self-check 는 무조건 통과해야 함. 서비스 테스트는 success 또는 skip 허용
-          # (토큰 부재 시 skip — 단, 배포 워크플로우는 토큰을 강제하므로 실배포에서는 실행됨).
-          [ "${{ needs.ci-self-check.result }}" = "success" ] || { echo "::error::ci-self-check 실패"; exit 1; }
-          for r in "${{ needs.server-tests.result }}" "${{ needs.ai-tests.result }}" "${{ needs.admin-tests.result }}"; do
-            case "$r" in success|skipped) ;; *) echo "::error::서비스 테스트 실패: $r"; exit 1 ;; esac
-          done
-          echo "테스트 게이트 통과"
+          echo "service-scope : ${SERVICE_SCOPE}"   >> "$GITHUB_STEP_SUMMARY"
+          echo "ci-self-check : ${R_CI}"            >> "$GITHUB_STEP_SUMMARY"
+          echo "server-tests  : ${R_SERVER}"        >> "$GITHUB_STEP_SUMMARY"
+          echo "ai-tests      : ${R_AI}"            >> "$GITHUB_STEP_SUMMARY"
+          echo "admin-tests   : ${R_ADMIN}"         >> "$GITHUB_STEP_SUMMARY"
+          # ci-self-check 는 무조건 통과해야 함.
+          [ "${R_CI}" = "success" ] || { echo "::error::ci-self-check 실패"; exit 1; }
+          # 2026-06-05 — 서비스 스코프 인자로 강제 대상 분리.
+          # all (기본): 3종 모두 success|skipped 요구. push/PR 트리거는 항상 all 정책.
+          # admin: admin-tests 만 success|skipped 강제. server/ai 결과는 기록만.
+          # server / ai: 각각 동일 정책.
+          require() {
+            local name="$1" r="$2"
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error::${name} 게이트 실패: $r"; exit 1 ;;
+            esac
+          }
+          warn_only() {
+            local name="$1" r="$2"
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::warning::${name} 결과 ${r} — 본 service 스코프(${SERVICE_SCOPE}) 에서 강제 안 함." ;;
+            esac
+          }
+          case "${SERVICE_SCOPE}" in
+            admin)
+              require "admin-tests" "${R_ADMIN}"
+              warn_only "server-tests" "${R_SERVER}"
+              warn_only "ai-tests" "${R_AI}"
+              ;;
+            server)
+              require "server-tests" "${R_SERVER}"
+              warn_only "admin-tests" "${R_ADMIN}"
+              warn_only "ai-tests" "${R_AI}"
+              ;;
+            ai)
+              require "ai-tests" "${R_AI}"
+              warn_only "admin-tests" "${R_ADMIN}"
+              warn_only "server-tests" "${R_SERVER}"
+              ;;
+            all|*)
+              require "server-tests" "${R_SERVER}"
+              require "ai-tests" "${R_AI}"
+              require "admin-tests" "${R_ADMIN}"
+              ;;
+          esac
+          echo "테스트 게이트 통과 (scope=${SERVICE_SCOPE})"

@@ -85,6 +85,9 @@ jobs:
     uses: ./.github/workflows/test-gate.yml
     with:
       ref: main
+      # 2026-06-05 — service 인자 전달. admin 전용 핫픽스 배포 시 server/ai 사전 부채가
+      # 게이트를 막지 않도록 분리. workflow_dispatch 의 service 입력 그대로 통과.
+      service: ${{ github.event.inputs.service || 'all' }}
     secrets:
       ICONIA_REPO_TOKEN: ${{ secrets.ICONIA_REPO_TOKEN }}
 
