@@ -19,9 +19,9 @@
 # 1) GitHub Actions OIDC provider — 계정 전역 1개. 이미 생성돼 있으면 import.
 #    AWS 1개 계정에 1개만 둘 수 있어, terraform 이 멱등 관리.
 resource "aws_iam_openid_connect_provider" "github" {
-  count           = var.create_github_oidc_provider ? 1 : 0
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
+  count          = var.create_github_oidc_provider ? 1 : 0
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
   # GitHub Actions OIDC 인증서 thumbprint. AWS 가 권장하는 표준 값.
   # 참고: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
@@ -31,15 +31,15 @@ resource "aws_iam_openid_connect_provider" "github" {
 locals {
   github_oidc_provider_arn = (
     var.create_github_oidc_provider
-      ? aws_iam_openid_connect_provider.github[0].arn
-      : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+    ? aws_iam_openid_connect_provider.github[0].arn
+    : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
   )
   # 예: "repo:Leeseungju1991/ICONIA-CI:*" (모든 ref/branch 허용)
   #     "repo:Leeseungju1991/ICONIA-CI:ref:refs/heads/main" (main 만)
   github_oidc_subject = (
     var.github_oidc_subject_pattern != ""
-      ? var.github_oidc_subject_pattern
-      : "repo:${var.github_org}/${var.github_repo_ci}:*"
+    ? var.github_oidc_subject_pattern
+    : "repo:${var.github_org}/${var.github_repo_ci}:*"
   )
 }
 
@@ -69,17 +69,18 @@ data "aws_iam_policy_document" "github_deploy_assume" {
 resource "aws_iam_role" "github_deploy" {
   name               = "${local.name_prefix}-github-deploy"
   assume_role_policy = data.aws_iam_policy_document.github_deploy_assume.json
-  description        = "GitHub Actions (ICONIA-CI deploy.yml) — OIDC 가정. S3 artifacts + SSM 트리거 + EC2 describe."
+  # IAM API rejects non-Latin1 characters in description, so keep this ASCII.
+  description          = "GitHub Actions (ICONIA-CI deploy.yml) OIDC role: S3 artifacts RW + SSM SendCommand + EC2 describe."
   max_session_duration = 3600
-  tags               = var.tags
+  tags                 = var.tags
 }
 
 # 4) S3 artifacts 버킷 권한 — build 잡이 산출물 업로드.
 data "aws_iam_policy_document" "github_deploy_s3" {
   statement {
-    sid       = "ArtifactsBucketRW"
-    effect    = "Allow"
-    actions   = [
+    sid    = "ArtifactsBucketRW"
+    effect = "Allow"
+    actions = [
       "s3:PutObject",
       "s3:PutObjectAcl",
       "s3:GetObject",
