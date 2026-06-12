@@ -130,9 +130,11 @@ data "aws_iam_policy_document" "ec2_inline" {
   }
 
   # EFS access point 한정 mount.
+  # 사용자 요청 8종 정합 — ClientRootAccess 제거 (POSIX uid 0 강등 회귀 방지).
+  # ClientMount + ClientWrite 만 유지. access point uid/gid 가 권한 결정 (root squash 효과).
   statement {
     sid       = "EFSMountServerRoot"
-    actions   = ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite", "elasticfilesystem:ClientRootAccess"]
+    actions   = ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite"]
     resources = [aws_efs_file_system.persona.arn]
     condition {
       test     = "StringEquals"

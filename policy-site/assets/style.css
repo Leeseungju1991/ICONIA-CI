@@ -56,13 +56,6 @@ a:hover { text-decoration: underline; }
 
 img { max-width: 100%; height: auto; }
 
-/* Skip to main */
-.skip-link {
-  position: absolute; top: -40px; left: 12px;
-  background: var(--color-accent); color: white; padding: 8px 12px; border-radius: var(--radius-sm); z-index: 100;
-}
-.skip-link:focus { top: 12px; }
-
 /* =========================================================================
    Header
    ========================================================================= */

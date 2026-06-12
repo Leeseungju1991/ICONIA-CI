@@ -94,6 +94,20 @@ resource "aws_s3_bucket_policy" "policy" {
 }
 
 # -----------------------------------------------------------------------------
+# 사용자 요청 8종 정합 — 운영 CF 분배 alias / ACM / origin-protocol 토글 locals.
+# 변수가 비어있으면 기존 동작 보존 (default CF cert + TLSv1 + http-only).
+# 도메인/ACM 이 모두 채워졌을 때만 alias + TLSv1.2_2021 prod 톤 활성.
+# -----------------------------------------------------------------------------
+locals {
+  # admin: cloudfront_admin_acm_arn 우선, 미설정 시 enable_acm_auto 의 us-east-1 cert fallback.
+  admin_effective_acm_arn  = var.cloudfront_admin_acm_arn != "" ? var.cloudfront_admin_acm_arn : local.effective_cloudfront_acm_arn
+  policy_effective_acm_arn = var.cloudfront_policy_acm_arn != "" ? var.cloudfront_policy_acm_arn : local.effective_cloudfront_acm_arn
+
+  admin_alias_enabled  = var.admin_domain != "" && local.admin_effective_acm_arn != ""
+  policy_alias_enabled = var.policy_domain != "" && local.policy_effective_acm_arn != ""
+}
+
+# -----------------------------------------------------------------------------
 # 1) ADMIN distribution — 운영 중. terraform import 흡수.
 #    import: terraform import aws_cloudfront_distribution.admin E2XTV9M8R3L6WT
 # -----------------------------------------------------------------------------
@@ -104,17 +118,19 @@ resource "aws_cloudfront_distribution" "admin" {
   price_class         = "PriceClass_200"
   http_version        = "http2"
   default_root_object = ""
-  # aliases 가 비어있어야 ViewerCertificate 가 기본 CF 인증서로 유효.
-  aliases = []
+  # 사용자 요청 8종 정합 — admin_domain + ACM cert 모두 설정 시에만 alias 활성, 미설정 시 기존 [] 유지.
+  aliases = local.admin_alias_enabled ? [var.admin_domain] : []
 
   origin {
     domain_name = "iconia-prod-alb-1600486872.ap-northeast-2.elb.amazonaws.com"
     origin_id   = "iconia-prod-alb-admin"
 
     custom_origin_config {
-      http_port                = 8082
-      https_port               = 443
-      origin_protocol_policy   = "http-only"
+      http_port  = 8082
+      https_port = 443
+      # 사용자 요청 8종 정합 — cloudfront_admin_origin_https=true 시 https-only 강제.
+      # 기본 false: ALB :8082 HTTP 회귀 방지 (ALB 8443 HTTPS 리스너 정합 후 옵트인).
+      origin_protocol_policy   = var.cloudfront_admin_origin_https ? "https-only" : "http-only"
       origin_ssl_protocols     = ["TLSv1.2"]
       origin_keepalive_timeout = 5
       origin_read_timeout      = 30
@@ -139,10 +155,13 @@ resource "aws_cloudfront_distribution" "admin" {
     }
   }
 
+  # 사용자 요청 8종 정합 — admin_domain + ACM cert 둘다 설정 시 ACM alias + TLSv1.2_2021.
+  # 미설정 시 기존 default CF cert + TLSv1 fallback (호환 보존).
   viewer_certificate {
-    cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1"
-    ssl_support_method             = "vip"
+    cloudfront_default_certificate = local.admin_alias_enabled ? null : true
+    acm_certificate_arn            = local.admin_alias_enabled ? local.admin_effective_acm_arn : null
+    ssl_support_method             = local.admin_alias_enabled ? "sni-only" : "vip"
+    minimum_protocol_version       = local.admin_alias_enabled ? "TLSv1.2_2021" : "TLSv1"
   }
 
   tags = merge(var.tags, {
@@ -162,7 +181,8 @@ resource "aws_cloudfront_distribution" "policy" {
   price_class         = "PriceClass_200"
   http_version        = "http2"
   default_root_object = "index.html"
-  aliases             = []
+  # 사용자 요청 8종 정합 — policy_domain + ACM cert 모두 설정 시에만 alias 활성, 미설정 시 기존 [] 유지.
+  aliases = local.policy_alias_enabled ? [var.policy_domain] : []
 
   origin {
     domain_name              = aws_s3_bucket.policy.bucket_regional_domain_name
@@ -207,10 +227,13 @@ resource "aws_cloudfront_distribution" "policy" {
     }
   }
 
+  # 사용자 요청 8종 정합 — policy_domain + ACM cert 둘다 설정 시 ACM alias + TLSv1.2_2021.
+  # 미설정 시 기존 default CF cert + TLSv1 fallback (호환 보존).
   viewer_certificate {
-    cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1"
-    ssl_support_method             = "vip"
+    cloudfront_default_certificate = local.policy_alias_enabled ? null : true
+    acm_certificate_arn            = local.policy_alias_enabled ? local.policy_effective_acm_arn : null
+    ssl_support_method             = local.policy_alias_enabled ? "sni-only" : "vip"
+    minimum_protocol_version       = local.policy_alias_enabled ? "TLSv1.2_2021" : "TLSv1"
   }
 
   tags = merge(var.tags, {

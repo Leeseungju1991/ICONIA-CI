@@ -16,7 +16,7 @@ pip-licenses --format=json > docs/legal/licenses-<repo>.json
 
 ## 2. 주요 의존성 (high-level)
 
-> 정본 자동 생성 시점에 본 §2 가 갱신됨. 아래는 현재 코드베이스 기준 요약.
+> 자동 생성 시점에 본 §2 가 갱신됩니다. 아래는 현재 기준 요약입니다.
 
 ### SERVER (Node.js + Express + Prisma)
 | 라이브러리 | 라이선스 |
@@ -88,7 +88,7 @@ pip-licenses --format=json > docs/legal/licenses-<repo>.json
 
 본 회사 코드는 폐쇄 소스이며, 본 약관·라이선스 고지가 위 회사 자체 코드의 공개 의무를 발생시키지 않습니다.
 
-## 6. LGPL 재링크 요청 절차 (HW 정본 §3)
+## 6. LGPL 재링크 요청 절차
 
 LGPL-2.1 라이브러리 (Arduino core) 의 §6 (재링크 가능성 보장) 의무에 따라:
 

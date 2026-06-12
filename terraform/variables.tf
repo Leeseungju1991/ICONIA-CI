@@ -112,6 +112,19 @@ variable "asg_scale_in_cooldown_seconds" {
   default     = 300
 }
 
+# 사용자 요청 8종 정합 — ASG health_check_type 토글.
+# default "EC2": 첫 프로비저닝 (SERVER 미배포) 단계에서 /api/v1/health 미응답 회귀 방지.
+# tfvars 에서 "ELB" 로 override: ALB target group health check 결과로 unhealthy 인스턴스 자동 교체.
+variable "asg_health_check_type" {
+  description = "ASG health check 모드. 'EC2' (기본, instance lifecycle 만 검사) 또는 'ELB' (ALB target group health 신뢰, 애플리케이션 레벨 fail 감지). SERVER 배포 + /api/v1/health 안정화 후 'ELB' 권장."
+  type        = string
+  default     = "EC2"
+  validation {
+    condition     = contains(["EC2", "ELB"], var.asg_health_check_type)
+    error_message = "asg_health_check_type must be 'EC2' or 'ELB'."
+  }
+}
+
 variable "acm_certificate_arn" {
   description = "ALB HTTPS listener 가 사용할 ACM 인증서 ARN (ap-northeast-2 리전). 비우면 ACM lookup 또는 listener 비활성. enable_acm_auto=true 시 acm.tf 가 자동 발급한 인증서가 우선."
   type        = string
@@ -137,6 +150,39 @@ variable "cloudfront_min_protocol_version" {
   description = "CloudFront viewer TLS 최소 버전. 기본 TLSv1.2_2021. 호환성 강제 시 TLSv1.2_2018 권장 안 함 (보안 약화)."
   type        = string
   default     = "TLSv1.2_2021"
+}
+
+# 사용자 요청 8종 정합 — 운영 admin/policy CloudFront 분배 ACM alias 적용용 변수.
+# admin_domain / policy_domain / cloudfront_admin_acm_arn / cloudfront_policy_acm_arn 모두
+# 빈 문자열 default — 비어있으면 기존 cloudfront_default_certificate=true + TLSv1 fallback 유지.
+variable "admin_domain" {
+  description = "admin CloudFront 분배에 적용할 FQDN. 예: admin.iconia.com. 비우면 기존 default CF 인증서 + aliases=[] 유지 (호환 보존)."
+  type        = string
+  default     = ""
+}
+
+variable "policy_domain" {
+  description = "policy CloudFront 분배에 적용할 FQDN. 예: policy.iconia.com. 비우면 기존 default CF 인증서 + aliases=[] 유지 (호환 보존)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_admin_acm_arn" {
+  description = "admin CloudFront 분배가 사용할 ACM 인증서 ARN (us-east-1). admin_domain 과 함께 설정 시에만 활성. 비우면 enable_acm_auto 가 발급한 cert 가 우선, 없으면 default CF cert fallback."
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_policy_acm_arn" {
+  description = "policy CloudFront 분배가 사용할 ACM 인증서 ARN (us-east-1). policy_domain 과 함께 설정 시에만 활성. 비우면 enable_acm_auto 가 발급한 cert 가 우선, 없으면 default CF cert fallback."
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_admin_origin_https" {
+  description = "true 면 admin CF 분배 → ALB origin 을 https-only 로 강제 (TLSv1.2). 기본 false — 기존 http-only 동작 보존 (ALB :8082 HTTP). ALB 8443 HTTPS 리스너 정합 후 true 권장."
+  type        = bool
+  default     = false
 }
 
 variable "cloudfront_price_class" {

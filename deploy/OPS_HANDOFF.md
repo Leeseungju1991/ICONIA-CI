@@ -26,15 +26,17 @@ Availability) 직전 반드시 완료해야 할 7개 액션을 정리한다.
 
 | 항목 | 형식 | 비고 |
 |---|---|---|
-| `BUSINESS_REGISTRATION_NUMBER` | `xxx-xx-xxxxx` | 국세청 발급 사업자등록번호 |
-| `BUSINESS_MAIL_ORDER_NUMBER`   | `제 2026-서울XX-XXXX호` | 통신판매업 신고증 (관할 구청) |
+| `BUSINESS_REGISTRATION_NUMBER` | `130-86-41024` | 국세청 발급 사업자등록번호 (확정) |
+| `BUSINESS_MAIL_ORDER_NUMBER`   | `제 2026-서울XX-XXXX호` | 통신판매업 신고증 (관할 구청, 결제 도입 시 신고) |
 | `BUSINESS_COMPANY_NAME`        | `(주)숨코리아` | 정식 법인명 (영문/한문 일관) |
 | `BUSINESS_CEO_NAME`            | 한국 실명 | 법인등기부등본 대표자 |
 | `BUSINESS_ADDRESS`             | 본사 도로명주소 | 등기부와 일치 |
-| `BUSINESS_PHONE`               | `02-XXXX-XXXX` | 사업자 대표 전화 |
-| `BUSINESS_EMAIL`               | `contact@dollsoom.com` | 고객 응대 메일함 (실 운영) |
+| `BUSINESS_PHONE`               | `02-2038-2935` | 사업자 대표 전화 (확정) |
+| `BUSINESS_SUPPORT_PHONE`       | `02-2038-2935` | 고객센터 전화 (확정) |
+| `BUSINESS_EMAIL`               | `web@soomkorea.com` | 고객 응대 메일함 (실 운영) |
 | `BUSINESS_KAKAO_CHANNEL`       | `@iconia` (선택) | 카카오톡 채널 ID |
 | `BUSINESS_CS_HOURS`            | `평일 10:00-18:00` | 고객센터 운영시간 |
+| `BUSINESS_DPO_NAME`            | `이승주` | 개인정보 보호책임자 성명 (확정) |
 
 ### 입력 위치
 
@@ -62,12 +64,12 @@ Availability) 직전 반드시 완료해야 할 7개 액션을 정리한다.
 
 ### 입력 항목
 
-| 항목 | 형식 |
-|---|---|
-| `DPO_NAME`             | 실명 |
-| `DPO_DEPARTMENT`       | 부서 / 직책 |
-| `DPO_CONTACT_EMAIL`    | 회사 도메인 메일 (개인 메일 금지) |
-| `DPO_CONTACT_PHONE`    | 대표 번호 또는 내선 |
+| 항목 | 형식 | 권장 기본값 |
+|---|---|---|
+| `DPO_NAME`             | 실명 | 이승주 (확정) |
+| `DPO_DEPARTMENT`       | 부서 / 직책 | 운영팀 확정 자리 |
+| `DPO_CONTACT_EMAIL`    | 회사 도메인 메일 (개인 메일 금지) | 운영팀 확정 자리 |
+| `DPO_CONTACT_PHONE`    | 대표 번호 또는 내선 | 운영팀 확정 자리 |
 
 ### 입력 위치
 
@@ -90,14 +92,15 @@ Availability) 직전 반드시 완료해야 할 7개 액션을 정리한다.
 
 ### 작업 항목
 
-#### 3.1 4종 약관 시행일 결정
+#### 3.1 약관 시행일 결정
 
 | 약관 | 위치 | 시행일 필드 |
 |---|---|---|
-| 서비스 이용약관 | `docs/legal/terms_of_service.md` | YAML front-matter `effective_date: __FILL_BY_LEGAL__` |
-| 개인정보 처리방침 | `docs/legal/privacy_policy.md` | `effective_date: __FILL_BY_LEGAL__` |
-| 위치정보 이용약관 | `docs/legal/location_terms.md` | `effective_date: __FILL_BY_LEGAL__` |
-| 마케팅 정보 수신 동의 | `docs/legal/marketing_terms.md` | `effective_date: __FILL_BY_LEGAL__` |
+| 서비스 이용약관 | `docs/legal/terms-of-service.md` | YAML front-matter `effective_date: __FILL_BY_LEGAL__` |
+| 개인정보 처리방침 | `docs/legal/privacy-policy.md` | `effective_date: __FILL_BY_LEGAL__` |
+| 마케팅 정보 수신 동의 | `docs/legal/marketing-consent.md` | `effective_date: __FILL_BY_LEGAL__` |
+
+(위치정보 정책은 본 서비스에서 위치정보를 수집·이용하지 않으므로 적용 대상이 아닙니다.)
 
 각 파일 헤더의 `__FILL_BY_LEGAL__` 토큰을 실제 시행일 (`2026-06-15` 형식) 로 교체.
 

@@ -1,6 +1,6 @@
 # (주)숨코리아 정책 안내 사이트
 
-> ICONIA 서비스의 이용약관·개인정보처리방침·AI 이용 안내·기기 연결·커머스·마케팅·위치정보·오픈소스 라이선스 등 사용자 고지용 정적 사이트.
+> ICONIA 서비스의 이용약관·개인정보처리방침·AI 이용 안내·기기 연결·커머스·마케팅·오픈소스 라이선스 등 사용자 고지용 정적 사이트.
 
 ## 구조
 
@@ -10,14 +10,13 @@ policy-site/
 ├── assets/
 │   ├── style.css           # 회사 사이트 톤 (white + indigo accent, mobile-friendly)
 │   └── app.js              # SPA router + markdown loader (marked.js CDN)
-├── content/                # 정책 markdown 원본 (8 개)
+├── content/                # 정책 markdown 원본 (7 개)
 │   ├── terms.md
 │   ├── privacy.md
 │   ├── ai-disclosure.md
 │   ├── device.md
 │   ├── commerce.md
 │   ├── marketing.md
-│   ├── location.md
 │   └── open-source.md
 ├── deploy/                 # 배포 가이드
 │   ├── s3-cloudfront.md    # AWS S3 + CloudFront (권장)
@@ -53,7 +52,6 @@ cp docs/legal/ai-disclosure-policy.md policy-site/content/ai-disclosure.md
 cp docs/legal/device-connection-policy.md policy-site/content/device.md
 cp docs/legal/commerce-display-policy.md  policy-site/content/commerce.md
 cp docs/legal/open-source-notice.md   policy-site/content/open-source.md
-cp docs/legal/location-policy.md      policy-site/content/location.md
 cp docs/legal/marketing-consent.md    policy-site/content/marketing.md
 ```
 
@@ -63,11 +61,12 @@ cp docs/legal/marketing-consent.md    policy-site/content/marketing.md
 
 회사 정보 (대표자·사업자등록번호·주소 등) 는 `index.html` 의 [회사 정보 / 문의] 섹션 + footer 에 박혀 있습니다.
 
-사업자 등록 완료 후 다음 4개 위치 갱신:
+사업자 등록 완료 후 다음 위치를 갱신합니다:
 1. `index.html` 의 `.info-list` 안 `(사업자 등록 완료 후 갱신)` 부분
-2. `6. CI/docs/legal/business-info.md` (정본)
-3. `5. ADMIN/lib/companyInfo.ts` (ADMIN 콘솔 footer)
-4. 본 README.md 의 §회사 정보
+2. `6. CI/docs/legal/business-info.md` (사내 정본)
+3. 본 README.md 의 §회사 정보
+
+대표전화: 02-2038-2935, 개인정보 보호책임자: 이승주 (확정).
 
 ## 배포
 
@@ -89,7 +88,6 @@ cp docs/legal/marketing-consent.md    policy-site/content/marketing.md
 
 ## 접근성 (a11y)
 
-- skip-link
 - 시맨틱 마크업 (header / nav / main / article / footer)
 - 모바일 nav `aria-expanded`
 - 색 대비 WCAG AA

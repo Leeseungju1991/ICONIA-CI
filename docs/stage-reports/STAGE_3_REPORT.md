@@ -42,7 +42,7 @@ COMPLETE
 - ✓ `6. CI/docs/operations/personal-data-breach-runbook.md`
 - ✓ `6. CI/docs/operations/data-subject-request-runbook.md`
 - ✓ `6. CI/docs/operations/customer-support-runbook.md`
-- ✓ `6. CI/docs/operations/ai-provider-incident-runbook.md`
+- (삭제됨) ~~`6. CI/docs/operations/ai-provider-incident-runbook.md`~~
 - ✓ `6. CI/docs/operations/ota-release-runbook.md`
 - ✓ `6. CI/docs/operations/device-certification-checklist.md`
 
