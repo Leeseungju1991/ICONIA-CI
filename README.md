@@ -18,6 +18,57 @@ ICONIA 는 AWS 단일 타겟이다 — 모든 서비스(SERVER/AI/ADMIN)와 APP(
 
 ---
 
+## 0. 배포 실행 가이드 — "이거 보고 그대로" (사람이 해야 할 일)
+
+> 2026-06-13 추가. 코드는 각 레포 `main` 에 모두 머지되어 있다. **실배포를 켜려면 아래 1회 세팅이
+> 필요하다.** 정본 배포 경로는 **본 CI 레포의 `deploy.yml` (EC2 + OIDC)** 이다.
+> (참고: SERVER/ADMIN 레포에 있는 `deploy-server.yml`/`deploy-admin.yml` 은 ECS 기반 *별도/레거시*
+> 경로로, 현재 변수 미구성으로 매 push 마다 실패한다 — 본 CI 파이프라인이 정본이므로 혼선 방지를 위해
+> 그 워크플로는 비활성(또는 동일 OIDC 변수 주입)을 권장.)
+
+### STEP 1 — AWS 인프라 1회 프로비저닝 (AWS 계정 권한 필요)
+- [ ] **GitHub OIDC IAM 역할** 생성 → `AWS_DEPLOY_ROLE_ARN` 확보. 절차: `deploy/OPS_HANDOFF.md` **액션 6 (AWS GitHub Actions OIDC 권한 등록)**. 신뢰정책에 `leeseungju1991/ICONIA-CI` (및 필요 시 SERVER/AI/ADMIN) 허용.
+- [ ] **Terraform 적용** (EC2 호스트 + EIP, S3 버킷, Route53, Secrets Manager 컨테이너 등): `pwsh scripts/aws-deploy.ps1 -ApplyInfra` 또는 `terraform/` 직접 apply. (§3.1 인프라 표 참조)
+- [ ] **AWS Secrets Manager 11종 실값 등록**: `deploy/OPS_HANDOFF.md` **액션 4**. (DB 비밀번호 / JWT / HMAC / KEK / Gemini 키 등 — 운영팀이 직접 입력, IaC 는 컨테이너만 생성)
+- [ ] **도메인 / Route53** 호스팅 영역 + `api.` `ai.` `admin.` A레코드 → EIP.
+
+### STEP 2 — GitHub Secrets 등록 (본 CI 레포)
+**위치:** `ICONIA-CI` → Settings → Secrets and variables → **Actions → Secrets**
+
+| Secret | 설명 / 어디서 얻나 | 예시 |
+|---|---|---|
+| `AWS_DEPLOY_ROLE_ARN` | STEP 1 의 OIDC 역할 ARN | `arn:aws:iam::<계정ID>:role/iconia-prod-github-actions-deploy` |
+| `ICONIA_REPO_TOKEN` | 다른 레포(SERVER/AI/ADMIN) 체크아웃용 PAT (repo 읽기) | `ghp_...` |
+| `ICONIA_ARTIFACTS_BUCKET` | 빌드 산출물 업로드 S3 버킷명 (Terraform output) | `iconia-prod-artifacts` |
+| `ICONIA_EC2_INSTANCE_ID` | 배포 대상 EC2 인스턴스 ID (Terraform output) | `i-0abc...` |
+| `ICONIA_ROOT_DOMAIN` | 스모크 테스트용 루트 도메인 | `iconia.example.com` |
+
+> 리전은 워크플로에 `ap-northeast-2` 로 고정되어 있다(별도 입력 불필요). 로컬 스크립트용 추가 값은
+> `.env.example` 참조 (`ICONIA_TFSTATE_BUCKET`, `INTERNAL_INGEST_TOKEN` 등).
+
+### STEP 3 — 배포 실행
+- **GitHub UI**: Actions → **deploy** 워크플로 → **Run workflow** → `service = all` (또는 server/ai/admin), `dry_run = false`.
+- **또는 태그 push**: `git tag v1.x.y && git push origin v1.x.y` (deploy.yml 이 `v*` 태그 push 에 자동 실행).
+- 파이프라인 단계: 게이트 → 빌드 → S3 업로드 → SSM 으로 EC2 배포 → **Route53 FQDN 스모크 테스트**(실패 시 워크플로 실패). `environment: production` 승인 게이트가 걸려 있으면 승인 필요.
+
+### STEP 4 — 검증
+- 워크플로 `smoke` 잡 통과(녹색) 확인.
+- `https://api.<root_domain>/health?deep=1`, `https://admin.<root_domain>`, `https://ai.<root_domain>` 정상 응답 확인.
+
+### 출시 전 필수 (D-day)
+- [ ] `deploy/OPS_HANDOFF.md` 의 **7개 액션** 전부 완료 (사업자정보 / DPO / 약관·법무 / Secrets 11종 / Sentry / AWS OIDC / 본인인증).
+- [ ] `pwsh scripts/preflight-placeholders.ps1` 잔존 placeholder 0 확인.
+
+### 별도 트랙 (본 EC2 파이프라인 밖)
+- **APP (Expo)**: EAS Build/Submit. GitHub Secrets `EXPO_TOKEN` 필요 + `eas.json` 프로필. (ICONIA-APP 레포 워크플로)
+- **HW**: 펌웨어 OTA (firmware S3 버킷, 별도 트랙).
+
+### 클로드가 할 수 있는 것 / 없는 것
+- 가능: 위 값이 등록된 뒤 **재배포 트리거·로그 진단·워크플로 파일 수정**.
+- 불가: **AWS 콘솔/Terraform 실제 적용, GitHub Secrets 입력**(권한 없음) → STEP 1·2 는 직접 수행.
+
+---
+
 ## 1. 구조도
 
 ```
