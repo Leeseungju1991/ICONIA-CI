@@ -176,6 +176,86 @@ resource "aws_cloudwatch_metric_alarm" "http_5xx_rate" {
 }
 
 # -----------------------------------------------------------------------------
+# 1-B) 4xx 비율 ≥ 15% (5분) — 클라이언트 호출 오용 / 인증 토큰 만료 폭증 신호.
+#      2026-06-15 (사용자 요청 — Pro 안정화 라운드) 신규.
+#      ALB HTTPCode_Target_4XX_Count / RequestCount 기반 metric math.
+# -----------------------------------------------------------------------------
+resource "aws_cloudwatch_metric_alarm" "http_4xx_rate" {
+  count = var.alb_arn_suffix == "" ? 0 : 1
+
+  alarm_name          = "iconia-server-4xx-rate-high"
+  alarm_description   = "ALB target 4xx 비율 >= 15% (5분 sliding). 인증 실패 폭증 / 클라이언트 회귀 신호."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2 # 연속 2주기 — false positive 차단.
+  threshold           = 15.0
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+  tags                = var.tags
+
+  metric_query {
+    id          = "ratio"
+    expression  = "100 * (errors / IF(total > 0, total, 1))"
+    label       = "4xx_rate_percent"
+    return_data = true
+  }
+
+  metric_query {
+    id          = "errors"
+    return_data = false
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "HTTPCode_Target_4XX_Count"
+      stat        = "Sum"
+      period      = 300
+      dimensions = {
+        LoadBalancer = var.alb_arn_suffix
+      }
+    }
+  }
+
+  metric_query {
+    id          = "total"
+    return_data = false
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      stat        = "Sum"
+      period      = 300
+      dimensions = {
+        LoadBalancer = var.alb_arn_suffix
+      }
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# 1-C) Target Response Time P95 ≥ 3s (5분) — 백엔드 응답 지연 신호.
+#      AI 호출과 분리 — 일반 API 의 응답 지연 자체.
+# -----------------------------------------------------------------------------
+resource "aws_cloudwatch_metric_alarm" "target_response_time_p95" {
+  count = var.alb_arn_suffix == "" ? 0 : 1
+
+  alarm_name          = "iconia-server-target-p95-latency-high"
+  alarm_description   = "ALB Target Response Time P95 >= 3s (5분). 백엔드 응답 지연 — DB/외부 호출 검토."
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "TargetResponseTime"
+  extended_statistic  = "p95"
+  period              = 300
+  evaluation_periods  = 2
+  threshold           = 3.0
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+  tags                = var.tags
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+  }
+}
+
+# -----------------------------------------------------------------------------
 # 2) AI 호출 P95 latency >= 8s (5분).
 #    aiHealthTracker 가 AiCallLatencyMs 로 송출. p95 extended statistic.
 # -----------------------------------------------------------------------------
