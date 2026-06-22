@@ -98,7 +98,9 @@ jobs:
   server-tests:
     if: ${{ (inputs.service || 'all') == 'all' || (inputs.service || 'all') == 'server' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 2026-06-22 — 서버 테스트 1700+ subtest 로 늘어 15 분 timeout 으로 cancelled.
+    #   25 분으로 상향 — 부족하면 테스트 분할 또는 병렬화 검토.
+    timeout-minutes: 25
     steps:
       - name: Checkout ICONIA-SERVER
         id: co
