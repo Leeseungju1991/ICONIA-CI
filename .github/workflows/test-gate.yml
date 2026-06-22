@@ -98,9 +98,9 @@ jobs:
   server-tests:
     if: ${{ (inputs.service || 'all') == 'all' || (inputs.service || 'all') == 'server' }}
     runs-on: ubuntu-latest
-    # 2026-06-22 — 서버 테스트 1700+ subtest 로 늘어 15 분 timeout 으로 cancelled.
-    #   25 분으로 상향 — 부족하면 테스트 분할 또는 병렬화 검토.
-    timeout-minutes: 25
+    # 2026-06-22 — 서버 테스트 1700+ subtest. 25 분도 부족 → 45 분으로 추가 상향 +
+    #   server 측 package.json 의 test 스크립트에 --test-concurrency=8 병렬화 도입.
+    timeout-minutes: 45
     steps:
       - name: Checkout ICONIA-SERVER
         id: co
