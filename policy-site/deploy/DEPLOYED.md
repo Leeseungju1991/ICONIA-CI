@@ -11,9 +11,9 @@
 
 | 항목 | 값 |
 |---|---|
-| AWS Account | 022671037305 |
+| AWS Account | 169063643478 |
 | Region | ap-northeast-2 (서울) |
-| S3 Bucket | `iconia-prod-policy-022671037305` |
+| S3 Bucket | `iconia-prod-policy-169063643478` |
 | Bucket 정책 | OAC 전용 (public 차단, CloudFront `E3UVE6Q83ZP9MM` 만 GetObject) |
 | 암호화 | SSE-S3 (AES256) + Bucket Key |
 | Versioning | Enabled |
@@ -78,8 +78,8 @@ aws cloudfront get-distribution-config --id E3UVE6Q83ZP9MM > /tmp/dist.json
 # 위 JSON 에서 Enabled: false 로 수정 후 update-distribution → 배포 완료 후 delete-distribution
 
 # 2) S3 bucket 비우기 + 삭제
-aws s3 rm s3://iconia-prod-policy-022671037305 --recursive
-aws s3api delete-bucket --bucket iconia-prod-policy-022671037305
+aws s3 rm s3://iconia-prod-policy-169063643478 --recursive
+aws s3api delete-bucket --bucket iconia-prod-policy-169063643478
 
 # 3) OAC 삭제
 aws cloudfront delete-origin-access-control --id ER9JZC5ENMOQ9 --if-match <etag>

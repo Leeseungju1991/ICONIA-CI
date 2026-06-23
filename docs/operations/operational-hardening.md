@@ -17,7 +17,7 @@
    # 일회성 mirror
    for i in $(seq 100 1099); do
      curl -L -o "/tmp/picsum-$i.jpg" "https://picsum.photos/id/$i/1080/1080"
-     aws s3 cp "/tmp/picsum-$i.jpg" "s3://iconia-prod-events-022671037305/placeholder/picsum/$i.jpg"
+     aws s3 cp "/tmp/picsum-$i.jpg" "s3://iconia-prod-events-169063643478/placeholder/picsum/$i.jpg"
    done
    ```
 2. seed JSON 의 URL 을 S3 CloudFront 도메인으로 갱신:

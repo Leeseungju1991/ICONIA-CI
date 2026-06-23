@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-BUCKET="iconia-prod-policy-022671037305"
+BUCKET="iconia-prod-policy-169063643478"
 DIST_ID="E3UVE6Q83ZP9MM"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

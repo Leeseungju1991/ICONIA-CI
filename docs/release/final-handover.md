@@ -65,11 +65,11 @@
 |---|---|
 | 5개 product 레포 | https://github.com/Leeseungju1991/ICONIA-{APP,SERVER,ADMIN,AI,HW} |
 | CI 레포 | https://github.com/Leeseungju1991/ICONIA-CI |
-| AWS 계정 | 022671037305 (ap-northeast-2) |
+| AWS 계정 | 169063643478 (ap-northeast-2) |
 | EC2 instance | i-042de709f0f8f9020 |
 | RDS | iconia-prod-db.c3m6c8wi816o.ap-northeast-2.rds.amazonaws.com |
 | ALB | iconia-prod-alb-1600486872.ap-northeast-2.elb.amazonaws.com |
-| S3 buckets | iconia-prod-{artifacts,events,exports,firmware}-022671037305 |
+| S3 buckets | iconia-prod-{artifacts,events,exports,firmware}-169063643478 |
 
 ## 6. 운영 인사이트
 
