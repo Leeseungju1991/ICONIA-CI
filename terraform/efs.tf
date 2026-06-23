@@ -30,10 +30,14 @@ resource "aws_efs_backup_policy" "persona" {
 }
 
 # Mount target - private subnet 마다 한 개.
+# for_each key 는 var.azs (static input) — plan time 에 cardinality 결정.
+# value 는 인덱스 정수 → aws_subnet.private[each.value].id 로 subnet 참조.
+# 이전 `toset(local.private_subnet_ids)` 패턴은 fresh state 에서 subnet id 가 unknown
+# 이라 plan time 에 for_each cardinality 결정 불가 → 신 계정 migration 시 plan 실패.
 resource "aws_efs_mount_target" "persona" {
-  for_each        = toset(local.private_subnet_ids)
+  for_each        = { for idx, az in var.azs : az => idx }
   file_system_id  = aws_efs_file_system.persona.id
-  subnet_id       = each.value
+  subnet_id       = aws_subnet.private[each.value].id
   security_groups = [aws_security_group.efs.id]
 }
 

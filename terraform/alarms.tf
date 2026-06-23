@@ -25,6 +25,11 @@ module "alarms" {
   # Phase 6: ALB 도입 → ARN suffix 자동 주입. 변수가 비어 있으면 ALB 값 사용.
   alb_arn_suffix = var.alarm_alb_arn_suffix != "" ? var.alarm_alb_arn_suffix : aws_lb.iconia.arn_suffix
 
+  # ALB 알람 활성. 본 stack 은 ALB 를 같은 stack 에서 생성 → 알람도 같이 생성.
+  # boolean 으로 cardinality 를 plan-time 에 확정 (alb_arn_suffix 는 unknown 일 수
+  # 있어 string-empty 비교로는 count 가 unknown).
+  enable_alb_alarms = true
+
   # RDS identifier 는 main stack 의 rds.tf 출력에서 자동 주입.
   rds_instance_identifier = (
     length(aws_db_instance.postgres) > 0
@@ -38,6 +43,10 @@ module "alarms" {
     ? var.alarm_redis_cluster_id
     : aws_elasticache_replication_group.iconia_redis.id
   )
+
+  # Redis 알람 활성. ALB 와 동일 — boolean 으로 plan-time cardinality 확정.
+  enable_redis_alarms = true
+
   rds_freeable_memory_threshold_bytes = var.alarm_rds_freeable_memory_threshold_bytes
 
   tags = merge(var.tags, { service = "iconia-server", managed = "terraform" })

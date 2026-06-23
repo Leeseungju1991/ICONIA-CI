@@ -34,7 +34,7 @@ locals {
     nginx_access = { name = "/iconia/${var.env}/nginx-access", retention = 90 }
     nginx_error  = { name = "/iconia/${var.env}/nginx-error", retention = 90 }
     deploy       = { name = "/iconia/${var.env}/deploy", retention = 180 }
-    audit        = { name = "/iconia/${var.env}/audit", retention = 730 }
+    audit        = { name = "/iconia/${var.env}/audit", retention = 731 }
   }
   log_groups_nonprod = {
     server       = { name = "/iconia/${var.env}/server", retention = 30 }

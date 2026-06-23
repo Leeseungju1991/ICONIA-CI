@@ -82,6 +82,27 @@ variable "redis_cluster_id" {
   default     = ""
 }
 
+# -----------------------------------------------------------------------------
+# Enable-toggle 변수 — count 분기를 plan-time known boolean 으로 고정.
+#
+# 배경: parent stack 이 alb_arn_suffix / redis_cluster_id 를 같은 stack 의 unknown
+# 자원에서 전달하면 (`aws_lb.iconia.arn_suffix` 등) plan time 에 string == "" 비교를
+# 결정할 수 없어 `count` 가 unknown 이 되고 plan 이 실패한다.
+# 명시적 boolean 으로 분리하면 cardinality 결정이 input 단계로 앞당겨진다.
+# alb_arn_suffix / redis_cluster_id 변수는 dimension 주입용으로 그대로 유지.
+# -----------------------------------------------------------------------------
+variable "enable_alb_alarms" {
+  description = "Create ALB-dependent alarms (http_5xx_rate, http_4xx_rate, target_response_time_p95). Set true only when ALB exists or in same stack."
+  type        = bool
+  default     = false # fresh apply 안전 — parent 가 명시적으로 true 전달해야 활성.
+}
+
+variable "enable_redis_alarms" {
+  description = "Create Redis-dependent alarms (redis_no_connections). Set true only when Redis exists or in same stack."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "공통 태그."
   type        = map(string)
@@ -127,7 +148,7 @@ resource "aws_sns_topic_subscription" "alarm_pagerduty" {
 #    alb_arn_suffix 미주입 시 알람 생성 skip.
 # -----------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "http_5xx_rate" {
-  count = var.alb_arn_suffix == "" ? 0 : 1
+  count = var.enable_alb_alarms ? 1 : 0
 
   alarm_name          = "iconia-server-5xx-rate-high"
   alarm_description   = "ALB target 5xx 비율 >= 5% (5분 sliding). 운영 장애 1차 신호."
@@ -181,7 +202,7 @@ resource "aws_cloudwatch_metric_alarm" "http_5xx_rate" {
 #      ALB HTTPCode_Target_4XX_Count / RequestCount 기반 metric math.
 # -----------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "http_4xx_rate" {
-  count = var.alb_arn_suffix == "" ? 0 : 1
+  count = var.enable_alb_alarms ? 1 : 0
 
   alarm_name          = "iconia-server-4xx-rate-high"
   alarm_description   = "ALB target 4xx 비율 >= 15% (5분 sliding). 인증 실패 폭증 / 클라이언트 회귀 신호."
@@ -234,7 +255,7 @@ resource "aws_cloudwatch_metric_alarm" "http_4xx_rate" {
 #      AI 호출과 분리 — 일반 API 의 응답 지연 자체.
 # -----------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "target_response_time_p95" {
-  count = var.alb_arn_suffix == "" ? 0 : 1
+  count = var.enable_alb_alarms ? 1 : 0
 
   alarm_name          = "iconia-server-target-p95-latency-high"
   alarm_description   = "ALB Target Response Time P95 >= 3s (5분). 백엔드 응답 지연 — DB/외부 호출 검토."
@@ -420,7 +441,7 @@ resource "aws_cloudwatch_metric_alarm" "redis_connection_error" {
 
 # 보조: ElastiCache CurrConnections 0 — 클러스터 자체가 응답 안 함.
 resource "aws_cloudwatch_metric_alarm" "redis_no_connections" {
-  count = var.redis_cluster_id == "" ? 0 : 1
+  count = var.enable_redis_alarms ? 1 : 0
 
   alarm_name          = "iconia-server-redis-no-connections"
   alarm_description   = "ElastiCache Redis 클러스터 연결 수가 0 — 클러스터 다운 또는 SG 차단."
