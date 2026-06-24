@@ -398,9 +398,11 @@ inject_all_secrets() {
   jwt_priv=$(fetch_secret "iconia/${env_ns}/jwt/private_key" || true)
   if [ -n "$jwt_priv" ]; then
     local jwt_priv_oneline
-    # \r 제거 후 awk 로 각 줄 뒤에 \n 두 문자 추가 후 전체를 한 줄로 합침.
-    # Secrets Manager 값이 \r\n 라인엔딩인 경우 \r 가 PEM 파싱을 깨뜨림 → tr -d '\r' 선행 필수.
-    jwt_priv_oneline=$(printf '%s' "$jwt_priv" | tr -d '\r' | awk '{printf "%s\\n", $0}')
+    # \r 제거 후 awk 로 각 줄 뒤에 \\n (파일에 두 문자 저장) 추가 → 한 줄로 합침.
+    # systemd EnvironmentFile 은 \n 을 escape 처리 (backslash 제거 + n 남김) 하므로
+    # 파일에 \\n (두 backslash + n) 을 써야 systemd 가 \n (backslash+n) 으로 읽고,
+    # normalizePem() 이 /\\n/ → 실제 LF 로 복원한다.
+    jwt_priv_oneline=$(printf '%s' "$jwt_priv" | tr -d '\r' | awk '{printf "%s\\\\n", $0}')
     env_set /etc/iconia.server.env JWT_PRIVATE_KEY "$jwt_priv_oneline"
     env_set /etc/iconia.server.env OPERATOR_JWT_PRIVATE_KEY "$jwt_priv_oneline"
     env_set /etc/iconia.ai.env    JWT_PRIVATE_KEY "$jwt_priv_oneline"
@@ -414,7 +416,7 @@ inject_all_secrets() {
   jwt_pub=$(fetch_secret "iconia/${env_ns}/jwt/public_key" || true)
   if [ -n "$jwt_pub" ]; then
     local jwt_pub_oneline
-    jwt_pub_oneline=$(printf '%s' "$jwt_pub" | tr -d '\r' | awk '{printf "%s\\n", $0}')
+    jwt_pub_oneline=$(printf '%s' "$jwt_pub" | tr -d '\r' | awk '{printf "%s\\\\n", $0}')
     env_set /etc/iconia.server.env JWT_PUBLIC_KEY "$jwt_pub_oneline"
     env_set /etc/iconia.server.env OPERATOR_JWT_PUBLIC_KEY "$jwt_pub_oneline"
     env_set /etc/iconia.ai.env    JWT_PUBLIC_KEY "$jwt_pub_oneline"
