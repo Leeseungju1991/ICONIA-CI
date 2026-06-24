@@ -149,6 +149,62 @@ resource "aws_iam_role_policy_attachment" "github_deploy_ssm" {
   policy_arn = aws_iam_policy.github_deploy_ssm.arn
 }
 
+# 6) ECR 권한 — deploy.yml 이 amazon-ecr-login 액션 + docker push 로 이미지 업로드.
+#    최소 권한: GetAuthorizationToken (계정 전역), 나머지는 ECR repo 범위로 제한.
+#    2026-06-24 추가 — 신규 계정 169063643478 마이그레이션 시 누락된 권한.
+data "aws_iam_policy_document" "github_deploy_ecr" {
+  statement {
+    sid    = "EcrGetAuthToken"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+    resources = ["*"] # GetAuthorizationToken 은 resource-level 제약 불가 (AWS 제한).
+  }
+  statement {
+    sid    = "EcrRepoPushPull"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:PutImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:DescribeRepositories",
+      "ecr:CreateRepository",
+      "ecr:ListImages",
+    ]
+    resources = ["arn:aws:ecr:${local.region}:${local.account_id}:repository/iconia*"]
+  }
+  statement {
+    sid    = "EcsDeployControl"
+    effect = "Allow"
+    actions = [
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+      "ecs:DescribeClusters",
+      "ecs:RegisterTaskDefinition",
+      "ecs:DescribeTaskDefinition",
+      "ecs:ListTaskDefinitions",
+    ]
+    resources = ["*"] # ecs:UpdateService 는 cluster/service ARN 으로 좁힐 수 있으나
+                      # ECS 미구성 단계에서 ARN 미확정 — 인프라 확정 후 좁힐 것.
+  }
+}
+
+resource "aws_iam_policy" "github_deploy_ecr" {
+  name        = "${local.name_prefix}-github-deploy-ecr"
+  description = "GitHub Actions deploy 역할 — ECR push/pull + ECS service update (신규 계정 마이그레이션)."
+  policy      = data.aws_iam_policy_document.github_deploy_ecr.json
+}
+
+resource "aws_iam_role_policy_attachment" "github_deploy_ecr" {
+  role       = aws_iam_role.github_deploy.name
+  policy_arn = aws_iam_policy.github_deploy_ecr.arn
+}
+
 ###############################################################################
 # 변수 + 출력.
 ###############################################################################
