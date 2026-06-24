@@ -323,7 +323,7 @@ prod 배포 자체가 차단된다. 정본은 `docs/legal/business-info.md`.
 - [ ] **약관 본문 검토** — `4. APP/src/copy/terms/ko/*.ts` 7종 (termsOfService,
       privacyPolicy, paymentTerms, sensorDataPolicy, aiServiceTerms,
       communityPolicy, externalLinkPolicy) 의 회사명·연락처·시행일 일관성
-- [ ] **청소년 보호** — 만 18세 이상 검증 게이트(생년월일 입력) 정상 동작 + 청소년
+- [ ] **청소년 보호** — 만 14세 이상 검증 게이트(생년월일 입력) 정상 동작 + 청소년
       유해성 검토 회사명 (주)숨코리아 로 통일
 - [ ] **개인정보 보호 책임자(DPO)** 확정 — `DPO_NAME`, 전화·이메일
 - [ ] **KC·FCC 인증** — `1. HW/docs/safety-certification-roadmap.md` 에 제조사

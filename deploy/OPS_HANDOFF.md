@@ -288,7 +288,7 @@ AWS 콘솔 → IAM → Identity providers → "Add provider":
 - [ ] APP 회원가입 → 본인인증 화면 진입 → PASS 앱으로 redirect 정상
 - [ ] 본인인증 완료 후 SERVER `/v1/auth/age/callback` 200 응답
 - [ ] DB `users.age_verified_at` 컬럼 갱신
-- [ ] 미성년자 (만 18세 미만) 인증 시도 → 가입 차단 + 안내 메시지
+- [ ] 미성년자 (만 14세 미만) 인증 시도 → 가입 차단 + 안내 메시지
 - [ ] 위탁계약서 사본 `docs/legal/contracts/age-verification-2026.pdf` 보관 (gitignore)
 
 ---
