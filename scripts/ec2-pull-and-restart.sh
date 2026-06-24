@@ -391,17 +391,20 @@ inject_all_secrets() {
   fi
 
   # ── 4) jwt/private_key → JWT_PRIVATE_KEY + OPERATOR_JWT_PRIVATE_KEY (PEM multiline)
+  # systemd EnvironmentFile= 은 multiline 을 지원하지 않으므로 PEM 의 실제 LF 를
+  # literal \n (두 문자) 으로 변환해 한 줄로 주입.
+  # jwtService.js 의 normalizePem() 이 \\n → 실제 LF 로 복원한다.
   local jwt_priv
   jwt_priv=$(fetch_secret "iconia/${env_ns}/jwt/private_key" || true)
-  # systemd EnvironmentFile= 은 백슬래시 줄이음을 지원하지 않아 PEM 개행을 깨뜨린다.
-  # base64 single-line 으로 encode 해서 주입. server.js secretValidation.js 가 base64 decode 시도함.
   if [ -n "$jwt_priv" ]; then
-    local jwt_priv_b64
-    jwt_priv_b64=$(printf '%s' "$jwt_priv" | base64 -w 0)
-    env_set /etc/iconia.server.env JWT_PRIVATE_KEY "$jwt_priv_b64"
-    env_set /etc/iconia.server.env OPERATOR_JWT_PRIVATE_KEY "$jwt_priv_b64"
-    env_set /etc/iconia.ai.env    JWT_PRIVATE_KEY "$jwt_priv_b64"
-    log "secrets: JWT_PRIVATE_KEY / OPERATOR_JWT_PRIVATE_KEY injected (base64)"
+    local jwt_priv_oneline
+    # \r 제거 후 awk 로 각 줄 뒤에 \n 두 문자 추가 후 전체를 한 줄로 합침.
+    # Secrets Manager 값이 \r\n 라인엔딩인 경우 \r 가 PEM 파싱을 깨뜨림 → tr -d '\r' 선행 필수.
+    jwt_priv_oneline=$(printf '%s' "$jwt_priv" | tr -d '\r' | awk '{printf "%s\\n", $0}')
+    env_set /etc/iconia.server.env JWT_PRIVATE_KEY "$jwt_priv_oneline"
+    env_set /etc/iconia.server.env OPERATOR_JWT_PRIVATE_KEY "$jwt_priv_oneline"
+    env_set /etc/iconia.ai.env    JWT_PRIVATE_KEY "$jwt_priv_oneline"
+    log "secrets: JWT_PRIVATE_KEY / OPERATOR_JWT_PRIVATE_KEY injected (\\n-escaped PEM)"
   else
     log "WARN: iconia/${env_ns}/jwt/private_key 조회 실패"
   fi
@@ -410,12 +413,12 @@ inject_all_secrets() {
   local jwt_pub
   jwt_pub=$(fetch_secret "iconia/${env_ns}/jwt/public_key" || true)
   if [ -n "$jwt_pub" ]; then
-    local jwt_pub_b64
-    jwt_pub_b64=$(printf '%s' "$jwt_pub" | base64 -w 0)
-    env_set /etc/iconia.server.env JWT_PUBLIC_KEY "$jwt_pub_b64"
-    env_set /etc/iconia.server.env OPERATOR_JWT_PUBLIC_KEY "$jwt_pub_b64"
-    env_set /etc/iconia.ai.env    JWT_PUBLIC_KEY "$jwt_pub_b64"
-    log "secrets: JWT_PUBLIC_KEY / OPERATOR_JWT_PUBLIC_KEY injected (base64)"
+    local jwt_pub_oneline
+    jwt_pub_oneline=$(printf '%s' "$jwt_pub" | tr -d '\r' | awk '{printf "%s\\n", $0}')
+    env_set /etc/iconia.server.env JWT_PUBLIC_KEY "$jwt_pub_oneline"
+    env_set /etc/iconia.server.env OPERATOR_JWT_PUBLIC_KEY "$jwt_pub_oneline"
+    env_set /etc/iconia.ai.env    JWT_PUBLIC_KEY "$jwt_pub_oneline"
+    log "secrets: JWT_PUBLIC_KEY / OPERATOR_JWT_PUBLIC_KEY injected (\\n-escaped PEM)"
   else
     log "WARN: iconia/${env_ns}/jwt/public_key 조회 실패"
   fi
@@ -490,16 +493,18 @@ inject_all_secrets() {
 
   # ── 12) static config baking (멱등) — S3 버킷, 운영 설정 ──────────────────
   log "secrets: static env baking 시작"
+  # NOTE: for 루프 변수를 'skey' 로 명명 — pull_bootstrap/pull_one 의 'key' 변수명 충돌 방지.
+  local skey
   for envf in /etc/iconia.server.env /etc/iconia.ai.env; do
     touch "$envf"
     # 멱등: 기존 키 제거 후 재기입.
-    for key in POLICY_BUCKET EVENTS_BUCKET EXPORTS_BUCKET FIRMWARE_BUCKET ARTIFACTS_BUCKET \
+    for skey in POLICY_BUCKET EVENTS_BUCKET EXPORTS_BUCKET FIRMWARE_BUCKET ARTIFACTS_BUCKET \
                AWS_REGION ALB_DOMAIN NODE_ENV PORT NODE_OPTIONS \
                DEVICE_API_KEY APP_API_TOKEN ADMIN_TOKEN \
                OPERATOR_JWT_ISSUER OPERATOR_JWT_AUDIENCE \
                DEVICE_PROVISIONING_KEK DEVICE_PROVISIONING_HMAC_PEPPER \
                GEMINI_USER_KEY_ENC_MASTER; do
-      awk -v k="$key" '$0 !~ "^" k "=" { print }' "$envf" > "${envf}.tmp" && mv "${envf}.tmp" "$envf"
+      awk -v k="$skey" '$0 !~ "^" k "=" { print }' "$envf" > "${envf}.tmp" && mv "${envf}.tmp" "$envf"
     done
     chown root:iconia "$envf"
     chmod 0640 "$envf"
