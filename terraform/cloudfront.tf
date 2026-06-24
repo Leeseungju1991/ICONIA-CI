@@ -2,27 +2,37 @@
 # cloudfront.tf — 운영 CloudFront 분배 + 선택적 추가 분배(api/ai).
 #
 # ── 운영 분배 (항상 존재, terraform import 로 state 흡수) ──────────────────
-#   1) aws_cloudfront_distribution.admin   (E2XTV9M8R3L6WT, d7gw1fdjnkghz)
+#   1) aws_cloudfront_distribution.admin        (E31RV3SRZ9E4UQ, d2yblvtzv3503d)
+#      - 기존 운영 admin 분배 (유지, 사용자 결정 전까지 변경 없음).
 #      - origin: ALB :8082  (admin Next.js standalone)
 #      - cache_policy: CachingDisabled (Next.js SSR/SSG 응답은 별도 헤더 캐싱)
 #      - origin_request_policy: AllViewer (Host 헤더 forward — ALB host routing 의존)
 #      - viewer_cert: CloudFront 기본 인증서 (현재 alias 없음, 도메인 적용 전 단계)
 #
-#   2) aws_cloudfront_distribution.policy  (E3UVE6Q83ZP9MM, d2txfcpfr4o2k)
+#   2) aws_cloudfront_distribution.admin_new    (E2OEPN5AT2O67Z, dlfp1lyn34gcj)
+#      - 신규 admin 분배 (2026-06-24 생성). 사용자 확인 후 (1) 을 대체 예정.
+#      - origin: ALB :8082 (동일 ALB, http-only, CachingDisabled + AllViewer)
+#
+#   3) aws_cloudfront_distribution.policy       (EJTW5G0D050C6, dzq72tlftowz4)
+#      - 신규 정책사이트 정본 분배 (2026-06-24 Wave 갱신, 멀티 LLM 명시 완료).
 #      - origin: S3 iconia-prod-policy (REST endpoint + OAC)
 #      - cache_policy: CachingOptimized
 #      - response_headers_policy: CORS-With-Preflight (67f7725c-..., AWS managed)
 #      - custom_error_response: 403/404 → /index.html (SPA fallback)
 #      - viewer_cert: CloudFront 기본 인증서
 #
+#   [DISABLED] E16FUVKT0TW4S4 (djbwkk8r658e7) — 구 정책사이트 분배.
+#      - 2026-06-24 disabled 처리. delete 는 사용자 결정 보류.
+#      - Terraform state 에서 제거됨 (state rm 완료).
+#
 # ── 선택적 분배 (var.enable_cloudfront=true 시) ──────────────────────────────
-#   3) aws_cloudfront_distribution.iconia[api/ai]  (optional)
+#   4) aws_cloudfront_distribution.iconia[api/ai]  (optional)
 #      - 도메인 + ACM 자동 발급이 준비되면 api.<root>/ai.<root> 를 CF 로 전환.
-#      - admin 은 이미 (1) 이 담당하므로 for_each 키에서 제외.
+#      - admin 은 이미 (1)/(2) 가 담당하므로 for_each 키에서 제외.
 #
 # ── 정책 사이트 S3 버킷 (정합 흡수) ─────────────────────────────────────────
 #   aws_s3_bucket.policy + public_access_block + versioning + SSE + bucket policy.
-#   bucket policy 는 CloudFront OAC SourceArn 매칭 (현재 운영 정책과 정합).
+#   bucket policy 는 CloudFront OAC SourceArn 매칭 (신규 정본 EJTW5G0D050C6 기준).
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -108,8 +118,9 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
-# 1) ADMIN distribution — 운영 중. terraform import 흡수.
+# 1) ADMIN distribution — 기존 운영 분배 (유지). terraform import 흡수.
 #    import: terraform import aws_cloudfront_distribution.admin E31RV3SRZ9E4UQ
+#    domain: d2yblvtzv3503d.cloudfront.net
 # -----------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "admin" {
   enabled             = true
@@ -171,8 +182,68 @@ resource "aws_cloudfront_distribution" "admin" {
 }
 
 # -----------------------------------------------------------------------------
-# 2) POLICY distribution — 운영 중. terraform import 흡수.
-#    import: terraform import aws_cloudfront_distribution.policy E3UVE6Q83ZP9MM
+# 1-B) ADMIN NEW distribution — 신규 (2026-06-24 생성). 사용자 전환 결정 대기.
+#      import: terraform import aws_cloudfront_distribution.admin_new E2OEPN5AT2O67Z
+#      domain: dlfp1lyn34gcj.cloudfront.net
+# -----------------------------------------------------------------------------
+resource "aws_cloudfront_distribution" "admin_new" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "ICONIA admin site NEW (ALB origin :8082)"
+  price_class         = "PriceClass_200"
+  http_version        = "http2"
+  default_root_object = ""
+  aliases             = []
+
+  origin {
+    domain_name = "iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com"
+    origin_id   = "iconia-prod-alb-admin-new"
+
+    custom_origin_config {
+      http_port                = 8082
+      https_port               = 443
+      origin_protocol_policy   = "http-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      origin_keepalive_timeout = 5
+      origin_read_timeout      = 30
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "iconia-prod-alb-admin-new"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"]
+    cached_methods         = ["HEAD", "GET"]
+    compress               = true
+
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+    ssl_support_method             = "vip"
+    minimum_protocol_version       = "TLSv1"
+  }
+
+  tags = merge(var.tags, {
+    Name      = "${local.name_prefix}-cf-admin-new"
+    subdomain = "admin"
+    note      = "created-2026-06-24 pending-user-switchover"
+  })
+}
+
+# -----------------------------------------------------------------------------
+# 2) POLICY distribution — 신규 정본 (2026-06-24 Wave 갱신). terraform import 흡수.
+#    import: terraform import aws_cloudfront_distribution.policy EJTW5G0D050C6
+#    domain: dzq72tlftowz4.cloudfront.net
+#    구 분배 E16FUVKT0TW4S4 (djbwkk8r658e7) 는 disabled (delete 보류).
 # -----------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "policy" {
   enabled             = true
