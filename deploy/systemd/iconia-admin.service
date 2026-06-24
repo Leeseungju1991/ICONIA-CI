@@ -42,7 +42,9 @@ RestrictSUIDSGID=true
 RestrictNamespaces=true
 RestrictRealtime=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
+# Next.js standalone 도 V8 JIT 와 undici WASM 을 사용한다 — iconia-ai.service 와
+# 동일 사유로 false (2026-06-25 잔재 결함 fix).
+MemoryDenyWriteExecute=false
 SystemCallArchitectures=native
 
 StandardOutput=journal

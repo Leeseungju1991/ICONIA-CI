@@ -40,7 +40,10 @@ RestrictSUIDSGID=true
 RestrictNamespaces=true
 RestrictRealtime=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
+# Node.js V8 JIT (baseline/turbofan/sparkplug) 와 undici WASM 컴파일 모두 W+X 페이지가
+# 필요하다 → MemoryDenyWriteExecute=true 면 V8 baseline SIGTRAP / WASM ReferenceError 로
+# 부팅 실패. iconia-ai.service 와 동일 사유로 false (2026-06-25 잔재 결함 fix).
+MemoryDenyWriteExecute=false
 SystemCallArchitectures=native
 
 StandardOutput=journal

@@ -5,7 +5,7 @@
 # 변수는 launch_template.tf 의 templatefile() 로 주입됨:
 #   ${region}, ${env}, ${efs_id}, ${efs_ap_id},
 #   ${artifacts_bucket}, ${events_bucket}, ${exports_bucket}, ${firmware_bucket},
-#   ${name_prefix}, ${cw_agent_ssm_param},
+#   ${policy_bucket}, ${alb_domain}, ${name_prefix}, ${cw_agent_ssm_param},
 #   ${rds_endpoint}, ${rds_database_name}, ${rds_username}, ${root_domain},
 #   ${event_store_backend}, ${analysis_claim_lease_ms}
 #
@@ -153,7 +153,7 @@ EXPORT_BUCKET=${exports_bucket}
 OTA_FIRMWARE_BUCKET=${firmware_bucket}
 ARTIFACTS_BUCKET=${artifacts_bucket}
 # [2] S3 버킷 static baking — 서비스 시작 전 반드시 있어야 하는 환경변수.
-POLICY_BUCKET=iconia-prod-policy-169063643478
+POLICY_BUCKET=${policy_bucket}
 EVENTS_BUCKET=${events_bucket}
 EXPORTS_BUCKET=${exports_bucket}
 FIRMWARE_BUCKET=${firmware_bucket}
@@ -166,6 +166,7 @@ RDS_USERNAME=${rds_username}
 # Secrets Manager 의 iconia/${env}/db/master_password 를 풀어
 # /etc/iconia.{server,ai}.env 에 채운다.
 ROOT_DOMAIN=${root_domain}
+ALB_DOMAIN=${alb_domain}
 # ---- multi-instance claim/lease 정합 (server.js:849~850) ----
 # INSTANCE_ID — application-side 식별자. AWS EC2 instance-id (i-xxx) 주입. 빈 값일
 #   경우 server.js 가 hostname-pid fallback 사용 (단일 EC2 호환).
@@ -180,16 +181,22 @@ EOF
 chown root:iconia /etc/iconia.env
 chmod 0640 /etc/iconia.env
 
-# [3] systemd drop-in — NODE_OPTIONS 메모리 제한 + jitless (t3.micro 1GB RAM OOM 방지).
+# [3] systemd drop-in — NODE_OPTIONS 메모리 제한 (t3.micro 1GB RAM OOM 방지).
 # /etc/systemd/system/iconia-{server,ai,admin}.service.d/limit-mem.conf 생성.
 # 이 drop-in 은 systemd unit 이 설치되기 전에 생성해도 안전 (daemon-reload 로 반영).
+#
+# NOTE (2026-06-25): 과거 `--jitless` 도 같이 부여했으나 Node 20 의 undici (lib/global.js
+# 에서 llhttp.wasm 컴파일) 가 WebAssembly 를 요구해 AI 서비스가 즉시 ReferenceError 로 죽었다
+# (`WebAssembly is not defined`). JIT 비활성은 메모리 절약 효과보다 부팅 자체를 막는 부작용이 크다 →
+# 제거. 메모리 캡(--max-old-space-size=384) 만 유지하고, 부족하면 인스턴스 사이즈 업그레이드로 대응.
 for svc in server ai admin; do
   mkdir -p "/etc/systemd/system/iconia-$${svc}.service.d"
   cat > "/etc/systemd/system/iconia-$${svc}.service.d/limit-mem.conf" <<'DROPIN_EOF'
 [Service]
-# t3.micro 1GB RAM OOM 방지 — Node.js heap을 384MB로 제한, JIT 비활성(메모리 절약).
+# t3.micro 1GB RAM OOM 방지 — Node.js heap을 384MB로 제한.
 # user-data.sh.tftpl 에서 baking. ASG instance refresh 시 자동 적용.
-Environment="NODE_OPTIONS=--max-old-space-size=384 --jitless"
+# `--jitless` 는 undici WASM 컴파일을 깨뜨려 제외 (2026-06-25 잔재 결함 fix).
+Environment="NODE_OPTIONS=--max-old-space-size=384"
 DROPIN_EOF
   echo "INFO: systemd drop-in 생성: /etc/systemd/system/iconia-$${svc}.service.d/limit-mem.conf"
 done

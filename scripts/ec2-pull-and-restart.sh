@@ -493,7 +493,31 @@ inject_all_secrets() {
     log "WARN: iconia/${env_ns}/push/credentials 조회 실패"
   fi
 
-  # ── 12) static config baking (멱등) — S3 버킷, 운영 설정 ──────────────────
+  # ── 12) ai/internal_token → PERSONA_AI_INTERNAL_TOKEN (server.env + ai.env, 동일 값)
+  # AI 서비스가 production 부팅 시 throw-required (3.AI/src/config.js:51).
+  # Server↔AI 내부 인증 토큰이라 양쪽 동일 값이어야 한다.
+  local ai_internal_token
+  ai_internal_token=$(fetch_secret "iconia/${env_ns}/ai/internal_token" | tr -d '\n\r ' || true)
+  if [ -n "$ai_internal_token" ]; then
+    env_set /etc/iconia.server.env PERSONA_AI_INTERNAL_TOKEN "$ai_internal_token"
+    env_set /etc/iconia.ai.env    PERSONA_AI_INTERNAL_TOKEN "$ai_internal_token"
+    log "secrets: PERSONA_AI_INTERNAL_TOKEN injected (len=${#ai_internal_token})"
+  else
+    log "WARN: iconia/${env_ns}/ai/internal_token 조회 실패 — AI 부팅 실패 예상"
+  fi
+
+  # ── 13) ai/metrics_token → AI_METRICS_TOKEN (ai.env 만)
+  # AI /metrics 엔드포인트 보호용. AI production 부팅 필수.
+  local ai_metrics_token
+  ai_metrics_token=$(fetch_secret "iconia/${env_ns}/ai/metrics_token" | tr -d '\n\r ' || true)
+  if [ -n "$ai_metrics_token" ]; then
+    env_set /etc/iconia.ai.env AI_METRICS_TOKEN "$ai_metrics_token"
+    log "secrets: AI_METRICS_TOKEN injected (len=${#ai_metrics_token})"
+  else
+    log "WARN: iconia/${env_ns}/ai/metrics_token 조회 실패 — AI 부팅 실패 예상"
+  fi
+
+  # ── 14) static config baking (멱등) — S3 버킷, 운영 설정 ──────────────────
   log "secrets: static env baking 시작"
   # NOTE: for 루프 변수를 'skey' 로 명명 — pull_bootstrap/pull_one 의 'key' 변수명 충돌 방지.
   local skey
@@ -515,13 +539,13 @@ inject_all_secrets() {
     chmod 0640 "$envf"
   done
 
-  # server.env static values
-  cat >> /etc/iconia.server.env <<'STATIC_EOF'
-POLICY_BUCKET=iconia-prod-policy-169063643478
-EVENTS_BUCKET=iconia-prod-events-169063643478
-EXPORTS_BUCKET=iconia-prod-exports-169063643478
-FIRMWARE_BUCKET=iconia-prod-firmware-169063643478
-ARTIFACTS_BUCKET=iconia-prod-artifacts-169063643478
+  # server.env static values — 버킷명은 /etc/iconia.env 의 변수 사용 (계정ID 하드코딩 금지).
+  cat >> /etc/iconia.server.env <<STATIC_EOF
+POLICY_BUCKET=${POLICY_BUCKET:-}
+EVENTS_BUCKET=${EVENTS_BUCKET:-}
+EXPORTS_BUCKET=${EXPORTS_BUCKET:-}
+FIRMWARE_BUCKET=${FIRMWARE_BUCKET:-}
+ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET:-}
 NODE_ENV=production
 PORT=8080
 NODE_OPTIONS=--max-old-space-size=384 --jitless
@@ -529,8 +553,8 @@ OPERATOR_JWT_ISSUER=iconia-server
 OPERATOR_JWT_AUDIENCE=iconia-operator
 # CORS — ALB DNS + CloudFront admin 도메인 + 개발 origin.
 # Mobile app 은 Origin 헤더를 보내지 않으므로 실질 영향은 Admin web UI 접근 제한.
-# CF admin 도메인 (E2OEPN5AT2O67Z, dlfp1lyn34gcj.cloudfront.net) 추가 — 2026-06-24.
-CORS_ORIGINS=https://iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com,https://dlfp1lyn34gcj.cloudfront.net,http://localhost:3000,exp://localhost:8081
+# ALB_DOMAIN / ADMIN_CF_DOMAIN 은 /etc/iconia.env 와 /etc/iconia.admin.env 에서 source됨.
+CORS_ORIGINS=https://${ALB_DOMAIN:-},https://${ADMIN_CF_DOMAIN:-dlfp1lyn34gcj.cloudfront.net},http://localhost:3000,exp://localhost:8081
 # Redis fail-close 우회 — redis npm 패키지 미설치 상태 (package.json 에 없음). 로그인 rate-limit 은
 # in-memory (인스턴스별 분리). 추후 redis 의존성 추가 후 이 변수 제거.
 REDIS_FAIL_CLOSE_DISABLED=1
@@ -549,22 +573,22 @@ OPERATOR_MFA_ENFORCE_ROLES=off
 OPERATOR_ALLOW_LEGACY_ADMIN_TOKEN=true
 STATIC_EOF
 
-  # ai.env static values
-  cat >> /etc/iconia.ai.env <<'STATIC_EOF'
-POLICY_BUCKET=iconia-prod-policy-169063643478
-EVENTS_BUCKET=iconia-prod-events-169063643478
-FIRMWARE_BUCKET=iconia-prod-firmware-169063643478
-ARTIFACTS_BUCKET=iconia-prod-artifacts-169063643478
+  # ai.env static values — 버킷명은 /etc/iconia.env 의 변수 사용 (계정ID 하드코딩 금지).
+  cat >> /etc/iconia.ai.env <<STATIC_EOF
+POLICY_BUCKET=${POLICY_BUCKET:-}
+EVENTS_BUCKET=${EVENTS_BUCKET:-}
+FIRMWARE_BUCKET=${FIRMWARE_BUCKET:-}
+ARTIFACTS_BUCKET=${ARTIFACTS_BUCKET:-}
 NODE_ENV=production
 PORT=8081
 NODE_OPTIONS=--max-old-space-size=384 --jitless
 STATIC_EOF
 
   # EXPORT_BUCKET alias (server config.js 는 EXPORT_BUCKET 키 사용)
-  env_set /etc/iconia.server.env EXPORT_BUCKET "iconia-prod-exports-169063643478"
+  env_set /etc/iconia.server.env EXPORT_BUCKET "${EXPORTS_BUCKET:-}"
   # EVENT_IMAGE_BUCKET alias
-  env_set /etc/iconia.server.env EVENT_IMAGE_BUCKET "iconia-prod-events-169063643478"
-  env_set /etc/iconia.ai.env    EVENT_IMAGE_BUCKET "iconia-prod-events-169063643478"
+  env_set /etc/iconia.server.env EVENT_IMAGE_BUCKET "${EVENTS_BUCKET:-}"
+  env_set /etc/iconia.ai.env    EVENT_IMAGE_BUCKET "${EVENTS_BUCKET:-}"
 
   # ── production 필수 키 (secretValidation.js 검증 통과용) — SSM Parameter 또는 생성값
   # DEVICE_API_KEY / APP_API_TOKEN / ADMIN_TOKEN — SSM Parameter Store 조회 후 fallback.

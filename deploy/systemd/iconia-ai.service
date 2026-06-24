@@ -40,7 +40,13 @@ RestrictSUIDSGID=true
 RestrictNamespaces=true
 RestrictRealtime=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
+# MemoryDenyWriteExecute 는 W+X 메모리 페이지를 차단한다.
+# Node.js V8 JIT (baseline/turbofan/sparkplug) 는 JIT 코드 페이지에 W+X 가 필요해
+# true 로 두면 SIGTRAP/baseline-compiler 크래시 (2026-06-25 잔재 결함).
+# undici 의 WASM 컴파일도 차단된다 → AI 서비스 부팅 불가.
+# 보안 hardening 약간 약화하지만 서비스 동작이 우선. RestrictNamespaces 등 다른
+# hardening 은 그대로 유지.
+MemoryDenyWriteExecute=false
 SystemCallArchitectures=native
 
 StandardOutput=journal
