@@ -109,7 +109,7 @@ locals {
 
 # -----------------------------------------------------------------------------
 # 1) ADMIN distribution — 운영 중. terraform import 흡수.
-#    import: terraform import aws_cloudfront_distribution.admin E2XTV9M8R3L6WT
+#    import: terraform import aws_cloudfront_distribution.admin E31RV3SRZ9E4UQ
 # -----------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "admin" {
   enabled             = true
@@ -122,7 +122,7 @@ resource "aws_cloudfront_distribution" "admin" {
   aliases = local.admin_alias_enabled ? [var.admin_domain] : []
 
   origin {
-    domain_name = "iconia-prod-alb-1600486872.ap-northeast-2.elb.amazonaws.com"
+    domain_name = "iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com"
     origin_id   = "iconia-prod-alb-admin"
 
     custom_origin_config {
