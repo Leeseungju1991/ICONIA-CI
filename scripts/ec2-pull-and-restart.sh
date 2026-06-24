@@ -505,7 +505,9 @@ inject_all_secrets() {
                DEVICE_API_KEY APP_API_TOKEN ADMIN_TOKEN \
                OPERATOR_JWT_ISSUER OPERATOR_JWT_AUDIENCE \
                DEVICE_PROVISIONING_KEK DEVICE_PROVISIONING_HMAC_PEPPER \
-               GEMINI_USER_KEY_ENC_MASTER; do
+               GEMINI_USER_KEY_ENC_MASTER \
+               CORS_ORIGINS REDIS_FAIL_CLOSE_DISABLED \
+               S3_KMS_KEY_ID STORAGE_PROVIDER; do
       awk -v k="$skey" '$0 !~ "^" k "=" { print }' "$envf" > "${envf}.tmp" && mv "${envf}.tmp" "$envf"
     done
     chown root:iconia "$envf"
@@ -524,6 +526,16 @@ PORT=8080
 NODE_OPTIONS=--max-old-space-size=384 --jitless
 OPERATOR_JWT_ISSUER=iconia-server
 OPERATOR_JWT_AUDIENCE=iconia-operator
+# CORS — 도메인 없는 초기 배포: ALB DNS 를 허용. 도메인 취득 후 교체.
+# Mobile app 은 Origin 헤더를 보내지 않으므로 실질 영향은 Admin web UI 접근 제한.
+CORS_ORIGINS=https://iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com,http://localhost:3000,exp://localhost:8081
+# Redis fail-close 우회 — redis npm 패키지 미설치 상태 (package.json 에 없음). 로그인 rate-limit 은
+# in-memory (인스턴스별 분리). 추후 redis 의존성 추가 후 이 변수 제거.
+REDIS_FAIL_CLOSE_DISABLED=1
+# KMS CMK — S3 PII 암호화 (storageAdapter.js 생산 필수). 2026-06-24 생성.
+S3_KMS_KEY_ID=d2571da2-659d-4106-9914-e27ff77939d5
+# Storage provider
+STORAGE_PROVIDER=s3
 STATIC_EOF
 
   # ai.env static values
