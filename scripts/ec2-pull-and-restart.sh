@@ -504,6 +504,7 @@ inject_all_secrets() {
                AWS_REGION ALB_DOMAIN NODE_ENV PORT NODE_OPTIONS \
                DEVICE_API_KEY APP_API_TOKEN ADMIN_TOKEN \
                OPERATOR_JWT_ISSUER OPERATOR_JWT_AUDIENCE \
+               OPERATOR_MFA_ENFORCE_ROLES OPERATOR_ALLOW_LEGACY_ADMIN_TOKEN \
                DEVICE_PROVISIONING_KEK DEVICE_PROVISIONING_HMAC_PEPPER \
                GEMINI_USER_KEY_ENC_MASTER \
                CORS_ORIGINS REDIS_FAIL_CLOSE_DISABLED \
@@ -526,9 +527,10 @@ PORT=8080
 NODE_OPTIONS=--max-old-space-size=384 --jitless
 OPERATOR_JWT_ISSUER=iconia-server
 OPERATOR_JWT_AUDIENCE=iconia-operator
-# CORS — 도메인 없는 초기 배포: ALB DNS 를 허용. 도메인 취득 후 교체.
+# CORS — ALB DNS + CloudFront admin 도메인 + 개발 origin.
 # Mobile app 은 Origin 헤더를 보내지 않으므로 실질 영향은 Admin web UI 접근 제한.
-CORS_ORIGINS=https://iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com,http://localhost:3000,exp://localhost:8081
+# CF admin 도메인 (E2OEPN5AT2O67Z, dlfp1lyn34gcj.cloudfront.net) 추가 — 2026-06-24.
+CORS_ORIGINS=https://iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com,https://dlfp1lyn34gcj.cloudfront.net,http://localhost:3000,exp://localhost:8081
 # Redis fail-close 우회 — redis npm 패키지 미설치 상태 (package.json 에 없음). 로그인 rate-limit 은
 # in-memory (인스턴스별 분리). 추후 redis 의존성 추가 후 이 변수 제거.
 REDIS_FAIL_CLOSE_DISABLED=1
@@ -536,6 +538,15 @@ REDIS_FAIL_CLOSE_DISABLED=1
 S3_KMS_KEY_ID=d2571da2-659d-4106-9914-e27ff77939d5
 # Storage provider
 STORAGE_PROVIDER=s3
+# MFA 강제 정책 — Pre-launch only.
+# 시드 admin(superadmin role) 은 TOTP 미등록 상태이므로 "all"/"superadmin" 설정 시
+# /api/v1/operator/me 403 ERR_OPERATOR_MFA_NOT_ENROLLED → 로그인 후 dashboard 진입 불가.
+# PoC 기간 한정 off — TOTP enroll 흐름 완료 후 반드시 "all" 로 복귀.
+# TODO: admin TOTP enroll UI/CLI 완료 시 OPERATOR_MFA_ENFORCE_ROLES=all 로 교체.
+OPERATOR_MFA_ENFORCE_ROLES=off
+# Legacy admin token 인증 — PoC 에서 Bearer ADMIN_TOKEN 방식 curl 테스트 허용.
+# TOTP 기반 operator JWT 흐름 안정화 후 false 로 복귀.
+OPERATOR_ALLOW_LEGACY_ADMIN_TOKEN=true
 STATIC_EOF
 
   # ai.env static values
