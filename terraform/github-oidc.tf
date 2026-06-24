@@ -190,7 +190,7 @@ data "aws_iam_policy_document" "github_deploy_ecr" {
       "ecs:ListTaskDefinitions",
     ]
     resources = ["*"] # ecs:UpdateService 는 cluster/service ARN 으로 좁힐 수 있으나
-                      # ECS 미구성 단계에서 ARN 미확정 — 인프라 확정 후 좁힐 것.
+    # ECS 미구성 단계에서 ARN 미확정 — 인프라 확정 후 좁힐 것.
   }
 }
 
