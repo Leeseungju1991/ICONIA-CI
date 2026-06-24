@@ -139,6 +139,11 @@ EVENT_IMAGE_BUCKET=${events_bucket}
 EXPORT_BUCKET=${exports_bucket}
 OTA_FIRMWARE_BUCKET=${firmware_bucket}
 ARTIFACTS_BUCKET=${artifacts_bucket}
+# [2] S3 버킷 static baking — 서비스 시작 전 반드시 있어야 하는 환경변수.
+POLICY_BUCKET=iconia-prod-policy-169063643478
+EVENTS_BUCKET=${events_bucket}
+EXPORTS_BUCKET=${exports_bucket}
+FIRMWARE_BUCKET=${firmware_bucket}
 EFS_MOUNT_PATH=/mnt/efs/iconia
 RDS_ENDPOINT=${rds_endpoint}
 RDS_PORT=5432
@@ -161,6 +166,21 @@ EVENT_STORE_BACKEND=${event_store_backend}
 EOF
 chown root:iconia /etc/iconia.env
 chmod 0640 /etc/iconia.env
+
+# [3] systemd drop-in — NODE_OPTIONS 메모리 제한 + jitless (t3.micro 1GB RAM OOM 방지).
+# /etc/systemd/system/iconia-{server,ai,admin}.service.d/limit-mem.conf 생성.
+# 이 drop-in 은 systemd unit 이 설치되기 전에 생성해도 안전 (daemon-reload 로 반영).
+for svc in server ai admin; do
+  mkdir -p "/etc/systemd/system/iconia-$${svc}.service.d"
+  cat > "/etc/systemd/system/iconia-$${svc}.service.d/limit-mem.conf" <<'DROPIN_EOF'
+[Service]
+# t3.micro 1GB RAM OOM 방지 — Node.js heap을 384MB로 제한, JIT 비활성(메모리 절약).
+# user-data.sh.tftpl 에서 baking. ASG instance refresh 시 자동 적용.
+Environment="NODE_OPTIONS=--max-old-space-size=384 --jitless"
+DROPIN_EOF
+  echo "INFO: systemd drop-in 생성: /etc/systemd/system/iconia-$${svc}.service.d/limit-mem.conf"
+done
+systemctl daemon-reload || true
 
 # Admin service-specific env. iconia-admin.service 가 EnvironmentFile=-/etc/iconia.admin.env 로 로드.
 # ROOT_DOMAIN 이 비어있으면 개발 모드 fallback.

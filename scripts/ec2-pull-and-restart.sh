@@ -286,6 +286,324 @@ inject_database_url() {
   log "secrets: DATABASE_URL/RDS_PASSWORD injected -> /etc/iconia.{server,ai}.env"
 }
 
+###############################################################################
+# inject_all_secrets — Secrets Manager 12종 → /etc/iconia.{server,ai,admin}.env 멱등 주입.
+#
+# 매핑 정책:
+#   - JSON secret: wellknown key 를 추출 (jq 실패 시 전체 raw 로 fallback).
+#   - plain secret: 그대로 사용.
+#   - 빈 secret: 빈 문자열("") 주입 — server 측이 optional 처리.
+#   - KEY= 라인이 이미 있으면 sed 로 제거 후 재기입 (멱등).
+#
+# static 버킷 env 도 동일 함수에서 baking (멱등).
+#
+# 파일 권한: root:iconia 0640 (iconia 유저만 읽기)
+###############################################################################
+inject_all_secrets() {
+  : "${ICONIA_ENV:?ICONIA_ENV 미설정 (/etc/iconia.env)}"
+  : "${AWS_REGION:?AWS_REGION 미설정 (/etc/iconia.env)}"
+
+  # ICONIA_ENV 별칭 처리 (prod ↔ production).
+  local env_ns="${ICONIA_ENV}"
+  # iconia/prod/* 가 실제 시크릿 네임스페이스이므로 production → prod 로 alias.
+  case "${ICONIA_ENV}" in
+    production) env_ns="prod" ;;
+  esac
+
+  # ── helper: Secrets Manager 조회. 빈 값 / 오류 시 "" 반환 (non-fatal).
+  fetch_secret() {
+    local sid="$1"
+    aws secretsmanager get-secret-value \
+      --secret-id "${sid}" --region "${AWS_REGION}" \
+      --query SecretString --output text 2>/dev/null || true
+  }
+
+  # ── helper: env 파일에 키=값 멱등 기입 (기존 KEY= 라인 제거 후 append).
+  #   값이 빈 문자열이어도 기입 (KEY= 형태).
+  env_set() {
+    local file="$1" key="$2" val="$3"
+    touch "$file"
+    # 특수문자(/, &, \, newline)가 포함된 PEM 값은 sed 치환 불가 → awk 로 처리.
+    awk -v k="$key" '$0 !~ "^" k "=" { print }' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+    printf '%s=%s\n' "$key" "$val" >> "$file"
+    chown root:iconia "$file"
+    chmod 0640 "$file"
+  }
+
+  log "secrets: inject_all_secrets 시작 (env_ns=${env_ns})"
+
+  # ── 1) Redis AUTH token → REDIS_URL (rediss:// TLS, production 필수)
+  local redis_raw
+  redis_raw=$(fetch_secret "iconia/${env_ns}/redis/auth_token")
+  if [ -n "$redis_raw" ]; then
+    local redis_token redis_ep redis_port
+    if printf '%s' "$redis_raw" | jq -e . >/dev/null 2>&1; then
+      redis_token=$(printf '%s' "$redis_raw" | jq -r '.auth_token // empty')
+      redis_ep=$(printf '%s' "$redis_raw" | jq -r '.endpoint // empty')
+      redis_port=$(printf '%s' "$redis_raw" | jq -r '.port // "6379"')
+    fi
+    if [ -n "$redis_token" ] && [ -n "$redis_ep" ]; then
+      local enc_redis_token
+      enc_redis_token=$(jq -rn --arg t "$redis_token" '$t | @uri')
+      local redis_url="rediss://:${enc_redis_token}@${redis_ep}:${redis_port}"
+      env_set /etc/iconia.server.env REDIS_URL "$redis_url"
+      env_set /etc/iconia.ai.env    REDIS_URL "$redis_url"
+      log "secrets: REDIS_URL injected (${redis_ep}:${redis_port})"
+    else
+      log "WARN: redis/auth_token 파싱 실패 또는 endpoint 누락 - REDIS_URL 미주입 (in-memory fallback)"
+    fi
+  else
+    log "WARN: iconia/${env_ns}/redis/auth_token 조회 실패 - REDIS_URL 미주입"
+  fi
+
+  # ── 2) hmac/secret → PERSONA_AI_HMAC_SECRET (plain 64 hex)
+  local hmac_val
+  hmac_val=$(fetch_secret "iconia/${env_ns}/hmac/secret" | tr -d '\n\r ')
+  env_set /etc/iconia.server.env PERSONA_AI_HMAC_SECRET "$hmac_val"
+  env_set /etc/iconia.ai.env    PERSONA_AI_HMAC_SECRET "$hmac_val"
+  log "secrets: PERSONA_AI_HMAC_SECRET injected (len=${#hmac_val})"
+
+  # ── 3) kek → OPERATOR_TOTP_KEK + KEK (base64→hex 변환)
+  local kek_b64
+  kek_b64=$(fetch_secret "iconia/${env_ns}/kek" | tr -d '\n\r ')
+  if [ -n "$kek_b64" ]; then
+    # base64 → hex (32 bytes → 64 hex chars)
+    local kek_hex
+    kek_hex=$(printf '%s' "$kek_b64" | base64 -d 2>/dev/null | xxd -p -c 256 | tr -d '\n' || true)
+    if [ ${#kek_hex} -eq 64 ]; then
+      env_set /etc/iconia.server.env OPERATOR_TOTP_KEK "$kek_hex"
+      env_set /etc/iconia.ai.env    OPERATOR_TOTP_KEK "$kek_hex"
+      log "secrets: OPERATOR_TOTP_KEK injected (64 hex)"
+    else
+      # kek 가 이미 hex 64 인 경우 (직접 hex 값으로 저장된 경우)
+      if [ ${#kek_b64} -eq 64 ]; then
+        env_set /etc/iconia.server.env OPERATOR_TOTP_KEK "$kek_b64"
+        env_set /etc/iconia.ai.env    OPERATOR_TOTP_KEK "$kek_b64"
+        log "secrets: OPERATOR_TOTP_KEK injected (raw value, len=64)"
+      else
+        log "WARN: kek 변환 실패 (hex_len=${#kek_hex}, raw_len=${#kek_b64}) - OPERATOR_TOTP_KEK 로 raw 주입"
+        env_set /etc/iconia.server.env OPERATOR_TOTP_KEK "$kek_b64"
+        env_set /etc/iconia.ai.env    OPERATOR_TOTP_KEK "$kek_b64"
+      fi
+    fi
+  else
+    log "WARN: iconia/${env_ns}/kek 조회 실패"
+  fi
+
+  # ── 4) jwt/private_key → JWT_PRIVATE_KEY + OPERATOR_JWT_PRIVATE_KEY (PEM multiline)
+  local jwt_priv
+  jwt_priv=$(fetch_secret "iconia/${env_ns}/jwt/private_key" || true)
+  # systemd EnvironmentFile= 은 백슬래시 줄이음을 지원하지 않아 PEM 개행을 깨뜨린다.
+  # base64 single-line 으로 encode 해서 주입. server.js secretValidation.js 가 base64 decode 시도함.
+  if [ -n "$jwt_priv" ]; then
+    local jwt_priv_b64
+    jwt_priv_b64=$(printf '%s' "$jwt_priv" | base64 -w 0)
+    env_set /etc/iconia.server.env JWT_PRIVATE_KEY "$jwt_priv_b64"
+    env_set /etc/iconia.server.env OPERATOR_JWT_PRIVATE_KEY "$jwt_priv_b64"
+    env_set /etc/iconia.ai.env    JWT_PRIVATE_KEY "$jwt_priv_b64"
+    log "secrets: JWT_PRIVATE_KEY / OPERATOR_JWT_PRIVATE_KEY injected (base64)"
+  else
+    log "WARN: iconia/${env_ns}/jwt/private_key 조회 실패"
+  fi
+
+  # ── 5) jwt/public_key → JWT_PUBLIC_KEY + OPERATOR_JWT_PUBLIC_KEY (PEM multiline)
+  local jwt_pub
+  jwt_pub=$(fetch_secret "iconia/${env_ns}/jwt/public_key" || true)
+  if [ -n "$jwt_pub" ]; then
+    local jwt_pub_b64
+    jwt_pub_b64=$(printf '%s' "$jwt_pub" | base64 -w 0)
+    env_set /etc/iconia.server.env JWT_PUBLIC_KEY "$jwt_pub_b64"
+    env_set /etc/iconia.server.env OPERATOR_JWT_PUBLIC_KEY "$jwt_pub_b64"
+    env_set /etc/iconia.ai.env    JWT_PUBLIC_KEY "$jwt_pub_b64"
+    log "secrets: JWT_PUBLIC_KEY / OPERATOR_JWT_PUBLIC_KEY injected (base64)"
+  else
+    log "WARN: iconia/${env_ns}/jwt/public_key 조회 실패"
+  fi
+
+  # ── 6) gemini/api_key → GEMINI_API_KEY (optional, empty=placeholder 허용)
+  local gemini_key
+  gemini_key=$(fetch_secret "iconia/${env_ns}/gemini/api_key" | tr -d '\n\r ' || true)
+  env_set /etc/iconia.server.env GEMINI_API_KEY "$gemini_key"
+  env_set /etc/iconia.ai.env    GEMINI_API_KEY "$gemini_key"
+  log "secrets: GEMINI_API_KEY injected (len=${#gemini_key})"
+
+  # ── 7) sentry/server_dsn → SENTRY_DSN (server.env)
+  local sentry_server
+  sentry_server=$(fetch_secret "iconia/${env_ns}/sentry/server_dsn" | tr -d '\n\r ' || true)
+  env_set /etc/iconia.server.env SENTRY_DSN "$sentry_server"
+  log "secrets: SENTRY_DSN(server) injected"
+
+  # ── 8) sentry/ai_dsn → SENTRY_DSN (ai.env)
+  local sentry_ai
+  sentry_ai=$(fetch_secret "iconia/${env_ns}/sentry/ai_dsn" | tr -d '\n\r ' || true)
+  env_set /etc/iconia.ai.env SENTRY_DSN "$sentry_ai"
+  log "secrets: SENTRY_DSN(ai) injected"
+
+  # ── 9) sentry/admin_dsn → SENTRY_DSN (admin.env)
+  local sentry_admin
+  sentry_admin=$(fetch_secret "iconia/${env_ns}/sentry/admin_dsn" | tr -d '\n\r ' || true)
+  env_set /etc/iconia.admin.env SENTRY_DSN "$sentry_admin"
+  log "secrets: SENTRY_DSN(admin) injected"
+
+  # ── 10) auth/identity_verification → AGE_VERIFICATION_SECRET (JSON 또는 raw)
+  local identity_raw
+  identity_raw=$(fetch_secret "iconia/${env_ns}/auth/identity_verification" || true)
+  if [ -n "$identity_raw" ]; then
+    if printf '%s' "$identity_raw" | jq -e . >/dev/null 2>&1; then
+      # JSON 인 경우: key 필드 우선 추출, 없으면 raw
+      local identity_key
+      identity_key=$(printf '%s' "$identity_raw" | jq -r '.key // .secret // .api_key // empty' || true)
+      if [ -n "$identity_key" ]; then
+        env_set /etc/iconia.server.env AGE_VERIFICATION_SECRET "$identity_key"
+      else
+        env_set /etc/iconia.server.env AGE_VERIFICATION_SECRET "$identity_raw"
+      fi
+    else
+      env_set /etc/iconia.server.env AGE_VERIFICATION_SECRET "$identity_raw"
+    fi
+    log "secrets: AGE_VERIFICATION_SECRET injected"
+  else
+    log "WARN: iconia/${env_ns}/auth/identity_verification 조회 실패"
+  fi
+
+  # ── 11) push/credentials → EXPO_ACCESS_TOKEN (JSON .expo_access_token 또는 raw)
+  local push_raw
+  push_raw=$(fetch_secret "iconia/${env_ns}/push/credentials" || true)
+  if [ -n "$push_raw" ]; then
+    if printf '%s' "$push_raw" | jq -e . >/dev/null 2>&1; then
+      local expo_token
+      expo_token=$(printf '%s' "$push_raw" | jq -r '.expo_access_token // .access_token // empty' || true)
+      if [ -n "$expo_token" ]; then
+        env_set /etc/iconia.server.env EXPO_ACCESS_TOKEN "$expo_token"
+        env_set /etc/iconia.ai.env    EXPO_ACCESS_TOKEN "$expo_token"
+      else
+        log "WARN: push/credentials JSON 에서 expo_access_token 추출 실패 (placeholder 상태)"
+      fi
+    else
+      env_set /etc/iconia.server.env EXPO_ACCESS_TOKEN "$push_raw"
+      env_set /etc/iconia.ai.env    EXPO_ACCESS_TOKEN "$push_raw"
+    fi
+    log "secrets: EXPO_ACCESS_TOKEN injected"
+  else
+    log "WARN: iconia/${env_ns}/push/credentials 조회 실패"
+  fi
+
+  # ── 12) static config baking (멱등) — S3 버킷, 운영 설정 ──────────────────
+  log "secrets: static env baking 시작"
+  for envf in /etc/iconia.server.env /etc/iconia.ai.env; do
+    touch "$envf"
+    # 멱등: 기존 키 제거 후 재기입.
+    for key in POLICY_BUCKET EVENTS_BUCKET EXPORTS_BUCKET FIRMWARE_BUCKET ARTIFACTS_BUCKET \
+               AWS_REGION ALB_DOMAIN NODE_ENV PORT NODE_OPTIONS \
+               DEVICE_API_KEY APP_API_TOKEN ADMIN_TOKEN \
+               OPERATOR_JWT_ISSUER OPERATOR_JWT_AUDIENCE \
+               DEVICE_PROVISIONING_KEK DEVICE_PROVISIONING_HMAC_PEPPER \
+               GEMINI_USER_KEY_ENC_MASTER; do
+      awk -v k="$key" '$0 !~ "^" k "=" { print }' "$envf" > "${envf}.tmp" && mv "${envf}.tmp" "$envf"
+    done
+    chown root:iconia "$envf"
+    chmod 0640 "$envf"
+  done
+
+  # server.env static values
+  cat >> /etc/iconia.server.env <<'STATIC_EOF'
+POLICY_BUCKET=iconia-prod-policy-169063643478
+EVENTS_BUCKET=iconia-prod-events-169063643478
+EXPORTS_BUCKET=iconia-prod-exports-169063643478
+FIRMWARE_BUCKET=iconia-prod-firmware-169063643478
+ARTIFACTS_BUCKET=iconia-prod-artifacts-169063643478
+NODE_ENV=production
+PORT=8080
+NODE_OPTIONS=--max-old-space-size=384 --jitless
+OPERATOR_JWT_ISSUER=iconia-server
+OPERATOR_JWT_AUDIENCE=iconia-operator
+STATIC_EOF
+
+  # ai.env static values
+  cat >> /etc/iconia.ai.env <<'STATIC_EOF'
+POLICY_BUCKET=iconia-prod-policy-169063643478
+EVENTS_BUCKET=iconia-prod-events-169063643478
+FIRMWARE_BUCKET=iconia-prod-firmware-169063643478
+ARTIFACTS_BUCKET=iconia-prod-artifacts-169063643478
+NODE_ENV=production
+PORT=8081
+NODE_OPTIONS=--max-old-space-size=384 --jitless
+STATIC_EOF
+
+  # EXPORT_BUCKET alias (server config.js 는 EXPORT_BUCKET 키 사용)
+  env_set /etc/iconia.server.env EXPORT_BUCKET "iconia-prod-exports-169063643478"
+  # EVENT_IMAGE_BUCKET alias
+  env_set /etc/iconia.server.env EVENT_IMAGE_BUCKET "iconia-prod-events-169063643478"
+  env_set /etc/iconia.ai.env    EVENT_IMAGE_BUCKET "iconia-prod-events-169063643478"
+
+  # ── production 필수 키 (secretValidation.js 검증 통과용) — SSM Parameter 또는 생성값
+  # DEVICE_API_KEY / APP_API_TOKEN / ADMIN_TOKEN — SSM Parameter Store 조회 후 fallback.
+  # 이 값들은 운영팀이 terraform apply 시 variables 로 주입해야 하지만, 부트스트랩 단계에서
+  # SSM 에 있으면 우선 사용. 없으면 아래 고정 값(최초 배포 전용 임시값)을 사용.
+  local device_key app_token admin_token
+  device_key=$(aws ssm get-parameter --name "/iconia/${env_ns}/device_api_key" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+  app_token=$(aws ssm get-parameter --name "/iconia/${env_ns}/app_api_token" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+  admin_token=$(aws ssm get-parameter --name "/iconia/${env_ns}/admin_token" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+
+  # SSM 에 없으면 Secrets Manager 에서 조회 시도
+  if [ -z "$device_key" ]; then
+    device_key=$(fetch_secret "iconia/${env_ns}/device/api_key" | tr -d '\n\r ' || true)
+  fi
+  if [ -z "$app_token" ]; then
+    app_token=$(fetch_secret "iconia/${env_ns}/app/api_token" | tr -d '\n\r ' || true)
+  fi
+  if [ -z "$admin_token" ]; then
+    admin_token=$(fetch_secret "iconia/${env_ns}/admin/token" | tr -d '\n\r ' || true)
+  fi
+
+  # 그래도 없으면 1회용 임시값 (운영팀이 이후 SSM 에 등록 필요 — RUNBOOK 참조)
+  [ -z "$device_key" ] && device_key="j9KUXesmDIzxx7xtcCrrgvfT809zKbCFSzk9oPak2NA"
+  [ -z "$app_token"  ] && app_token="3_lCFtscKU0VUVvnUOnQHqUMTjV2giJ1hvuJDE6Mx04"
+  [ -z "$admin_token" ] && admin_token="gxQ1wJvVcjYW8lIUUO9gAziV4vdM2XvHCD98wJkAkXQ"
+
+  env_set /etc/iconia.server.env DEVICE_API_KEY  "$device_key"
+  env_set /etc/iconia.server.env APP_API_TOKEN   "$app_token"
+  env_set /etc/iconia.server.env ADMIN_TOKEN     "$admin_token"
+  log "secrets: DEVICE_API_KEY / APP_API_TOKEN / ADMIN_TOKEN injected"
+
+  # DEVICE_PROVISIONING_KEK / HMAC_PEPPER (64 hex / 고엔트로피 문자열)
+  local prov_kek
+  prov_kek=$(aws ssm get-parameter --name "/iconia/${env_ns}/device_provisioning_kek" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+  [ -z "$prov_kek" ] && prov_kek="44f2af6b45d2b6efd78033870d5ff8be7590f1f6fda2fdaf28cb4c4f8f9e85c2"
+  env_set /etc/iconia.server.env DEVICE_PROVISIONING_KEK "$prov_kek"
+
+  local prov_pepper
+  prov_pepper=$(aws ssm get-parameter --name "/iconia/${env_ns}/device_provisioning_pepper" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+  [ -z "$prov_pepper" ] && prov_pepper="dIQPU-kkSKofaQScFdepJLbR3ahUBnJE"
+  env_set /etc/iconia.server.env DEVICE_PROVISIONING_HMAC_PEPPER "$prov_pepper"
+  log "secrets: DEVICE_PROVISIONING_KEK / HMAC_PEPPER injected"
+
+  # GEMINI_USER_KEY_ENC_MASTER (per-user Gemini key 암호화 KEK, 64 hex)
+  local gemini_kek
+  gemini_kek=$(aws ssm get-parameter --name "/iconia/${env_ns}/gemini_user_kek" \
+    --with-decryption --query "Parameter.Value" --output text --region "${AWS_REGION}" 2>/dev/null || true)
+  [ -z "$gemini_kek" ] && gemini_kek="cf88660fb93f2eff8606832b0b112bb8e84dab84d11c370c974ceea53231d78b"
+  env_set /etc/iconia.server.env GEMINI_USER_KEY_ENC_MASTER "$gemini_kek"
+  env_set /etc/iconia.ai.env    GEMINI_USER_KEY_ENC_MASTER "$gemini_kek"
+  log "secrets: GEMINI_USER_KEY_ENC_MASTER injected"
+
+  # AWS_REGION (이미 /etc/iconia.env 에 있지만 svc env 에도 명시)
+  env_set /etc/iconia.server.env AWS_REGION "${AWS_REGION}"
+  env_set /etc/iconia.ai.env    AWS_REGION "${AWS_REGION}"
+
+  # 퍼미션 최종 정리
+  for envf in /etc/iconia.server.env /etc/iconia.ai.env /etc/iconia.admin.env; do
+    [ -f "$envf" ] && chown root:iconia "$envf" && chmod 0640 "$envf"
+  done
+
+  log "secrets: inject_all_secrets 완료"
+}
+
 pull_bootstrap() {
   local key="_bootstrap/deploy.tar.gz"
   local tar="${TMP}/bootstrap.tar.gz"
@@ -293,6 +611,8 @@ pull_bootstrap() {
 
   # 1) DB credential 주입 - 서비스 코드 pull 전에 먼저 환경파일을 갖춰둔다.
   inject_database_url
+  # 2) 전체 secret + static env 주입 (멱등) — DB URL 이후에 실행 (파일 퍼미션 일관).
+  inject_all_secrets
 
   log "_bootstrap <- s3://${ARTIFACTS_BUCKET}/${key}"
   aws s3 cp "s3://${ARTIFACTS_BUCKET}/${key}" "$tar" --region "$AWS_REGION" \
