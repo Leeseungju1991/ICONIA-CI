@@ -1,16 +1,8 @@
 ###############################################################################
-# alarms.tf - main terraform stack 에서 deploy/aws/alarms.tf 모듈을 통합.
+# alarms.tf — deploy/aws alarms 모듈 통합 + SLO/보안 알람.
 #
-# 이전: deploy/aws 에서 별도 `terraform init/apply` 필요 → 운영자가 자주 누락.
-# 변경: main terraform/ 의 `terraform apply` 한 번이 알람까지 만든다.
-#
-# 본 파일은 deploy/aws/alarms.tf 를 child module 로 호출만 한다. 알람 정의
-# 자체는 deploy/aws/alarms.tf 가 정본 (CloudWatch alarm rule schema 는 IaC 도입
-# 이전 cloudwatch-alarms.json 과 1:1 추적 중이라 그쪽에서 단일 source of truth
-# 유지).
-#
-# child module 에서 사용할 수 없는 backend/provider/terraform 블록은 의도적으로
-# 그쪽에 남겨둔 채(terraform module 은 본 블록 무시), 입력 변수만 주입.
+# module "alarms": deploy/aws/alarms.tf 를 child module 로 호출 (SNS + 기본 알람).
+# 이후 블록: SLO(5xx/latency/fallback), RDS/Redis/GuardDuty 추가 알람.
 ###############################################################################
 
 module "alarms" {
@@ -413,7 +405,7 @@ resource "aws_cloudwatch_metric_alarm" "slo_rds_storage_low" {
   namespace           = "AWS/RDS"
   metric_name         = "FreeStorageSpace"
   statistic           = "Average"
-  period              = 3600 # 1시간.
+  period              = 3600
   evaluation_periods  = 1
   threshold           = var.rds_free_storage_threshold_bytes
   comparison_operator = "LessThanThreshold"
@@ -423,4 +415,33 @@ resource "aws_cloudwatch_metric_alarm" "slo_rds_storage_low" {
   tags                = merge(var.tags, { slo = "true", resource = "rds" })
 
   dimensions = { DBInstanceIdentifier = aws_db_instance.postgres[0].identifier }
+}
+
+###############################################################################
+# 8) GuardDuty HIGH findings — 보안 이벤트 즉시 알람 (SNS 라우팅).
+#    security.tf 의 aws_cloudwatch_metric_alarm.guardduty_high_findings 는
+#    detector ID 참조만 담당하며, 본 블록에서 SNS action 을 연결한다.
+###############################################################################
+
+resource "aws_cloudwatch_metric_alarm" "guardduty_findings_sns" {
+  count               = var.enable_guardduty ? 1 : 0
+  alarm_name          = "${local.name_prefix}-guardduty-findings-sns"
+  alarm_description   = "[SECURITY] GuardDuty HIGH severity findings >= 1 (1h). 보안 위협 즉시 조사 필요."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  threshold           = 1
+  metric_name         = "FindingCount"
+  namespace           = "AWS/GuardDuty"
+  period              = 3600
+  statistic           = "Sum"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.alarms.sns_topic_arn]
+  ok_actions          = [module.alarms.sns_topic_arn]
+
+  dimensions = {
+    DetectorId = aws_guardduty_detector.iconia[0].id
+    Severity    = "HIGH"
+  }
+
+  tags = merge(var.tags, { component = "security", purpose = "guardduty-alert" })
 }

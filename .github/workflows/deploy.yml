@@ -143,14 +143,17 @@ jobs:
         run: echo "version=$(date -u +%Y%m%d-%H%M%SZ)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: 빌드 + S3 업로드
+        env:
+          ARTIFACTS_BUCKET: ${{ secrets.ICONIA_ARTIFACTS_BUCKET }}
+          DEPLOY_VERSION: ${{ steps.ver.outputs.version }}
         run: |
           chmod +x ICONIA-CI/scripts/*.sh
           ICONIA-CI/scripts/build-and-upload.sh \
             --service "$SERVICE" \
             --repo-root "$GITHUB_WORKSPACE" \
-            --bucket "${{ secrets.ICONIA_ARTIFACTS_BUCKET }}" \
+            --bucket "$ARTIFACTS_BUCKET" \
             --region "$AWS_REGION" \
-            --version "${{ steps.ver.outputs.version }}"
+            --version "$DEPLOY_VERSION"
 
   # ---------------------------------------------------------------------------
   # 4) deploy — SSM 트리거. 호스트에서 atomic swap + migrate + 자동 롤백.
@@ -169,11 +172,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: SSM 배포 트리거
+        env:
+          EC2_INSTANCE_ID: ${{ secrets.ICONIA_EC2_INSTANCE_ID }}
         run: |
           chmod +x scripts/trigger-deploy.sh
           ARGS=(--service "$SERVICE" --region "$AWS_REGION")
-          [ -n "${{ secrets.ICONIA_EC2_INSTANCE_ID }}" ] && \
-            ARGS+=(--instance-id "${{ secrets.ICONIA_EC2_INSTANCE_ID }}")
+          [ -n "$EC2_INSTANCE_ID" ] && ARGS+=(--instance-id "$EC2_INSTANCE_ID")
           scripts/trigger-deploy.sh "${ARGS[@]}"
 
   # ---------------------------------------------------------------------------
@@ -187,10 +191,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 외부 스모크 테스트
+        env:
+          ROOT_DOMAIN: ${{ secrets.ICONIA_ROOT_DOMAIN }}
         run: |
           chmod +x scripts/post-deploy-smoke.sh
           scripts/post-deploy-smoke.sh \
-            --root-domain "${{ secrets.ICONIA_ROOT_DOMAIN }}" \
+            --root-domain "$ROOT_DOMAIN" \
             --env prod --service "$SERVICE"
       - name: 출시 요약
         if: success()

@@ -1,29 +1,16 @@
 ###############################################################################
-# security.tf — V1.0 정식 출시 보안 베이스라인 (감사·추적·관측).
+# security.tf — V1.0 보안 베이스라인 (감사·추적·위협탐지).
 #
-# 본 파일은 ICONIA V1.0 출시 시점에 "권장" 되는 4종 AWS 보안 서비스의 IaC
-# 정의를 모은다. 운영 비용/계정 정책 영향이 있어 **기본값 모두 false** —
-# 운영자가 명시적으로 토글:
-#
+# 4종 AWS 보안 서비스 + GuardDuty findings CloudWatch 알람:
 #   1) VPC Flow Logs       (var.enable_vpc_flow_logs)
-#      - VPC 진입/이탈 트래픽을 CloudWatch Logs 로 송출. 침해 사고 시
-#        타임라인 재구성에 필수. 비용은 GB 단위 ingest fee.
-#   2) CloudTrail (org/account trail) (var.enable_cloudtrail)
-#      - IAM/콘솔/API 모든 변경 추적. 90일/감사 365일 표준.
-#   3) AWS Config             (var.enable_aws_config)
-#      - 리소스 변경 이력 + Conformance Pack(PCI/CIS). 운영 부담 큼 →
-#        본 IaC 는 *recorder* + *delivery channel* 만 만들고 rule 은 별도.
-#   4) GuardDuty              (var.enable_guardduty)
-#      - 위협 탐지. 30일 무료 트라이얼 후 GB 기반 과금.
+#   2) CloudTrail          (var.enable_cloudtrail)
+#      - multi-region trail + log file integrity validation ON.
+#   3) AWS Config          (var.enable_aws_config)
+#   4) GuardDuty           (var.enable_guardduty)
+#      - 30일 무료 트라이얼 후 GB 기반 과금.
+#      - findings EventBridge → CloudWatch Alarm (GuardDutyHighFindings).
 #
-# Security Hub 는 GuardDuty/Config 통합 콘솔. CIS/PCI 자동평가가 필요한 경우
-# 별도 라운드에서 활성. 본 IaC 는 미포함.
-#
-# 안전 설계:
-#   - 모든 리소스 count=var.enable_* ? 1 : 0. 토글 OFF 면 plan diff 0.
-#   - flow log 의 CW log group retention 은 var.flow_logs_retention_days (기본 30).
-#   - CloudTrail S3 버킷은 별도 (var.cloudtrail_bucket_name 비우면 자동 생성).
-#     기존 organization trail 이 있다면 enable_cloudtrail=false 로 두고 중복 회피.
+# 토글 OFF 시 plan diff 0 (멱등).
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -262,7 +249,7 @@ resource "aws_cloudtrail" "iconia" {
   name                          = "${local.name_prefix}-trail"
   s3_bucket_name                = local.cloudtrail_bucket_effective
   include_global_service_events = true
-  is_multi_region_trail         = false # multi-region/org trail 은 별도.
+  is_multi_region_trail         = true
   enable_log_file_validation    = true
   tags                          = merge(var.tags, { component = "security" })
 
@@ -377,13 +364,40 @@ resource "aws_config_configuration_recorder_status" "iconia" {
 }
 
 # -----------------------------------------------------------------------------
-# 4) GuardDuty — detector. findings 는 자동으로 EventBridge 로 흐름.
+# 4) GuardDuty — detector + findings → CloudWatch Alarm.
 # -----------------------------------------------------------------------------
 resource "aws_guardduty_detector" "iconia" {
   count                        = var.enable_guardduty ? 1 : 0
   enable                       = true
   finding_publishing_frequency = "FIFTEEN_MINUTES"
   tags                         = merge(var.tags, { component = "security" })
+}
+
+variable "guardduty_high_findings_threshold" {
+  description = "GuardDuty HIGH/CRITICAL severity findings 수 임계 (1시간). 초과 시 SNS alert."
+  type        = number
+  default     = 1
+}
+
+resource "aws_cloudwatch_metric_alarm" "guardduty_high_findings" {
+  count               = var.enable_guardduty ? 1 : 0
+  alarm_name          = "${local.name_prefix}-guardduty-high-findings"
+  alarm_description   = "[SECURITY] GuardDuty HIGH/CRITICAL findings >= ${var.guardduty_high_findings_threshold} (1h). 즉시 조사 필요."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  threshold           = var.guardduty_high_findings_threshold
+  metric_name         = "FindingCount"
+  namespace           = "AWS/GuardDuty"
+  period              = 3600
+  statistic           = "Sum"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DetectorId = aws_guardduty_detector.iconia[0].id
+    Severity    = "HIGH"
+  }
+
+  tags = merge(var.tags, { component = "security", purpose = "guardduty-alert" })
 }
 
 # -----------------------------------------------------------------------------

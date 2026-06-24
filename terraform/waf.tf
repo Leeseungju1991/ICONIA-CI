@@ -1,20 +1,15 @@
 ###############################################################################
-# waf.tf — 2026-06-15 (사용자 요청) Production WAF.
+# waf.tf — ALB WAFv2 (Regional).
 #
-# 정책:
-#   · ALB 와 CloudFront 분배(d7gw1fdjnkghz, ADMIN) 앞단에 WAFv2 Regional + Global 적용.
-#   · Rate-based rule: 5분 윈도우 IP당 2000 요청 초과 시 차단 (DDoS / 봇 보호).
-#   · AWS Managed Rules: Core / SQLi / Known Bad Inputs / Bot Control (관측 모드부터).
-#   · Geo block: 미사용 (사용자 요청 시 활성화).
-#   · 변수 var.enable_waf 로 토글. default=false → 안전 기본.
-#     terraform.tfvars 에 enable_waf=true 설정 후 plan/apply 로 활성.
+# Rules (우선순위 순):
+#   1) rate-limit-ip-5min     : IP 당 5분 2000req 초과 → BLOCK 429
+#   2) AWSManagedRulesCommonRuleSet (CRS)   : BLOCK (SizeRestrictions_BODY=COUNT)
+#   3) AWSManagedRulesKnownBadInputsRuleSet : BLOCK
+#   4) AWSManagedRulesSQLiRuleSet           : BLOCK
+#   5) AWSManagedRulesAmazonIpReputationList: BLOCK
 #
-# 비용 (대략, ap-northeast-2):
-#   · Web ACL 기본: $5/month
-#   · Rule 당: $1/month × (rate-based 1 + managed 4) = $5
-#   · 요청 평가: $0.60 per 1M
-#   · Bot Control: $10/month + $1 per 1M label
-#   · 총 운영 비용 추정: $20~$50/month (트래픽 기반)
+# 토글: var.enable_waf (tfvars 에서 true 설정 필요).
+# 비용: Web ACL $5 + Rule $5 + 요청 $0.60/1M (ap-northeast-2).
 ###############################################################################
 
 variable "enable_waf" {
@@ -82,7 +77,6 @@ resource "aws_wafv2_web_acl" "alb_regional" {
       managed_rule_group_statement {
         vendor_name = "AWS"
         name        = "AWSManagedRulesCommonRuleSet"
-        # 본문 검사 size limit excluded (대용량 chat payload 보호).
         rule_action_override {
           name = "SizeRestrictions_BODY"
           action_to_use {
@@ -145,13 +139,13 @@ resource "aws_wafv2_web_acl" "alb_regional" {
     }
   }
 
-  # --- Rule 5: AWS Managed Amazon IP Reputation (관측 모드부터) ---
+  # --- Rule 5: AWS Managed Amazon IP Reputation ---
   rule {
     name     = "AWS-ManagedRulesAmazonIpReputationList"
     priority = 40
 
     override_action {
-      count {} # 관측 모드 — 실 차단 전 sampled_requests 모니터링.
+      none {}
     }
 
     statement {

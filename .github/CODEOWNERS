@@ -1,0 +1,10 @@
+# CODEOWNERS — CI/CD 워크플로우 변경은 반드시 ops 팀 리뷰 필요.
+#
+# GitHub PR merge 전 listed owner 의 approval 이 자동 요구된다
+# (repo Settings > Branches > Require review from Code Owners 활성 필요).
+#
+# .github/workflows/** 변경: supply-chain 위험(임의 워크플로우 삽입)을 차단.
+# terraform/**           변경: 인프라 변경 승인 게이트.
+
+.github/workflows/**    @Leeseungju1991
+terraform/**            @Leeseungju1991
