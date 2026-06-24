@@ -41,16 +41,19 @@ command -v aws >/dev/null || { echo "ERR: aws CLI 필요" >&2; exit 1; }
 log() { printf '[deploy %s] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
 # Instance 미지정 시 태그로 조회.
+# ASG 환경에서는 복수 인스턴스가 있을 수 있으므로 첫 번째 running 인스턴스를 선택.
+# 태그: Name=${NAME_PREFIX}-asg-host (ASG launch template 태그 규칙과 일치).
 if [ -z "$INSTANCE_ID" ]; then
-  log "InstanceId 미지정 — 태그(Name=${NAME_PREFIX}-host) 조회"
+  log "InstanceId 미지정 — 태그(Name=${NAME_PREFIX}-asg-host) 조회"
   ids="$(aws ec2 describe-instances --region "$REGION" \
-    --filters "Name=tag:Name,Values=${NAME_PREFIX}-host" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:Name,Values=${NAME_PREFIX}-asg-host" "Name=instance-state-name,Values=running" \
     --query 'Reservations[].Instances[].InstanceId' --output text)"
   count="$(echo "$ids" | wc -w)"
-  [ "$count" -eq 0 ] && { echo "ERR: running 인스턴스 없음 (Name=${NAME_PREFIX}-host)" >&2; exit 1; }
-  [ "$count" -gt 1 ] && { echo "ERR: 여러 인스턴스 매칭 — --instance-id 명시 필요: ${ids}" >&2; exit 1; }
-  INSTANCE_ID="$ids"
-  log "resolved InstanceId=${INSTANCE_ID}"
+  [ "$count" -eq 0 ] && { echo "ERR: running 인스턴스 없음 (Name=${NAME_PREFIX}-asg-host)" >&2; exit 1; }
+  # ASG 복수 인스턴스 허용 — 첫 번째 인스턴스 선택 (동일 코드 배포).
+  # pull-and-restart.sh 는 atomic swap 이므로 한 호스트에만 실행해도 다음 ASG refresh 에 전파.
+  INSTANCE_ID="$(echo "$ids" | awk '{print $1}')"
+  log "resolved InstanceId=${INSTANCE_ID} (total running: ${count})"
 fi
 
 # SSM SendCommand. SERVICE 는 화이트리스트 검증 완료 → 셸 인젝션 안전.
