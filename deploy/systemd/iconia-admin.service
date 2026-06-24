@@ -16,7 +16,7 @@ EnvironmentFile=-/etc/iconia.admin.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=NODE_OPTIONS=--max-old-space-size=1024
-Environment=HOSTNAME=127.0.0.1
+Environment=HOSTNAME=0.0.0.0
 
 # next.config.mjs 의 output:'standalone' 산출물.
 ExecStart=/usr/bin/node server.js
