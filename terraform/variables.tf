@@ -6,7 +6,7 @@
 ###############################################################################
 
 variable "env" {
-  description = "배포 환경 식별자. dev / staging / prod 중 하나."
+  description = "배포 환경 식별자. dev / staging / prod 중 하나. AWS 리소스 이름 관례용 (prod/dev/staging). ICONIA_ENV 환경변수로 주입 시 user-data.sh.tftpl 이 production/development/staging 으로 변환 (lib/env.ts 요구사항)."
   type        = string
   default     = "prod"
   validation {

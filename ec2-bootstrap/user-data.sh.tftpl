@@ -130,10 +130,23 @@ fi
 
 # Env file - 운영 비밀은 Secrets Manager 에서 부팅 후 fetch. 여기는 비밀-없는 토대만.
 # RDS password 는 절대 본 파일에 평문으로 두지 않는다 - Secrets Manager 에서 service start 시 fetch.
+#
+# ICONIA_ENV — Next.js admin(lib/env.ts) 은 "development|staging|production" 만 허용.
+# Terraform var.env 는 "dev|staging|prod" (리소스 이름 관례). 주입 시 변환 필요:
+#   prod  → production
+#   dev   → development
+#   staging → staging (동일)
+ICONIA_ENV_NORMALIZED="${env}"
+case "${env}" in
+  prod)    ICONIA_ENV_NORMALIZED="production"  ;;
+  dev)     ICONIA_ENV_NORMALIZED="development" ;;
+  staging) ICONIA_ENV_NORMALIZED="staging"     ;;
+esac
+
 cat >/etc/iconia.env <<EOF
 NODE_ENV=production
 AWS_REGION=${region}
-ICONIA_ENV=${env}
+ICONIA_ENV=$ICONIA_ENV_NORMALIZED
 ICONIA_NAME_PREFIX=${name_prefix}
 EVENT_IMAGE_BUCKET=${events_bucket}
 EXPORT_BUCKET=${exports_bucket}
@@ -198,7 +211,7 @@ ADMIN_CF_DOMAIN="dlfp1lyn34gcj.cloudfront.net"
 if [ -n "${root_domain}" ]; then
   cat >/etc/iconia.admin.env <<EOF
 ICONIA_SERVER_URL=https://api.${root_domain}
-ICONIA_ENV=${env}
+ICONIA_ENV=$ICONIA_ENV_NORMALIZED
 ADMIN_ALLOWED_ORIGIN=https://admin.${root_domain}
 ADMIN_ALLOWED_FORWARDED_HOSTS=admin.${root_domain}
 EOF
@@ -206,7 +219,7 @@ else
   # no-domain PoC: CF 기본 도메인을 허용 (ALB 직접 접근도 localhost 병용).
   cat >/etc/iconia.admin.env <<EOF
 ICONIA_SERVER_URL=http://127.0.0.1:8080
-ICONIA_ENV=${env}
+ICONIA_ENV=$ICONIA_ENV_NORMALIZED
 ADMIN_ALLOWED_ORIGIN=$${ADMIN_CF_DOMAIN},http://127.0.0.1:3000
 ADMIN_ALLOWED_FORWARDED_HOSTS=$${ADMIN_CF_DOMAIN}
 EOF
