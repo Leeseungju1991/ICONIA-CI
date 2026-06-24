@@ -30,7 +30,7 @@ variable "waf_rate_limit_5min" {
 resource "aws_wafv2_web_acl" "alb_regional" {
   count       = var.enable_waf ? 1 : 0
   name        = "${local.name_prefix}-alb-regional-acl"
-  description = "ICONIA ALB WAF — rate-limit + AWS Managed Core/SQLi/KnownBad."
+  description = "ICONIA ALB WAF - rate-limit + AWS Managed Core/SQLi/KnownBad."
   scope       = "REGIONAL"
 
   default_action {
