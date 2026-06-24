@@ -184,17 +184,31 @@ systemctl daemon-reload || true
 
 # Admin service-specific env. iconia-admin.service 가 EnvironmentFile=-/etc/iconia.admin.env 로 로드.
 # ROOT_DOMAIN 이 비어있으면 개발 모드 fallback.
+#
+# ADMIN_ALLOWED_FORWARDED_HOSTS — CloudFront AllViewer origin request policy 가
+#   x-forwarded-host 에 "dlfp1lyn34gcj.cloudfront.net:8082" 형태(포트 포함)를 주입함.
+#   Next.js 14 Server Actions CSRF 체크는 x-forwarded-host 를 origin 과 비교하는데,
+#   포트가 붙으면 "dlfp1lyn34gcj.cloudfront.net" 과 불일치 → digest 3804300817 에러.
+#   allowedForwardedHosts 에 호스트(포트 제외)를 명시하면 Next.js 가 포트를 무시하고 통과.
+#
+# ADMIN_CF_DOMAIN — no-domain PoC 에서 CF 기본 도메인. 도메인 구입 후 root_domain 채우면
+#   아래 if 분기가 활성되어 이 변수는 더 이상 참조되지 않는다.
+ADMIN_CF_DOMAIN="dlfp1lyn34gcj.cloudfront.net"
+
 if [ -n "${root_domain}" ]; then
   cat >/etc/iconia.admin.env <<EOF
 ICONIA_SERVER_URL=https://api.${root_domain}
 ICONIA_ENV=${env}
 ADMIN_ALLOWED_ORIGIN=https://admin.${root_domain}
+ADMIN_ALLOWED_FORWARDED_HOSTS=admin.${root_domain}
 EOF
 else
+  # no-domain PoC: CF 기본 도메인을 허용 (ALB 직접 접근도 localhost 병용).
   cat >/etc/iconia.admin.env <<EOF
 ICONIA_SERVER_URL=http://127.0.0.1:8080
 ICONIA_ENV=${env}
-ADMIN_ALLOWED_ORIGIN=http://127.0.0.1:3000
+ADMIN_ALLOWED_ORIGIN=$${ADMIN_CF_DOMAIN},http://127.0.0.1:3000
+ADMIN_ALLOWED_FORWARDED_HOSTS=$${ADMIN_CF_DOMAIN}
 EOF
 fi
 chown root:iconia /etc/iconia.admin.env
