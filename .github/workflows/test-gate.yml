@@ -115,13 +115,21 @@ jobs:
         if: steps.co.outcome == 'success'
         uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - name: npm ci + prisma generate + test
+      - name: npm ci + prisma format check + generate + test
         if: steps.co.outcome == 'success'
         working-directory: server
         run: |
           npm ci
           npm run check --if-present
-          [ -f prisma/schema.prisma ] && npx --yes prisma generate || true
+          # prisma format check — unformatted schema 가 있으면 CI 에서 명시적 fail-fast.
+          # (프리즈마 파일 포맷 불일치가 배포 직전 조용히 넘어가던 패턴 항구 차단)
+          if [ -f prisma/schema.prisma ]; then
+            if ! npx --yes prisma format --check 2>/dev/null; then
+              echo "::error::prisma/schema.prisma 포맷 불일치 — 로컬에서 'npx prisma format' 후 push 필요."
+              exit 1
+            fi
+            npx --yes prisma generate
+          fi
           npm test
       - name: SERVER 토큰 부재 — 게이트 skip 안내
         if: steps.co.outcome != 'success'

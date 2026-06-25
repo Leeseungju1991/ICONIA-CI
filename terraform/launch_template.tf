@@ -42,6 +42,8 @@ locals {
     events_bucket    = aws_s3_bucket.events.bucket
     exports_bucket   = aws_s3_bucket.exports.bucket
     firmware_bucket  = aws_s3_bucket.firmware.bucket
+    policy_bucket    = aws_s3_bucket.policy.bucket
+    alb_domain       = aws_lb.iconia.dns_name
     name_prefix      = local.name_prefix
     # RDS Proxy endpoint 우선. Proxy 미생성 시 RDS 직접 endpoint 로 fallback.
     rds_endpoint = (
@@ -53,9 +55,11 @@ locals {
         : (length(aws_rds_cluster.aurora) > 0 ? aws_rds_cluster.aurora[0].endpoint : "")
       )
     )
-    rds_database_name  = var.db_name
-    rds_username       = var.db_username
-    root_domain        = var.root_domain
+    rds_database_name = var.db_name
+    rds_username      = var.db_username
+    root_domain       = var.root_domain
+    # certbot_email: Let's Encrypt 인증서 발급 통지 이메일. terraform variable 로 분리.
+    certbot_email      = var.certbot_email
     cw_agent_ssm_param = aws_ssm_parameter.cloudwatch_agent_config.name
     # Server claim/lease + event store backend (server.js:849~850 정합).
     # INSTANCE_ID 는 user-data 에서 IMDSv2 로 직접 fetch (terraform 으로 주입 불가 — 인스턴스별 다름).

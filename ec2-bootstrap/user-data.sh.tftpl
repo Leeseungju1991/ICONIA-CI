@@ -7,7 +7,7 @@
 #   ${artifacts_bucket}, ${events_bucket}, ${exports_bucket}, ${firmware_bucket},
 #   ${policy_bucket}, ${alb_domain}, ${name_prefix}, ${cw_agent_ssm_param},
 #   ${rds_endpoint}, ${rds_database_name}, ${rds_username}, ${root_domain},
-#   ${event_store_backend}, ${analysis_claim_lease_ms}
+#   ${certbot_email}, ${event_store_backend}, ${analysis_claim_lease_ms}
 #
 # 후속 갱신은 SSM Run Command 로 scripts/ec2-pull-and-restart.sh 호출.
 ###############################################################################
@@ -258,7 +258,7 @@ if [ -n "${root_domain}" ]; then
   # 도메인 DNS 가 EIP 로 들어왔는지 확인 후 수동 재실행 가능.
   systemctl is-active --quiet nginx || systemctl start nginx || true
   certbot --nginx --non-interactive --agree-tos --redirect \
-    -m web@soomkorea.com \
+    -m "${certbot_email}" \
     -d "api.${root_domain}" \
     -d "ai.${root_domain}" \
     -d "admin.${root_domain}" \

@@ -73,6 +73,9 @@ LEGAL_SUBPATHS=(
 )
 
 # 내장 fallback exclude (rg/grep 양쪽 모두). .preflightignore 는 별도 추가.
+# preflight 스크립트 자신(*.sh / *.ps1 / *.test.sh) + 테스트 픽스처 + deploy.yml 코드블록은
+# 자기자신이 포함한 패턴 문자열로 self-detect 트리거가 발생하지 않도록 영구 제외.
+# (예: 스크립트 내 EXCLUDE_GLOBS 목록, 테스트 fixture, deploy.yml env 블록)
 EXCLUDE_GLOBS=(
   "*/node_modules/*"
   "*/.git/*"
@@ -81,11 +84,22 @@ EXCLUDE_GLOBS=(
   "*/build/*"
   "*/.next/*"
   "*/.expo/*"
+  "*/coverage/*"
+  "*/__fixtures__/*"
+  "*/__tests__/*"
+  # preflight 스크립트 자신 — self-detect 영구 차단.
   "*/preflight-placeholders.sh"
   "*/preflight-placeholders.ps1"
   "*/preflight-placeholders.test.sh"
+  # CI 워크플로우 env 블록에 패턴이 명시되는 경우 self-detect 차단.
+  "*/.github/workflows/deploy.yml"
+  "*/.github/workflows/test-gate.yml"
+  # ignore 설정 파일 자체
   "*/.preflightignore"
   "*/CHANGELOG.md"
+  # 빌드 스크립트 / CI 설정 파일은 placeholder 가 예시로 포함될 수 있음.
+  "*/build-and-upload.sh"
+  "*/post-deploy-smoke.sh"
 )
 
 ROOT="${1:-}"

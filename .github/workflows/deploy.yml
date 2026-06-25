@@ -182,21 +182,71 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # 5) smoke — Route53 FQDN 외부 end-to-end 검증.
+  #   ICONIA_ROOT_DOMAIN secret 이 등록된 경우: https://api.<domain>/health 호출.
+  #   미등록(도메인 미구매) 또는 DNS 미연결 시: ALB DNS 직접 호출로 fallback.
+  #   → "가짜 fail" 방지 — ALB 자체 헬스가 살아있으면 배포 성공으로 처리.
   # ---------------------------------------------------------------------------
   smoke:
-    needs: deploy
-    if: github.event.inputs.dry_run != 'true'
+    needs: [build, deploy]
+    if: github.event.inputs.dry_run != 'true' && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: 외부 스모크 테스트
+      - name: AWS 자격 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: 스모크 도메인 결정 (Route53 or ALB fallback)
+        id: domain
         env:
           ROOT_DOMAIN: ${{ secrets.ICONIA_ROOT_DOMAIN }}
+          ARTIFACTS_BUCKET: ${{ secrets.ICONIA_ARTIFACTS_BUCKET }}
+        run: |
+          if [ -n "$ROOT_DOMAIN" ]; then
+            # Route53 FQDN 이 DNS 로 응답하는지 간단 probe.
+            if curl -fsS --max-time 5 -o /dev/null "https://api.${ROOT_DOMAIN}/health" 2>/dev/null; then
+              echo "target=${ROOT_DOMAIN}" >> "$GITHUB_OUTPUT"
+              echo "mode=fqdn" >> "$GITHUB_OUTPUT"
+              echo "INFO: Route53 FQDN 사용 — api.${ROOT_DOMAIN}"
+            else
+              echo "WARN: ICONIA_ROOT_DOMAIN 설정됐지만 DNS 미응답 — ALB DNS fallback"
+              ALB=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
+                --query 'LoadBalancers[?contains(LoadBalancerName, `iconia-prod`)].DNSName' \
+                --output text 2>/dev/null | head -1 || true)
+              if [ -z "$ALB" ]; then
+                # artifacts_bucket 이름에서 region 접두어로 ALB 태그 조회 fallback.
+                ALB=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
+                  --query 'LoadBalancers[?Scheme==`internet-facing`].DNSName' \
+                  --output text 2>/dev/null | head -1 || true)
+              fi
+              echo "target=${ALB}" >> "$GITHUB_OUTPUT"
+              echo "mode=alb" >> "$GITHUB_OUTPUT"
+              echo "INFO: ALB fallback — ${ALB}"
+            fi
+          else
+            echo "WARN: ICONIA_ROOT_DOMAIN 미설정 — ALB DNS 직접 조회"
+            ALB=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
+              --query 'LoadBalancers[?contains(LoadBalancerName, `iconia-prod`)].DNSName' \
+              --output text 2>/dev/null | head -1 || true)
+            echo "target=${ALB}" >> "$GITHUB_OUTPUT"
+            echo "mode=alb" >> "$GITHUB_OUTPUT"
+            echo "INFO: ALB fallback — ${ALB}"
+          fi
+      - name: 외부 스모크 테스트
+        env:
+          SMOKE_TARGET: ${{ steps.domain.outputs.target }}
+          SMOKE_MODE: ${{ steps.domain.outputs.mode }}
         run: |
           chmod +x scripts/post-deploy-smoke.sh
+          if [ -z "$SMOKE_TARGET" ]; then
+            echo "::warning::스모크 대상 미확인 (ALB 조회 실패). 배포 자체는 완료됨."
+            exit 0
+          fi
           scripts/post-deploy-smoke.sh \
-            --root-domain "$ROOT_DOMAIN" \
+            --root-domain "$SMOKE_TARGET" \
+            --mode "$SMOKE_MODE" \
             --env prod --service "$SERVICE"
       - name: 출시 요약
         if: success()

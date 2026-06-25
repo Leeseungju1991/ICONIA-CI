@@ -395,6 +395,17 @@ variable "analysis_claim_lease_ms" {
 }
 
 # -----------------------------------------------------------------------------
+# certbot — Let's Encrypt 발급 이메일.
+# user-data.sh.tftpl 의 certbot --nginx -m 인자로 주입.
+# 기본값: web@soomkorea.com (운영팀 이메일). 환경별 override 가능.
+# -----------------------------------------------------------------------------
+variable "certbot_email" {
+  description = "Let's Encrypt / certbot 인증서 발급 통지 이메일. user-data.sh.tftpl 의 -m 인자로 주입. 기본 web@soomkorea.com."
+  type        = string
+  default     = "web@soomkorea.com"
+}
+
+# -----------------------------------------------------------------------------
 # 공통 태그.
 # -----------------------------------------------------------------------------
 variable "tags" {
