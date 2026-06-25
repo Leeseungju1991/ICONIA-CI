@@ -55,8 +55,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "events" {
     id     = "events-archive-glacier-then-expire"
     status = "Enabled"
     filter { prefix = "iconia/events/" }
+    # Cost minimization: IA at 30d (~40% savings vs Standard), Glacier IR at 180d (~70% savings).
     transition {
-      days          = 90
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+    transition {
+      days          = 180
       storage_class = "GLACIER_IR"
     }
     expiration { days = 455 }
@@ -91,7 +96,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "events" {
     abort_incomplete_multipart_upload { days_after_initiation = 1 }
   }
 
-  # voice out (TTS 응답 산출물) — 30일 유지. presigned URL 만료/재생 보장 윈도우 커버.
+  # voice out (TTS 응답 산출물) — 30일 만료. S3 IA 최소 30일 제약으로 IA 전환 불가 (단기 보존).
   rule {
     id     = "voice-out-30day-expire"
     status = "Enabled"

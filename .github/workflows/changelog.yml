@@ -141,7 +141,7 @@ jobs:
             exit 0
           fi
           git add CHANGELOG.md
-          MSG="$(printf 'docs(ci): CHANGELOG.md auto-update for %s\n\nhttps://claude.ai/code/session_01EG8MdhBKiCzRCQSiuXrYjG' '${{ steps.range.outputs.tag }}')"
+          MSG="docs(ci): CHANGELOG.md auto-update for ${{ steps.range.outputs.tag }}"
           git commit -m "$MSG"
           # main 으로 push (non-ff → 3회 rebase 재시도).
           for i in 1 2 3; do

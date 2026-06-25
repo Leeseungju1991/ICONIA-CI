@@ -34,12 +34,12 @@ locals {
     ? aws_iam_openid_connect_provider.github[0].arn
     : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
   )
-  # 예: "repo:Leeseungju1991/ICONIA-CI:*" (모든 ref/branch 허용)
-  #     "repo:Leeseungju1991/ICONIA-CI:ref:refs/heads/main" (main 만)
+  # 기본값: main 브랜치 전용 (workflow_dispatch 도 main 에서만 가능).
+  # 모든 ref 허용이 필요하면 github_oidc_subject_pattern = "repo:<org>/<repo>:*" 로 override.
   github_oidc_subject = (
     var.github_oidc_subject_pattern != ""
     ? var.github_oidc_subject_pattern
-    : "repo:${var.github_org}/${var.github_repo_ci}:*"
+    : "repo:${var.github_org}/${var.github_repo_ci}:ref:refs/heads/main"
   )
 }
 
@@ -114,16 +114,42 @@ resource "aws_iam_role_policy_attachment" "github_deploy_s3" {
 
 # 5) SSM 권한 — deploy.yml step 4 가 AWS-RunShellScript 로 EC2 pull-and-restart 트리거.
 data "aws_iam_policy_document" "github_deploy_ssm" {
+  # SendCommand 는 instance + document 두 resource ARN 을 동시에 지정해야 작동.
+  # EC2 ARN 을 tag 필터로 좁히고, document 는 AWS-RunShellScript 단독으로 제한.
   statement {
-    sid    = "SsmSendCommandToManagedInstances"
+    sid    = "SsmSendCommandToInstancesByTag"
     effect = "Allow"
     actions = [
       "ssm:SendCommand",
+    ]
+    resources = [
+      "arn:aws:ec2:${local.region}:${local.account_id}:instance/*",
+    ]
+    condition {
+      test     = "StringLike"
+      variable = "ssm:resourceTag/service"
+      values   = ["iconia"]
+    }
+  }
+  statement {
+    sid    = "SsmSendCommandDocumentScope"
+    effect = "Allow"
+    actions = [
+      "ssm:SendCommand",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.region}::document/AWS-RunShellScript",
+    ]
+  }
+  statement {
+    sid    = "SsmCommandInvocationRead"
+    effect = "Allow"
+    actions = [
       "ssm:GetCommandInvocation",
       "ssm:ListCommandInvocations",
       "ssm:DescribeInstanceInformation",
     ]
-    resources = ["*"] # SendCommand 는 resource-level 제약이 까다로움 — 추후 EC2 ARN 으로 좁힐 것.
+    resources = ["*"] # describe/get 는 resource-level ARN 제약 불가 (AWS 설계).
   }
   statement {
     sid    = "Ec2DescribeForInstanceLookup"
@@ -173,7 +199,6 @@ data "aws_iam_policy_document" "github_deploy_ecr" {
       "ecr:UploadLayerPart",
       "ecr:CompleteLayerUpload",
       "ecr:DescribeRepositories",
-      "ecr:CreateRepository",
       "ecr:ListImages",
     ]
     resources = ["arn:aws:ecr:${local.region}:${local.account_id}:repository/iconia*"]
@@ -228,7 +253,7 @@ variable "github_repo_ci" {
 }
 
 variable "github_oidc_subject_pattern" {
-  description = "OIDC sub claim 매칭 패턴. 빈 값이면 repo:<org>/<repo_ci>:* 사용. main 만 허용하려면 'repo:<org>/<repo_ci>:ref:refs/heads/main'."
+  description = "OIDC sub claim 매칭 패턴. 빈 값이면 repo:<org>/<repo_ci>:ref:refs/heads/main (main 브랜치 전용). 모든 ref 허용이 필요하면 'repo:<org>/<repo_ci>:*' 로 명시."
   type        = string
   default     = ""
 }

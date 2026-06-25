@@ -202,15 +202,19 @@ resource "aws_security_group" "rds_proxy" {
   description = "ICONIA RDS Proxy - 5432 from EC2 SG only."
   vpc_id      = local.vpc_id
 
-  egress {
-    description = "RDS Proxy to backend DB."
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # SG 간 egress 제한은 별도 rule 로 (선택).
-  }
-
   tags = merge(var.tags, { Name = "${local.name_prefix}-rds-proxy-sg" })
+}
+
+# RDS Proxy SG egress — RDS SG 만 5432 허용 (0.0.0.0/0 차단). 별도 rule 로 순환참조 방지.
+resource "aws_security_group_rule" "rds_proxy_egress_to_rds" {
+  count                    = var.db_engine_mode == "instance" ? 1 : 0
+  type                     = "egress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.rds.id
+  security_group_id        = aws_security_group.rds_proxy[0].id
+  description              = "RDS Proxy to backend RDS SG (5432 only)."
 }
 
 resource "aws_security_group_rule" "rds_proxy_from_ec2" {

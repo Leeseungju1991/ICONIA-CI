@@ -93,11 +93,11 @@
             "retention_in_days": 30
           },
           {
-            "_comment": "nginx error — 5xx / upstream timeout 진단.",
+            "_comment": "nginx error — 5xx / upstream timeout 진단. retention 은 observability.tf log_groups 와 정합: prod=90일, nonprod=30일. agent config 의 retention_in_days 는 log group 이 존재하지 않을 때만 적용 — IaC 가 log group 을 소유하므로 실질 적용은 observability.tf 값이 우선. 여기는 fallback으로 30 사용.",
             "file_path": "/var/log/nginx/iconia-*.error.log",
             "log_group_name": "/iconia/${env}/nginx-error",
             "log_stream_name": "{instance_id}",
-            "retention_in_days": 60
+            "retention_in_days": 30
           },
           {
             "_comment": "user-data + ec2-pull-and-restart 의 배포 로그. 사고 후 timeline 재구성용.",

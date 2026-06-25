@@ -152,6 +152,13 @@ resource "aws_sns_topic_policy" "budgets_publish_policy" {
         Action    = "SNS:Publish"
         Resource  = aws_sns_topic.budgets.arn
       },
+      {
+        Sid       = "AllowCostAnomalyPublish"
+        Effect    = "Allow"
+        Principal = { Service = "costalerts.amazonaws.com" }
+        Action    = "SNS:Publish"
+        Resource  = aws_sns_topic.budgets.arn
+      },
     ]
   })
 }
@@ -164,4 +171,60 @@ output "budgets_sns_topic_arn" {
 output "budgets_monthly_budget_name" {
   description = "월간 USD budget 이름 (콘솔 검색용)."
   value       = aws_budgets_budget.iconia_monthly_usd.name
+}
+
+# -----------------------------------------------------------------------------
+# Cost Anomaly Detection — 서비스별 비용 이상 탐지 + SNS 알림.
+#
+# 기존 Default-Services-Monitor ($100 절대값 임계) 는 계정 레벨 콘솔 생성분.
+# 본 리소스는 Terraform 관리 단위로 ICONIA 서비스 전용 모니터 + 낮은 임계를 추가.
+# $20 이상 이상 지출 탐지 → 즉시 같은 budgets SNS topic 으로 알림.
+#
+# 비용: Cost Anomaly Detection 자체는 무료. 알림은 SNS 표준 요금.
+# -----------------------------------------------------------------------------
+variable "cost_anomaly_threshold_usd" {
+  description = "Cost Anomaly Detection 알림 임계 (USD 절대값). 이상 지출 $20 이상이면 즉시 알림."
+  type        = number
+  default     = 20
+}
+
+# Cost Anomaly Detection — 기존 Default-Services-Monitor 를 재사용 (계정당 1개 DIMENSIONAL monitor 제한).
+# 구독 임계: $20 이상 이상 지출 → 즉시 SNS 알림 (기존 구독 $100 임계보다 엄격).
+# 새 구독은 낮은 임계로 추가 등록 — 계정당 구독 수 제한 없음.
+#
+# data source 로 기존 monitor ARN import:
+#   arn:aws:ce::169063643478:anomalymonitor/601a4403-b1e1-4040-9558-96ad13d89e87
+variable "existing_anomaly_monitor_arn" {
+  description = "기존 Cost Anomaly Detection monitor ARN. 계정당 DIMENSIONAL monitor 1개 제한 — 새로 생성 대신 기존 것 참조."
+  type        = string
+  default     = "arn:aws:ce::169063643478:anomalymonitor/601a4403-b1e1-4040-9558-96ad13d89e87"
+}
+
+resource "aws_ce_anomaly_subscription" "iconia" {
+  name      = "${local.name_prefix}-anomaly-subscription"
+  frequency = "IMMEDIATE" # 이상 탐지 즉시 알림.
+
+  monitor_arn_list = [var.existing_anomaly_monitor_arn]
+
+  subscriber {
+    type    = "SNS"
+    address = aws_sns_topic.budgets.arn
+  }
+
+  threshold_expression {
+    dimension {
+      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+      match_options = ["GREATER_THAN_OR_EQUAL"]
+      values        = [tostring(var.cost_anomaly_threshold_usd)]
+    }
+  }
+
+  tags = merge(var.tags, { purpose = "cost-anomaly-detection", cost-center = "iconia-prod" })
+
+  depends_on = [aws_sns_topic_policy.budgets_publish_policy]
+}
+
+output "cost_anomaly_subscription_arn" {
+  description = "Cost Anomaly Detection 구독 ARN (임계 $${var.cost_anomaly_threshold_usd})."
+  value       = aws_ce_anomaly_subscription.iconia.id
 }
