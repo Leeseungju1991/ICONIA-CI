@@ -1,1 +1,0 @@
-{"commands":["ps -ef | grep -E \"efs-utils|cargo|rustc|npm\" | grep -v grep | head -20","tail -50 /var/log/iconia-user-data.log","systemctl is-active iconia-server iconia-ai iconia-admin","ls -la /usr/local/bin/iconia-pull-and-restart.sh /opt/iconia/ 2>&1"]}

@@ -1,1 +1,0 @@
-{"commands":["sed -i 's/^ICONIA_ENV=prod$/ICONIA_ENV=production/' /etc/iconia.env","grep ICONIA_ENV /etc/iconia.env","systemctl restart iconia-admin","sleep 8","systemctl is-active iconia-admin","curl -sS -o /dev/null -w 'admin /login -> %{http_code}\\n' http://127.0.0.1:3000/login"]}

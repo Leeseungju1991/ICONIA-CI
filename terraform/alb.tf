@@ -233,6 +233,7 @@ resource "aws_lb_target_group" "admin" {
 }
 
 resource "aws_lb_listener" "admin_http" {
+  # TODO: remove after admin_acm_arn + admin_domain are set in tfvars and CF distribution validated
   load_balancer_arn = aws_lb.iconia.arn
   port              = 8082
   protocol          = "HTTP"

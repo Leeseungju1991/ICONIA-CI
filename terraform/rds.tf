@@ -55,7 +55,7 @@ resource "aws_db_instance" "postgres" {
   engine_version                        = "16" # major-only - AWS RDS 가 가용 최신 minor 자동 매칭 (16.4 deprecated 회피).
   instance_class                        = var.db_instance_class
   allocated_storage                     = var.db_allocated_storage_gb
-  max_allocated_storage                 = var.db_allocated_storage_gb * 4
+  max_allocated_storage                 = min(50, var.db_allocated_storage_gb * 4)
   storage_type                          = "gp3"
   storage_encrypted                     = true
   db_name                               = var.db_name
@@ -282,4 +282,47 @@ resource "aws_db_proxy_target" "iconia_pg" {
   db_instance_identifier = aws_db_instance.postgres[0].identifier
   db_proxy_name          = aws_db_proxy.iconia_pg[0].name
   target_group_name      = aws_db_proxy_default_target_group.iconia_pg[0].name
+}
+
+# -----------------------------------------------------------------------------
+# Read replica — 별도 backup 인스턴스 (same-region, db.t4g.small).
+#
+# 목적: 7일 PITR 백업을 primary 와 독립 보존 + AWS Backup plan 의 추가 snapshot
+#       target 으로 활용. replica 는 primary 와 같은 AZ/region 에 생성된다.
+# 비용: db.t4g.small ~$0.028/h ≈ $20/월 (스토리지 별도).
+# 주의: same-region replica 는 source 의 encrypted key 를 그대로 상속한다.
+#        kms_key_id 를 별도로 지정하면 key mismatch 오류가 발생하므로 생략.
+# REQ#3-1.
+# -----------------------------------------------------------------------------
+resource "aws_db_instance" "postgres_backup" {
+  count = var.db_engine_mode == "instance" && length(aws_db_instance.postgres) > 0 ? 1 : 0
+
+  identifier = "iconia-prod-db-backup"
+  # ARN 사용 필수: db_subnet_group_name 을 함께 지정하면 AWS API 가 ARN 요구.
+  # same-region replica 는 db_subnet_group_name 을 source 에서 상속하므로 별도 지정 불필요.
+  replicate_source_db = aws_db_instance.postgres[0].arn
+  instance_class      = "db.t4g.small"
+
+  # same-region replica 는 source 의 KMS key 를 상속 (별도 kms_key_id 지정 불필요).
+  storage_encrypted = true
+
+  backup_retention_period   = 7
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "iconia-prod-db-backup-final-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  publicly_accessible       = false
+  vpc_security_group_ids    = [aws_security_group.rds.id]
+
+  auto_minor_version_upgrade = true
+
+  tags = merge(var.tags, {
+    Name    = "iconia-prod-db-backup"
+    Role    = "backup-replica"
+    Purpose = "iconia-prod-backup"
+  })
+
+  lifecycle {
+    # final_snapshot_identifier 에 timestamp() 가 있어 매 plan 마다 drift 유발.
+    ignore_changes = [final_snapshot_identifier]
+  }
 }

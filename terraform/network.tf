@@ -105,6 +105,115 @@ resource "aws_route_table" "private" {
   tags = merge(var.tags, { Name = "${local.name_prefix}-private-rt" })
 }
 
+# -----------------------------------------------------------------------------
+# VPC Endpoints — NAT GW 통과 비용 절감 (REQ#2-4).
+#
+# Gateway endpoints (S3, DynamoDB): 무료, route table 에 자동 prefix list 추가.
+# Interface endpoints (SSM, SSM Messages, EC2 Messages, Secrets Manager): 유료이나
+#   NAT GW 경유 대비 저렴 (약 $0.01/h per AZ per endpoint vs $0.045/GB NAT).
+#   SSM Session Manager 가 ec2messages + ssmmessages 를 사용하므로 셋 모두 필요.
+# -----------------------------------------------------------------------------
+
+# S3 Gateway endpoint — 무료. S3 트래픽이 NAT GW 를 우회.
+resource "aws_vpc_endpoint" "s3" {
+  count             = var.create_network ? 1 : 0
+  vpc_id            = local.vpc_id
+  service_name      = "com.amazonaws.${local.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private[0].id, aws_route_table.public[0].id]
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-s3" })
+}
+
+# DynamoDB Gateway endpoint — 무료. Terraform state lock 테이블 트래픽 절감.
+resource "aws_vpc_endpoint" "dynamodb" {
+  count             = var.create_network ? 1 : 0
+  vpc_id            = local.vpc_id
+  service_name      = "com.amazonaws.${local.region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private[0].id, aws_route_table.public[0].id]
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-dynamodb" })
+}
+
+# Interface endpoint SG — HTTPS 443 from EC2 SG.
+resource "aws_security_group" "vpc_endpoints" {
+  count       = var.create_network ? 1 : 0
+  name        = "${local.name_prefix}-vpce-sg"
+  description = "ICONIA VPC Interface Endpoints - HTTPS 443 from EC2 SG only."
+  vpc_id      = local.vpc_id
+
+  ingress {
+    description     = "HTTPS from EC2 SG."
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2.id]
+  }
+
+  egress {
+    description = "All outbound."
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-sg" })
+}
+
+# Secrets Manager Interface endpoint — EC2 가 NAT GW 없이 secret fetch.
+resource "aws_vpc_endpoint" "secretsmanager" {
+  count               = var.create_network ? 1 : 0
+  vpc_id              = local.vpc_id
+  service_name        = "com.amazonaws.${local.region}.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.private_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-secretsmanager" })
+}
+
+# SSM Interface endpoint — SSM Parameter Store + Run Command.
+resource "aws_vpc_endpoint" "ssm" {
+  count               = var.create_network ? 1 : 0
+  vpc_id              = local.vpc_id
+  service_name        = "com.amazonaws.${local.region}.ssm"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.private_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-ssm" })
+}
+
+# SSM Messages Interface endpoint — Session Manager 필수.
+resource "aws_vpc_endpoint" "ssmmessages" {
+  count               = var.create_network ? 1 : 0
+  vpc_id              = local.vpc_id
+  service_name        = "com.amazonaws.${local.region}.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.private_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-ssmmessages" })
+}
+
+# EC2 Messages Interface endpoint — SSM Run Command / Session Manager 필수.
+resource "aws_vpc_endpoint" "ec2messages" {
+  count               = var.create_network ? 1 : 0
+  vpc_id              = local.vpc_id
+  service_name        = "com.amazonaws.${local.region}.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.private_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
+  private_dns_enabled = true
+
+  tags = merge(var.tags, { Name = "${local.name_prefix}-vpce-ec2messages" })
+}
+
 resource "aws_route_table_association" "private" {
   count          = var.create_network ? length(var.azs) : 0
   subnet_id      = aws_subnet.private[count.index].id

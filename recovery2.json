@@ -1,1 +1,0 @@
-{"commands":["sed -i 's/\\r$//' /usr/local/bin/iconia-pull-and-restart.sh","/usr/local/bin/iconia-pull-and-restart.sh all 2>&1 | tail -150"]}

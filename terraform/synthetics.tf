@@ -24,9 +24,9 @@ variable "create_synthetics" {
 }
 
 variable "synthetics_schedule_expression" {
-  description = "Canary 실행 주기 (CloudWatch Events). 기본 5분."
+  description = "Canary 실행 주기 (CloudWatch Events). REQ#2: 비용 절감을 위해 15분으로 변경 (5분 → 15분, invocation 1/3 감소)."
   type        = string
-  default     = "rate(5 minutes)"
+  default     = "rate(15 minutes)"
 }
 
 locals {

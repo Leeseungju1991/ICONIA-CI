@@ -1,1 +1,0 @@
-{"commands":["cat /etc/systemd/system/iconia-server.service","echo '---'","grep -i 'memory\\|exec\\|cap' /etc/systemd/system/iconia-server.service"]}

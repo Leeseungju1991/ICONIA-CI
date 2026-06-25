@@ -33,7 +33,7 @@ locals {
     admin        = { name = "/iconia/${var.env}/admin", retention = 30 }
     nginx_access = { name = "/iconia/${var.env}/nginx-access", retention = 90 }
     nginx_error  = { name = "/iconia/${var.env}/nginx-error", retention = 90 }
-    deploy       = { name = "/iconia/${var.env}/deploy", retention = 180 }
+    deploy       = { name = "/iconia/${var.env}/deploy", retention = 60 } # REQ#2: 180→60일 (배포 로그는 장기 감사 불필요)
     audit        = { name = "/iconia/${var.env}/audit", retention = 731 }
   }
   log_groups_nonprod = {

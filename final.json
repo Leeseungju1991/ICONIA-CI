@@ -1,1 +1,0 @@
-{"commands":["systemctl stop iconia-server iconia-ai iconia-admin 2>/dev/null || true","systemctl reset-failed iconia-server iconia-ai iconia-admin","/usr/local/bin/iconia-pull-and-restart.sh all 2>&1 | tail -50"]}

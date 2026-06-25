@@ -1,1 +1,0 @@
-{"commands":["journalctl -u iconia-admin -n 80 --no-pager | tail -80"]}

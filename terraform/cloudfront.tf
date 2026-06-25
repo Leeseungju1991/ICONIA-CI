@@ -122,7 +122,7 @@ resource "aws_cloudfront_distribution" "admin_new" {
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "ICONIA admin site NEW (ALB origin :8082)"
-  price_class         = "PriceClass_200"
+  price_class         = "PriceClass_100" # REQ#2: 200→100 (NA+EU only, 한국 트래픽은 ALB 직결 병행)
   http_version        = "http2"
   default_root_object = ""
   aliases             = []
@@ -186,7 +186,7 @@ resource "aws_cloudfront_distribution" "policy" {
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "ICONIA policy site (S3 + OAC)"
-  price_class         = "PriceClass_200"
+  price_class         = "PriceClass_100" # REQ#2: 200→100 (NA+EU only, 정책사이트는 글로벌 엣지 불필요)
   http_version        = "http2"
   default_root_object = "index.html"
   # 사용자 요청 8종 정합 — policy_domain + ACM cert 모두 설정 시에만 alias 활성, 미설정 시 기존 [] 유지.
