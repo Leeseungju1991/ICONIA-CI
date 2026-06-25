@@ -440,7 +440,7 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_findings_sns" {
 
   dimensions = {
     DetectorId = aws_guardduty_detector.iconia[0].id
-    Severity    = "HIGH"
+    Severity   = "HIGH"
   }
 
   tags = merge(var.tags, { component = "security", purpose = "guardduty-alert" })

@@ -65,6 +65,7 @@ provider "aws" {
       managed_by  = "terraform"
       owner       = "soomkorea"
       company     = "soom-korea-inc"
+      cost-center = "iconia-prod"
     }
   }
 }
@@ -80,6 +81,7 @@ provider "aws" {
       managed_by  = "terraform"
       owner       = "soomkorea"
       company     = "soom-korea-inc"
+      cost-center = "iconia-prod"
     }
   }
 }

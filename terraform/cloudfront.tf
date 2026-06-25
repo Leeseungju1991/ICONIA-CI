@@ -128,7 +128,7 @@ resource "aws_cloudfront_distribution" "admin_new" {
   aliases             = []
 
   origin {
-    domain_name = "iconia-prod-alb-1408962743.ap-northeast-2.elb.amazonaws.com"
+    domain_name = aws_lb.iconia.dns_name
     origin_id   = "iconia-prod-alb-admin-new"
 
     custom_origin_config {
@@ -158,16 +158,21 @@ resource "aws_cloudfront_distribution" "admin_new" {
     }
   }
 
+  # NOTE: cloudfront_default_certificate=true 일 때 ssl_support_method=sni-only 조합은
+  # AWS가 허용하지 않는다 (커스텀 도메인+ACM cert 세팅에서만 sni-only 유효).
+  # 기본 CF 인증서 사용 시 minimum_protocol_version="TLSv1" 고정 (AWS 제약).
+  # 도메인+ACM 연결 후에는 cloudfront_admin_acm_arn + admin_domain 설정으로
+  # local.admin_alias_enabled=true → acm_certificate_arn + sni-only + TLSv1.2_2021 전환됨.
   viewer_certificate {
     cloudfront_default_certificate = true
-    ssl_support_method             = "vip"
     minimum_protocol_version       = "TLSv1"
   }
 
   tags = merge(var.tags, {
-    Name      = "${local.name_prefix}-cf-admin-new"
-    subdomain = "admin"
-    note      = "정본-확정-2026-06-24"
+    Name        = "${local.name_prefix}-cf-admin-new"
+    subdomain   = "admin"
+    note        = "정본-확정-2026-06-24"
+    cost-center = "iconia-prod"
   })
 }
 
@@ -191,11 +196,7 @@ resource "aws_cloudfront_distribution" "policy" {
     domain_name              = aws_s3_bucket.policy.bucket_regional_domain_name
     origin_id                = "S3-iconia-prod-policy"
     origin_access_control_id = aws_cloudfront_origin_access_control.policy.id
-
-    # S3 REST origin — empty OAI (OAC 사용).
-    s3_origin_config {
-      origin_access_identity = ""
-    }
+    # OAC(SigV4) 사용 — s3_origin_config(OAI) 블록 생략. OAC + OAI 혼용 시 AWS API 거부.
   }
 
   default_cache_behavior {
@@ -243,6 +244,13 @@ resource "aws_cloudfront_distribution" "policy" {
     Name    = "${local.name_prefix}-cf-policy"
     purpose = "policy-site"
   })
+
+  lifecycle {
+    # ssl_support_method 는 cloudfront_default_certificate=true 시 AWS가 항상 "vip" 를
+    # 반환하지만 Terraform state 와 perpetual drift 를 유발한다 (provider #26783).
+    # ACM cert 연결 시 이 ignore_changes 제거 후 sni-only 로 명시 변경.
+    ignore_changes = [viewer_certificate[0].ssl_support_method]
+  }
 }
 
 # -----------------------------------------------------------------------------

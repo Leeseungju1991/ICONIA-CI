@@ -41,7 +41,7 @@ locals {
     ai           = { name = "/iconia/${var.env}/ai", retention = 30 }
     admin        = { name = "/iconia/${var.env}/admin", retention = 14 }
     nginx_access = { name = "/iconia/${var.env}/nginx-access", retention = 30 }
-    nginx_error  = { name = "/iconia/${var.env}/nginx-error", retention = 60 }
+    nginx_error  = { name = "/iconia/${var.env}/nginx-error", retention = 30 } # 2026-06-24 cost opt: nonprod 60→30일
     deploy       = { name = "/iconia/${var.env}/deploy", retention = 90 }
     audit        = { name = "/iconia/${var.env}/audit", retention = 365 }
   }
