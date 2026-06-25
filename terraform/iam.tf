@@ -99,12 +99,14 @@ data "aws_iam_policy_document" "ec2_inline" {
     resources = ["${aws_s3_bucket.firmware.arn}/firmware/*"]
   }
 
-  # Secrets Manager: iconia/${env}/* 만.
+  # Secrets Manager: iconia/${env}/* + iconia/server/* (cross-env 공유 시크릿 경로).
+  # iconia/server/* — openai-api-key 등 env-agnostic 운영 시크릿이 이 prefix 를 사용한다.
   statement {
     sid     = "SecretsManagerScope"
     actions = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
     resources = [
       "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:iconia/${var.env}/*",
+      "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:iconia/server/*",
     ]
   }
 
