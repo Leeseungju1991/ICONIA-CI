@@ -1,0 +1,53 @@
+###############################################################################
+# deploy-policy-site.yml — (주)숨코리아 정책 고지 정적 사이트 배포.
+#
+# policy-site/ → S3(iconia-prod-policy) sync + CloudFront(E3UVE6Q83ZP9MM) invalidation.
+# 실 배포 로직은 scripts/sync-policy-site.sh (운영자 셸과 동일 정본) 을 그대로 호출.
+#
+# 배포 대상: https://d2txfcpfr4o2k.cloudfront.net
+#
+# trigger:
+#   - workflow_dispatch                       → 운영자 수동
+#   - push:main + policy-site/** 변경 시       → 정책 본문/사이트 변경 자동 반영
+#
+# 인증: OIDC (정적 access key 미저장 — PIPA).
+#   필요 GitHub secrets:
+#     AWS_DEPLOY_ROLE_ARN  : OIDC 로 가정할 IAM 역할 ARN
+###############################################################################
+name: deploy-policy-site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'policy-site/**'
+      - 'scripts/sync-policy-site.sh'
+      - '.github/workflows/deploy-policy-site.yml'
+
+concurrency:
+  group: deploy-policy-site
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write   # OIDC.
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync policy-site to S3 + invalidate CloudFront
+        run: bash scripts/sync-policy-site.sh
