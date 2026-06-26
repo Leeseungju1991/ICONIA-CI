@@ -14,7 +14,7 @@
 set -euo pipefail
 
 BUCKET="iconia-prod-policy-169063643478"
-DIST_ID="E3UVE6Q83ZP9MM"
+DIST_ID="EJTW5G0D050C6"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SITE_DIR="$SCRIPT_DIR/../policy-site"
@@ -57,5 +57,5 @@ INVAL=$(aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths 
 echo "  invalidation id: $INVAL"
 
 echo
-echo "==> Done — https://d2txfcpfr4o2k.cloudfront.net"
+echo "==> Done — https://dzq72tlftowz4.cloudfront.net"
 echo "    (invalidation 완료까지 1-3 분)"

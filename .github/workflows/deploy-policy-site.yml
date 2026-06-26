@@ -1,10 +1,10 @@
 ###############################################################################
 # deploy-policy-site.yml — (주)숨코리아 정책 고지 정적 사이트 배포.
 #
-# policy-site/ → S3(iconia-prod-policy) sync + CloudFront(E3UVE6Q83ZP9MM) invalidation.
+# policy-site/ → S3(iconia-prod-policy) sync + CloudFront(EJTW5G0D050C6) invalidation.
 # 실 배포 로직은 scripts/sync-policy-site.sh (운영자 셸과 동일 정본) 을 그대로 호출.
 #
-# 배포 대상: https://d2txfcpfr4o2k.cloudfront.net
+# 배포 대상: https://dzq72tlftowz4.cloudfront.net
 #
 # trigger:
 #   - workflow_dispatch                       → 운영자 수동

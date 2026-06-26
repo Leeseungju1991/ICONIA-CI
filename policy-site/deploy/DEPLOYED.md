@@ -4,7 +4,7 @@
 
 ## 배포 URL
 
-- **현재 URL**: https://d2txfcpfr4o2k.cloudfront.net
+- **현재 URL**: https://dzq72tlftowz4.cloudfront.net
 - 활성화 일자: 2026-05-28
 
 ## 리소스 식별자
@@ -14,11 +14,11 @@
 | AWS Account | 169063643478 |
 | Region | ap-northeast-2 (서울) |
 | S3 Bucket | `iconia-prod-policy-169063643478` |
-| Bucket 정책 | OAC 전용 (public 차단, CloudFront `E3UVE6Q83ZP9MM` 만 GetObject) |
+| Bucket 정책 | OAC 전용 (public 차단, CloudFront `EJTW5G0D050C6` 만 GetObject) |
 | 암호화 | SSE-S3 (AES256) + Bucket Key |
 | Versioning | Enabled |
-| CloudFront Distribution ID | `E3UVE6Q83ZP9MM` |
-| CloudFront Domain | `d2txfcpfr4o2k.cloudfront.net` |
+| CloudFront Distribution ID | `EJTW5G0D050C6` |
+| CloudFront Domain | `dzq72tlftowz4.cloudfront.net` |
 | CloudFront OAC ID | `ER9JZC5ENMOQ9` |
 | Price Class | PriceClass_200 (NA/EU/Asia) |
 | TLS | TLS 1.2_2021 minimum |
@@ -52,7 +52,7 @@ aws acm request-certificate \
 #    - Aliases: ["policy.dollsoom.com"]
 #    - ViewerCertificate: { AcmCertificateArn, SSLSupportMethod=sni-only, MinimumProtocolVersion=TLSv1.2_2021 }
 
-# 4) Route53 에 ALIAS record (A or AAAA) → d2txfcpfr4o2k.cloudfront.net
+# 4) Route53 에 ALIAS record (A or AAAA) → dzq72tlftowz4.cloudfront.net
 ```
 
 ## 비용
@@ -74,7 +74,7 @@ aws acm request-certificate \
 
 ```bash
 # 1) CloudFront distribution 비활성화 → 배포 완료 대기 → 삭제
-aws cloudfront get-distribution-config --id E3UVE6Q83ZP9MM > /tmp/dist.json
+aws cloudfront get-distribution-config --id EJTW5G0D050C6 > /tmp/dist.json
 # 위 JSON 에서 Enabled: false 로 수정 후 update-distribution → 배포 완료 후 delete-distribution
 
 # 2) S3 bucket 비우기 + 삭제
